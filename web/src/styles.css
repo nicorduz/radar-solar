@@ -217,3 +217,27 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .dd-menu > button.on { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--blue); }
 .dd-menu.layers label { min-height: 38px; }
 @media (max-width: 860px) { .dd-menu { width: min(320px, calc(100vw - 16px)); } }
+
+/* ---------- Plan completo y Powered by Talera ---------- */
+.powered { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); text-decoration: none; }
+.powered img { height: 16px; width: auto; }
+.powered:hover { color: var(--ink); }
+.side .powered { padding: 0 10px 14px; }
+.plan-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; padding: 28px; }
+.plan-hero h1 { font-size: 28px; }
+.plan-precio { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; }
+.plan-precio .mono { font-size: 42px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+.plan-precio span:last-child { font-size: 13px; color: var(--ink-2); line-height: 1.3; }
+.btn.lg { min-height: 50px; padding: 0 22px; font-size: 16px; }
+.plan-vs ul { margin: 10px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--ink-2); font-size: 14px; }
+.plan-vs.off { opacity: 0.85; }
+.plan-vs.off li::marker { content: '✕  '; color: var(--bad); }
+.plan-vs.on { border-color: var(--blue); }
+.plan-vs.on li::marker { content: '✓  '; color: var(--ok); }
+.plan-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.plan-item { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
+.plan-roi { display: flex; gap: 12px; align-items: center; border-color: var(--hot); color: var(--ink-2); }
+.plan-roi svg { color: var(--hot); flex: none; }
+.precio-corto { font-size: 13px; color: var(--ink-2); }
+.precio-corto .mono { font-weight: 700; color: var(--ink); font-size: 15px; }
+@media (max-width: 860px) { .plan-hero { padding: 20px; } .plan-hero h1 { font-size: 23px; } .plan-precio .mono { font-size: 34px; } }
