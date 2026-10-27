@@ -4,6 +4,7 @@ import { useApp } from '../App.jsx';
 import { ContactCTA, ProfileSwitch } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { LegalLine } from './Terminos.jsx';
+import { PrecioCorto, PoweredBy } from './Plan.jsx';
 
 export default function Cuenta() {
   const { user, paid, logout, go, meta } = useApp();
@@ -25,6 +26,7 @@ export default function Cuenta() {
       </div>
       {Object.keys(meta.profiles).length > 1 && <div className="card mobile-only"><h3 style={{ marginBottom: 8 }}>Ver la app como</h3><ProfileSwitch /></div>}
       <div className="row" style={{ gap: 8 }}>
+        {!paid && <button className="btn primary" onClick={() => go('plan')}><Icon name="spark" size={16} />Plan completo</button>}
         <button className="btn" onClick={() => go('clientes')}><Icon name="hotel" size={16} />Hoteles y turismo</button>
         <button className="btn" onClick={() => go('empresas')}><Icon name="building" size={16} />Instaladores y empresas</button>
         <button className="btn" onClick={() => go('mercado')}><Icon name="chart" size={16} />Mercado y red</button>
@@ -32,17 +34,12 @@ export default function Cuenta() {
         {user.role === 'admin' && <button className="btn" onClick={() => go('admin')}><Icon name="gear" size={16} />Administración</button>}
       </div>
       {!paid && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          <h2>Qué incluye el plan completo</h2>
-          <ul className="small" style={{ margin: 0, paddingLeft: 18, color: 'var(--ink-2)', alignSelf: 'stretch' }}>
-            <li>Mapa 3D por municipio y ranking completo de {meta.totals.municipios.toLocaleString('es-CO')} municipios para instaladores, proveedores y desarrolladores, con filtros y descarga.</li>
-            <li>Ficha por municipio: tarifa 2026, obra nueva por estrato, cortes de energía, turismo, subestaciones cercanas, instaladores de la zona y retorno de la inversión.</li>
-            <li>{meta.totals.clientes?.toLocaleString('es-CO')} hoteles, viviendas turísticas y parques como clientes potenciales.</li>
-            <li>Mapa de la red de transmisión, plantas solares, red de media tensión estimada y zonas no interconectadas.</li>
-            <li>{meta.totals.secop.toLocaleString('es-CO')} licitaciones públicas solares y directorio de {meta.totals.empresas.toLocaleString('es-CO')} empresas con contacto y contratos solares.</li>
-            <li>Asistente con IA y argumentos de venta listos para WhatsApp.</li>
-          </ul>
-          <ContactCTA text="Escríbenos para activar tu plan." />
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start', borderColor: 'var(--blue)' }}>
+          <span className="tag hot">Plan completo</span>
+          <h2>Paga una vez. Úsala siempre.</h2>
+          <PrecioCorto />
+          <p className="small muted" style={{ margin: 0 }}>Mapa y ranking completos, tarifas y cortes de cada municipio, {meta.totals.clientes?.toLocaleString('es-CO')} hoteles y {meta.totals.empresas.toLocaleString('es-CO')} empresas con contacto, licitaciones, red eléctrica y asistente con IA.</p>
+          <div className="row"><button className="btn primary" onClick={() => go('plan')}>Ver todo lo que incluye</button></div>
         </div>
       )}
       <form className="card" onSubmit={change} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -53,6 +50,7 @@ export default function Cuenta() {
         <button className="btn" style={{ alignSelf: 'flex-start' }}>Guardar</button>
       </form>
       <button className="btn danger" style={{ alignSelf: 'flex-start' }} onClick={logout}>Cerrar sesión</button>
+      <PoweredBy />
       <p className="small muted"><LegalLine go={go} /></p>
       <p className="small muted">Datos: DANE (ELIC corte {meta.cortes.elic}, proyecciones de población), Superservicios SUI (tarifas {meta.cortes.sui}), XM (autogeneradores {meta.cortes.agpe_xm}, demanda no atendida {meta.cortes.dna}, mapa Paratec), IPSE, MinCIT (Registro Nacional de Turismo), SNR (licencias, corte {meta.cortes.snr}), SECOP II, Registro Mercantil, gridfinder, NASA POWER y Open-Meteo.</p>
     </div>
