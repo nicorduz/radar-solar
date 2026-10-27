@@ -46,7 +46,7 @@ export function TerminosTexto({ appName = 'Radar Solar' }) {
 
 export function LegalLine({ go }) {
   return (
-    <span>© {new Date().getFullYear()} {OWNER} Todos los derechos reservados. Licencia de uso solo para acceso; no se permite su copia ni reproducción. <a href="#/terminos" onClick={(e) => { if (go) { e.preventDefault(); go('terminos'); } }}>Términos de licencia</a></span>
+    <span>© {new Date().getFullYear()} {OWNER} Todos los derechos reservados. Licencia de uso solo para acceso; no se permite su copia ni reproducción. <a href="#/terminos" onClick={(e) => { if (go) { e.preventDefault(); go('terminos'); } }}>Términos de licencia</a> · <a href="https://www.talera.co/" target="_blank" rel="noreferrer">talera.co</a></span>
   );
 }
 
