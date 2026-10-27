@@ -14,9 +14,7 @@ export default function Login({ cfg, onLogin }) {
   return (
     <div className="login">
       <form className="card" onSubmit={submit} style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className="diag" aria-hidden="true" />
-        <a href="https://www.talera.co/" target="_blank" rel="noreferrer" style={{ alignSelf: 'flex-start' }} title="Ir a talera.co"><img src="/talera-logo.png" alt="Talera" style={{ height: 30, width: 'auto', display: 'block' }} /></a>
-        <div className="brand" style={{ padding: 0 }}><img src="/icon.svg" alt="" width="34" height="34" />{cfg.appName}</div>
+        <a href="https://www.talera.co/" target="_blank" rel="noreferrer" title="Radar Solar · Powered by Talera" className="login-logo"><img src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" /></a>
         <p className="muted" style={{ margin: 0 }}>Inteligencia de mercado solar en Colombia para instaladores, proveedores de equipos y desarrolladores: tarifas, obra nueva, red eléctrica, proyectos y clientes en un solo mapa.</p>
         <label className="f">Usuario<input className="input" autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} required /></label>
         <label className="f">Contraseña<input className="input" type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} required /></label>
