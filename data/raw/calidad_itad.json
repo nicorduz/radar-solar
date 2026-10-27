@@ -1,0 +1,690 @@
+[{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2013","periodo":"1","nivel_1":"0.00372655","nivel_2_3":"0.00080348"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.00203654","nivel_2_3":"0.00064551"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.00168556","nivel_2_3":"0.00073133"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00398422","nivel_2_3":"0.0012657"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.0013134","nivel_2_3":"0.0007112"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.0005085","nivel_2_3":"0.0005121"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.00214098","nivel_2_3":"0.00059214"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2012","periodo":"3","nivel_1":"0.00254494","nivel_2_3":"0.00055194"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2014","periodo":"2","nivel_1":"0.00708137","nivel_2_3":"0.00228684"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2015","periodo":"1","nivel_1":"0.0004229","nivel_2_3":"0.000148"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.0016373","nivel_2_3":"0.0013463"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.00161985","nivel_2_3":"0.0004373"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.0016086","nivel_2_3":"0.0008581"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.00487035","nivel_2_3":"0.00355253"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.00179173","nivel_2_3":"0.00055481"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2016","periodo":"4","nivel_1":"0.00419035","nivel_2_3":"0.00225327"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2014","periodo":"2","nivel_1":"0.0029381","nivel_2_3":"0.00059133"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2016","periodo":"3","nivel_1":"0.0172413","nivel_2_3":"0.0105447"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.0102846","nivel_2_3":"0.00846"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2014","periodo":"3","nivel_1":"0.01045959","nivel_2_3":"0.00234727"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2012","periodo":"4","nivel_1":"0.00293113","nivel_2_3":"0.00256365"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2015","periodo":"2","nivel_1":"0.005517","nivel_2_3":"0.0016989"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2020","periodo":"4","nivel_1":"0.001909","nivel_2_3":"0.001909"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.0012116","nivel_2_3":"0.0013938"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2013","periodo":"2","nivel_1":"0.00438","nivel_2_3":"0.0029584"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2011","periodo":"4","nivel_1":"0.00233854","nivel_2_3":"0.00119865"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.00839277","nivel_2_3":"0.0026755"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2013","periodo":"1","nivel_1":"0.00489104","nivel_2_3":"0.0011779"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2015","periodo":"4","nivel_1":"0.00785834","nivel_2_3":"0.00164701"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2013","periodo":"3","nivel_1":"0.00748109","nivel_2_3":"0.0035468"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.0063116","nivel_2_3":"0.0038714"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2020","periodo":"3","nivel_1":"0.0040721","nivel_2_3":"0.0011242"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.00212355","nivel_2_3":"0.00061297"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2011","periodo":"3","nivel_1":"0.0045035","nivel_2_3":"0.005297"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2014","periodo":"3","nivel_1":"0.0254366","nivel_2_3":"0.0017171"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2015","periodo":"4","nivel_1":"0.0061341","nivel_2_3":"0.00142588"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2014","periodo":"4","nivel_1":"0.01133589","nivel_2_3":"0.00172981"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2015","periodo":"3","nivel_1":"0.0021598","nivel_2_3":"0.0008382"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2014","periodo":"1","nivel_1":"0.012839","nivel_2_3":"0.007134"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2014","periodo":"3","nivel_1":"0.00893578","nivel_2_3":"0.00129446"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2018","periodo":"1","nivel_1":"0.0053082","nivel_2_3":"0.0035583"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.0038981","nivel_2_3":"0.00140057"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.0004373","nivel_2_3":"0.0003511"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.0018343","nivel_2_3":"0.0014453"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.0004638","nivel_2_3":"0.0005155"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2016","periodo":"3","nivel_1":"0.00178083","nivel_2_3":"0.00033861"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.00216128","nivel_2_3":"0.00060183"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2012","periodo":"2","nivel_1":"0.00776706","nivel_2_3":"0.00234525"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2015","periodo":"3","nivel_1":"0.00212832","nivel_2_3":"0.00048308"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.00405276","nivel_2_3":"0.00082489"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.00147381","nivel_2_3":"0.00076035"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00256429","nivel_2_3":"0.00044407"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.00049046","nivel_2_3":"0.00019841"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.00927512","nivel_2_3":"0.0059598"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2012","periodo":"4","nivel_1":"0.00692958","nivel_2_3":"0.00208073"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.00233735","nivel_2_3":"0.00060266"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.00687537","nivel_2_3":"0.00527388"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.0120457","nivel_2_3":"0.0084445"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.0012112","nivel_2_3":"0.0010197"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2011","periodo":"2","nivel_1":"0.00127376","nivel_2_3":"0.00216054"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.00189948","nivel_2_3":"0.00106187"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2013","periodo":"2","nivel_1":"0.00717868","nivel_2_3":"0.00212238"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.0009958","nivel_2_3":"0.0004109"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2016","periodo":"4","nivel_1":"0.00806198","nivel_2_3":"0.00254175"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2015","periodo":"2","nivel_1":"0.00239467","nivel_2_3":"0.00044875"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.00185717","nivel_2_3":"0.00181218"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2014","periodo":"2","nivel_1":"0.01037","nivel_2_3":"0.00145045"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.0014297","nivel_2_3":"0.001166"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.00161434","nivel_2_3":"0.00166495"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.00766423","nivel_2_3":"0.00773565"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2014","periodo":"4","nivel_1":"0.0025019","nivel_2_3":"0.0006732"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2017","periodo":"2","nivel_1":"0.0079355","nivel_2_3":"0.0032759"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.003901","nivel_2_3":"0.0010786"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2017","periodo":"1","nivel_1":"0.00254017","nivel_2_3":"0.00171625"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.00470274","nivel_2_3":"0.00407923"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2012","periodo":"3","nivel_1":"0.00721394","nivel_2_3":"0.00155228"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2014","periodo":"2","nivel_1":"0.014924","nivel_2_3":"0.0034885"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.00393524","nivel_2_3":"0.00256076"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.00361048","nivel_2_3":"0.00164705"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2016","periodo":"4","nivel_1":"0.0119878","nivel_2_3":"0.001274"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2012","periodo":"1","nivel_1":"0.00344847","nivel_2_3":"0.00184507"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.00956725","nivel_2_3":"0.00563947"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2016","periodo":"1","nivel_1":"0.00773887","nivel_2_3":"0.00086268"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2019","periodo":"3","nivel_1":"0.018122","nivel_2_3":"0.008372"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.0093435","nivel_2_3":"0.00692888"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0001672","nivel_2_3":"0.0002915"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2017","periodo":"2","nivel_1":"0.0035861","nivel_2_3":"0.0020522"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2017","periodo":"2","nivel_1":"0.0020813","nivel_2_3":"0.0010452"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.00427275","nivel_2_3":"0.00206582"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.00216543","nivel_2_3":"0.00086577"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2013","periodo":"1","nivel_1":"0.013277","nivel_2_3":"0.00104"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.0011089","nivel_2_3":"0.0006431"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.00242687","nivel_2_3":"0.00155734"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2015","periodo":"3","nivel_1":"0.00728387","nivel_2_3":"0.00131182"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2017","periodo":"1","nivel_1":"0.0033832","nivel_2_3":"0.00101793"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2012","periodo":"3","nivel_1":"0.00384283","nivel_2_3":"0.00240377"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.0014098","nivel_2_3":"0.0008827"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.00253889","nivel_2_3":"0.00083258"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2013","periodo":"2","nivel_1":"0.00490242","nivel_2_3":"0.00372735"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0052436","nivel_2_3":"0.00198133"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0032245","nivel_2_3":"0.00279703"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2015","periodo":"2","nivel_1":"0.00836711","nivel_2_3":"0.00135811"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2013","periodo":"3","nivel_1":"0.00781726","nivel_2_3":"0.00273832"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.00331842","nivel_2_3":"0.00116283"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.0007266","nivel_2_3":"0.0006096"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2013","periodo":"3","nivel_1":"0.00349338","nivel_2_3":"0.00191357"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2017","periodo":"1","nivel_1":"0.0088955","nivel_2_3":"0.0030842"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00193175","nivel_2_3":"0.0006755"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2016","periodo":"4","nivel_1":"0.0039017","nivel_2_3":"0.0019093"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2018","periodo":"4","nivel_1":"0.00934833","nivel_2_3":"0.00501133"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2016","periodo":"2","nivel_1":"0.0027272","nivel_2_3":"0.0008734"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.00284382","nivel_2_3":"0.00223286"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.0118123","nivel_2_3":"0.0094897"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.00367186","nivel_2_3":"0.00156581"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2020","periodo":"1","nivel_1":"0.0050256","nivel_2_3":"0.0030913"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0016186","nivel_2_3":"0.0007347"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.0010997","nivel_2_3":"0.0013193"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.00258244","nivel_2_3":"0.00066316"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2014","periodo":"1","nivel_1":"0.0023092","nivel_2_3":"0.0012645"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2012","periodo":"2","nivel_1":"0.028934","nivel_2_3":"0.001296"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2014","periodo":"3","nivel_1":"0.0048849","nivel_2_3":"0.0032333"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.0016639","nivel_2_3":"0.0010848"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2014","periodo":"2","nivel_1":"0.00903208","nivel_2_3":"0.00663511"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2013","periodo":"4","nivel_1":"0.01389","nivel_2_3":"0.010994"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2016","periodo":"3","nivel_1":"0.0024005","nivel_2_3":"0.0010248"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.001384","nivel_2_3":"0.0010329"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2012","periodo":"2","nivel_1":"0.00400105","nivel_2_3":"0.00193299"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.00383636","nivel_2_3":"0.00152831"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2013","periodo":"3","nivel_1":"0.00766093","nivel_2_3":"0.00115148"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2016","periodo":"4","nivel_1":"0.01137612","nivel_2_3":"0.00305265"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2019","periodo":"1","nivel_1":"0.0007301","nivel_2_3":"0.0004701"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2012","periodo":"1","nivel_1":"0.00770396","nivel_2_3":"0.00404645"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2016","periodo":"2","nivel_1":"0.0113626","nivel_2_3":"0.0073422"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2012","periodo":"3","nivel_1":"0.0046438","nivel_2_3":"0.001997"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2015","periodo":"4","nivel_1":"0.00296947","nivel_2_3":"0.00056503"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.0066472","nivel_2_3":"0.00478067"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2012","periodo":"1","nivel_1":"0.00388353","nivel_2_3":"0.00376735"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.00197251","nivel_2_3":"0.0007318"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00883731","nivel_2_3":"0.00375044"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2015","periodo":"4","nivel_1":"0.0034231","nivel_2_3":"0.0029236"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2015","periodo":"1","nivel_1":"0.0069188","nivel_2_3":"0.0014712"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.00194592","nivel_2_3":"0.00058339"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.00956108","nivel_2_3":"0.00620674"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2019","periodo":"4","nivel_1":"0.00327621","nivel_2_3":"0.00429801"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.00661141","nivel_2_3":"0.00100587"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.00549518","nivel_2_3":"0.00144696"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2014","periodo":"1","nivel_1":"0.00312823","nivel_2_3":"0.00111876"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2012","periodo":"3","nivel_1":"0.00966857","nivel_2_3":"0.00133172"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.0006584","nivel_2_3":"0.0008048"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.00255047","nivel_2_3":"0.00059909"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.0082227","nivel_2_3":"0.0062878"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.0051197","nivel_2_3":"0.00234484"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0212248","nivel_2_3":"0.0202608"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2013","periodo":"3","nivel_1":"0.0122999","nivel_2_3":"0.002709"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.0006933","nivel_2_3":"0.0006269"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.0011916","nivel_2_3":"0.0010191"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00544333","nivel_2_3":"0.00199355"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.00139256","nivel_2_3":"0.00096598"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2011","periodo":"2","nivel_1":"0.00202105","nivel_2_3":"0.00102348"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2011","periodo":"3","nivel_1":"0.00511079","nivel_2_3":"0.00098478"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.00151613","nivel_2_3":"0.00144009"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2013","periodo":"1","nivel_1":"0.0038521","nivel_2_3":"0.0027753"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2015","periodo":"3","nivel_1":"0.00725513","nivel_2_3":"0.00207028"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.00418187","nivel_2_3":"0.0009518"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.0018348","nivel_2_3":"0.0012635"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2013","periodo":"3","nivel_1":"0.0007196","nivel_2_3":"0.0002946"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2012","periodo":"4","nivel_1":"0.0028298","nivel_2_3":"0.00071065"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2011","periodo":"1","nivel_1":"0.00156654","nivel_2_3":"0.00055177"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2016","periodo":"1","nivel_1":"0.00277961","nivel_2_3":"0.00049465"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2012","periodo":"2","nivel_1":"0.00228999","nivel_2_3":"0.00059873"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.0156086","nivel_2_3":"0.0114031"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2013","periodo":"2","nivel_1":"0.01043977","nivel_2_3":"0.00152139"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.00215276","nivel_2_3":"0.00078539"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2017","periodo":"1","nivel_1":"0.0060304","nivel_2_3":"0.0035213"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2012","periodo":"2","nivel_1":"0.00487681","nivel_2_3":"0.00139057"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.00635877","nivel_2_3":"0.00298721"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2019","periodo":"2","nivel_1":"0.0006901","nivel_2_3":"0.0003297"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2016","periodo":"2","nivel_1":"0.0076431","nivel_2_3":"0.0097005"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00145659","nivel_2_3":"0.00063591"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.00904092","nivel_2_3":"0.00611668"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.00271175","nivel_2_3":"0.00122835"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.0034427","nivel_2_3":"0.0124921"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.00232161","nivel_2_3":"0.00101157"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.0079296","nivel_2_3":"0.0059926"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.0086037","nivel_2_3":"0.0066092"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.00147439","nivel_2_3":"0.00054406"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2011","periodo":"4","nivel_1":"0.00990948","nivel_2_3":"0.00139803"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2016","periodo":"3","nivel_1":"0.00751259","nivel_2_3":"0.00298252"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2014","periodo":"1","nivel_1":"0.00651717","nivel_2_3":"0.00236467"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2016","periodo":"2","nivel_1":"0.001053","nivel_2_3":"0.0009458"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.00250202","nivel_2_3":"0.00148011"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2020","periodo":"1","nivel_1":"0.0038356","nivel_2_3":"0.0013124"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.00159635","nivel_2_3":"0.00051454"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2018","periodo":"2","nivel_1":"0.0064197","nivel_2_3":"0.003965"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.0009157","nivel_2_3":"0.0005211"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.01435603","nivel_2_3":"0.01117396"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.00422179","nivel_2_3":"0.00203019"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.00984931","nivel_2_3":"0.00381805"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2014","periodo":"4","nivel_1":"0.00711862","nivel_2_3":"0.00157916"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.00936455","nivel_2_3":"0.00502246"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.01157095","nivel_2_3":"0.00940365"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2012","periodo":"1","nivel_1":"0.00310109","nivel_2_3":"0.00082908"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.00161433","nivel_2_3":"0.00056675"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2017","periodo":"2","nivel_1":"0.00285624","nivel_2_3":"0.00038841"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.00155615","nivel_2_3":"0.0007347"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2014","periodo":"4","nivel_1":"0.0122885","nivel_2_3":"0.003832"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.00169039","nivel_2_3":"0.00083718"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.00088058","nivel_2_3":"0.0008303"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.0008307","nivel_2_3":"0.0006578"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.0010367","nivel_2_3":"0.0006714"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00152648","nivel_2_3":"0.00104447"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2013","periodo":"4","nivel_1":"0.00311275","nivel_2_3":"0.0015751"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2013","periodo":"1","nivel_1":"0.002433","nivel_2_3":"0.00040574"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2017","periodo":"1","nivel_1":"0.0077674","nivel_2_3":"0.0020191"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2016","periodo":"1","nivel_1":"0.0032453","nivel_2_3":"0.0017836"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2013","periodo":"1","nivel_1":"0.0005253","nivel_2_3":"0.0001795"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2013","periodo":"2","nivel_1":"0.00971479","nivel_2_3":"0.00148439"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2012","periodo":"2","nivel_1":"0.0074114","nivel_2_3":"0.00222667"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2014","periodo":"3","nivel_1":"0.0027338","nivel_2_3":"0.0027556"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0016054","nivel_2_3":"0.0020573"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2015","periodo":"4","nivel_1":"0.0019944","nivel_2_3":"0.0009045"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2016","periodo":"2","nivel_1":"0.0064947","nivel_2_3":"0.0011664"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00191102","nivel_2_3":"0.00060312"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2016","periodo":"2","nivel_1":"0.00900051","nivel_2_3":"0.00192755"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.00596943","nivel_2_3":"0.00400513"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2018","periodo":"2","nivel_1":"0.0015147","nivel_2_3":"0.0010491"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2014","periodo":"3","nivel_1":"0.0059976","nivel_2_3":"0.00175679"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.0013823","nivel_2_3":"0.0012535"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.001751","nivel_2_3":"0.0017212"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.00380743","nivel_2_3":"0.00782953"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2013","periodo":"4","nivel_1":"0.00759241","nivel_2_3":"0.00093773"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.00281754","nivel_2_3":"0.00109503"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.0013737","nivel_2_3":"0.0014464"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2011","periodo":"3","nivel_1":"0.00806235","nivel_2_3":"0.00066262"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2019","periodo":"1","nivel_1":"0.0028389","nivel_2_3":"0.00103238"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00145047","nivel_2_3":"0.00110661"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2014","periodo":"1","nivel_1":"0.0042021","nivel_2_3":"0.0020858"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.0012674","nivel_2_3":"0.0006074"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.00268333","nivel_2_3":"0.00100747"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.0022622","nivel_2_3":"0.00052828"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2013","periodo":"1","nivel_1":"0.00859192","nivel_2_3":"0.00184262"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.0127065","nivel_2_3":"0.0092261"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2011","periodo":"4","nivel_1":"0.0025944","nivel_2_3":"0.0020479"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2012","periodo":"1","nivel_1":"0.0006207","nivel_2_3":"0.0001945"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.00408598","nivel_2_3":"0.00196155"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.0014341","nivel_2_3":"0.001034"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2013","periodo":"2","nivel_1":"0.014696","nivel_2_3":"0.004602"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2012","periodo":"4","nivel_1":"0.0025","nivel_2_3":"0.0006571"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2016","periodo":"1","nivel_1":"0.0028761","nivel_2_3":"0.00076068"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2015","periodo":"1","nivel_1":"0.0067554","nivel_2_3":"0.0057692"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2016","periodo":"1","nivel_1":"0.0029469","nivel_2_3":"0.0012882"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0005485","nivel_2_3":"0.0007004"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.00223544","nivel_2_3":"0.00108294"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2012","periodo":"2","nivel_1":"0.0006261","nivel_2_3":"0.0002389"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.00184452","nivel_2_3":"0.00065151"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.001582","nivel_2_3":"0.0011223"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.0043712","nivel_2_3":"0.00259121"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2018","periodo":"4","nivel_1":"0.0012224","nivel_2_3":"0.0009954"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2014","periodo":"4","nivel_1":"0.00313095","nivel_2_3":"0.00055913"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.00197012","nivel_2_3":"0.00131414"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.0154483","nivel_2_3":"0.0110565"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.00190836","nivel_2_3":"0.00135211"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2016","periodo":"4","nivel_1":"0.00189045","nivel_2_3":"0.00029646"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.0140624","nivel_2_3":"0.0113514"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.00293295","nivel_2_3":"0.00191384"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2015","periodo":"1","nivel_1":"0.0029578","nivel_2_3":"0.0011632"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2015","periodo":"1","nivel_1":"0.0241608","nivel_2_3":"0.0024068"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.0107138","nivel_2_3":"0.00703659"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.0024014","nivel_2_3":"0.0011555"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2015","periodo":"1","nivel_1":"0.00913746","nivel_2_3":"0.0013796"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2015","periodo":"4","nivel_1":"0.0063115","nivel_2_3":"0.0013708"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.00194035","nivel_2_3":"0.00272698"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2014","periodo":"3","nivel_1":"0.00271393","nivel_2_3":"0.00064072"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.00181882","nivel_2_3":"0.00077642"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.0008583","nivel_2_3":"0.0006431"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2014","periodo":"2","nivel_1":"0.0041802","nivel_2_3":"0.0041074"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.0116028","nivel_2_3":"0.0080448"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2011","periodo":"2","nivel_1":"0.0027166","nivel_2_3":"0.0017804"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2018","periodo":"4","nivel_1":"0.0026975","nivel_2_3":"0.0001989"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.0075582","nivel_2_3":"0.0062006"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.00153632","nivel_2_3":"0.00065501"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2017","periodo":"2","nivel_1":"0.0097734","nivel_2_3":"0.0014179"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2013","periodo":"4","nivel_1":"0.00967733","nivel_2_3":"0.00239313"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.00153504","nivel_2_3":"0.00047366"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.0046966","nivel_2_3":"0.0017023"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2015","periodo":"2","nivel_1":"0.0034775","nivel_2_3":"0.0016986"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.0015023","nivel_2_3":"0.0019115"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.00398166","nivel_2_3":"0.00111136"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2013","periodo":"2","nivel_1":"0.00275991","nivel_2_3":"0.00058801"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2015","periodo":"3","nivel_1":"0.0054796","nivel_2_3":"0.0010318"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.0003708","nivel_2_3":"0.0003511"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2015","periodo":"1","nivel_1":"0.00245176","nivel_2_3":"0.00051223"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2011","periodo":"3","nivel_1":"0.00277991","nivel_2_3":"0.00074866"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2016","periodo":"3","nivel_1":"0.0066339","nivel_2_3":"0.0019998"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.00390809","nivel_2_3":"0.00114066"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.0014208","nivel_2_3":"0.0004955"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.00569461","nivel_2_3":"0.0041627"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2015","periodo":"2","nivel_1":"0.0028443","nivel_2_3":"0.0017972"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.0023846","nivel_2_3":"0.0022421"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2014","periodo":"1","nivel_1":"0.00846205","nivel_2_3":"0.00091671"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2012","periodo":"3","nivel_1":"0.0007104","nivel_2_3":"0.0002674"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2015","periodo":"3","nivel_1":"0.0031908","nivel_2_3":"0.0020689"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2019","periodo":"2","nivel_1":"0.00330853","nivel_2_3":"0.00035128"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2013","periodo":"3","nivel_1":"0.0044734","nivel_2_3":"0.0020061"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2010","periodo":"4","nivel_1":"0.00187014","nivel_2_3":"0.00079851"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.0010896","nivel_2_3":"0.0008581"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2016","periodo":"2","nivel_1":"0.00301967","nivel_2_3":"0.00062149"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.0005307","nivel_2_3":"0.0005524"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2012","periodo":"4","nivel_1":"0.0246291","nivel_2_3":"0.0035539"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2017","periodo":"1","nivel_1":"0.00380204","nivel_2_3":"0.00040951"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0100419","nivel_2_3":"0.0081093"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2016","periodo":"2","nivel_1":"0.0058972","nivel_2_3":"0.0032968"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2014","periodo":"4","nivel_1":"0.0197477","nivel_2_3":"0.0034629"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2014","periodo":"4","nivel_1":"0.0060612","nivel_2_3":"0.0040441"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.001227","nivel_2_3":"0.0008891"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2016","periodo":"3","nivel_1":"0.0037877","nivel_2_3":"0.0016114"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.0049536","nivel_2_3":"0.0013025"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2015","periodo":"2","nivel_1":"0.0007938","nivel_2_3":"0.000319"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2015","periodo":"2","nivel_1":"0.0055163","nivel_2_3":"0.00178"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.0003662","nivel_2_3":"0.0007067"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2013","periodo":"3","nivel_1":"0.0113173","nivel_2_3":"0.007631"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2019","periodo":"1","nivel_1":"0.00807233","nivel_2_3":"0.00276567"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2016","periodo":"2","nivel_1":"0.00742991","nivel_2_3":"0.00201477"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.00280803","nivel_2_3":"0.00052121"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.0015533","nivel_2_3":"0.0011459"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2017","periodo":"2","nivel_1":"0.00477546","nivel_2_3":"0.00137767"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.00522954","nivel_2_3":"0.00329192"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2016","periodo":"3","nivel_1":"0.001075","nivel_2_3":"0.0005342"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2012","periodo":"3","nivel_1":"0.00856067","nivel_2_3":"0.0020174"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2012","periodo":"1","nivel_1":"0.00234918","nivel_2_3":"0.00048255"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.00293787","nivel_2_3":"0.00118247"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2016","periodo":"1","nivel_1":"0.0091313","nivel_2_3":"0.0021693"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2011","periodo":"4","nivel_1":"0.00812827","nivel_2_3":"0.0004897"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.0056791","nivel_2_3":"0.00463521"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.0021159","nivel_2_3":"0.0015122"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2013","periodo":"4","nivel_1":"0.01140133","nivel_2_3":"0.00100521"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.0160095","nivel_2_3":"0.0105839"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2013","periodo":"1","nivel_1":"0.00201434","nivel_2_3":"0.00136684"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.0019351","nivel_2_3":"0.0013285"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2019","periodo":"1","nivel_1":"0.0035832","nivel_2_3":"0.002117"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2015","periodo":"1","nivel_1":"0.0082723","nivel_2_3":"0.0056398"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2012","periodo":"1","nivel_1":"0.00745784","nivel_2_3":"0.00069359"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.00714352","nivel_2_3":"0.00331582"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2015","periodo":"4","nivel_1":"0.0006651","nivel_2_3":"0.0001833"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.00194212","nivel_2_3":"0.00055194"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2019","periodo":"1","nivel_1":"0.010977","nivel_2_3":"0.0083315"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.00655694","nivel_2_3":"0.00302032"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2015","periodo":"3","nivel_1":"0.0062502","nivel_2_3":"0.0038414"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2013","periodo":"4","nivel_1":"0.00266722","nivel_2_3":"0.00053527"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.00180413","nivel_2_3":"0.0008853"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.01247706","nivel_2_3":"0.00966497"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.00133387","nivel_2_3":"0.00108237"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.0041297","nivel_2_3":"0.0013837"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.0017733","nivel_2_3":"0.0012658"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2012","periodo":"4","nivel_1":"0.00539322","nivel_2_3":"0.00261999"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.00862202","nivel_2_3":"0.00374476"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2013","periodo":"3","nivel_1":"0.00228056","nivel_2_3":"0.00054585"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2012","periodo":"4","nivel_1":"0.01116448","nivel_2_3":"0.00175426"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2015","periodo":"4","nivel_1":"0.0215499","nivel_2_3":"0.0053531"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.00245902","nivel_2_3":"0.00067579"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.0012863","nivel_2_3":"0.0010599"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2016","periodo":"4","nivel_1":"0.0093021","nivel_2_3":"0.0040948"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2015","periodo":"2","nivel_1":"0.0360319","nivel_2_3":"0.0034628"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2019","periodo":"3","nivel_1":"0.00292546","nivel_2_3":"0.00039153"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2012","periodo":"2","nivel_1":"0.01129178","nivel_2_3":"0.0015781"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2012","periodo":"4","nivel_1":"0.0009784","nivel_2_3":"0.0007908"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2016","periodo":"2","nivel_1":"0.00394938","nivel_2_3":"0.00566859"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.0025422","nivel_2_3":"0.0014318"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2013","periodo":"2","nivel_1":"0.0006337","nivel_2_3":"0.0001735"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2016","periodo":"1","nivel_1":"0.0099085","nivel_2_3":"0.0109896"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.0185985","nivel_2_3":"0.01379"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.00545418","nivel_2_3":"0.00384834"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.0011375","nivel_2_3":"0.0009437"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2015","periodo":"1","nivel_1":"0.00281758","nivel_2_3":"0.00113307"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2014","periodo":"2","nivel_1":"0.0035736","nivel_2_3":"0.0016615"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2011","periodo":"4","nivel_1":"0.01033224","nivel_2_3":"0.00632366"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.01377037","nivel_2_3":"0.00825907"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2018","periodo":"3","nivel_1":"0.0056258","nivel_2_3":"0.0034163"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.00149146","nivel_2_3":"0.00093521"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0132385","nivel_2_3":"0.0109344"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.0014167","nivel_2_3":"0.0007838"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.003348","nivel_2_3":"0.0012161"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2017","periodo":"1","nivel_1":"0.0030557","nivel_2_3":"0.0016735"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.0022539","nivel_2_3":"0.0010748"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2012","periodo":"1","nivel_1":"0.002128","nivel_2_3":"0.00058744"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2017","periodo":"1","nivel_1":"0.0016815","nivel_2_3":"0.0005639"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.0004102","nivel_2_3":"0.0004412"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2014","periodo":"2","nivel_1":"0.0019407","nivel_2_3":"0.0013696"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2015","periodo":"3","nivel_1":"0.0013837","nivel_2_3":"0.0009573"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2011","periodo":"2","nivel_1":"0.00211007","nivel_2_3":"0.0005482"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.0013964","nivel_2_3":"0.0010622"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.00791308","nivel_2_3":"0.00619983"}
+,{"id_empresa":"595","empresa":"EMPRESA DE ENERGIA DE CUNDINAMARCA S.A. ESP","anio":"2016","periodo":"3","nivel_1":"0.00700644","nivel_2_3":"0.00120585"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2014","periodo":"1","nivel_1":"0.00268663","nivel_2_3":"0.00048836"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.007953","nivel_2_3":"0.0049841"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.00168584","nivel_2_3":"0.00079732"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2015","periodo":"3","nivel_1":"0.0243226","nivel_2_3":"0.0061137"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2011","periodo":"4","nivel_1":"0.00258371","nivel_2_3":"0.00076076"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2017","periodo":"2","nivel_1":"0.01055114","nivel_2_3":"0.00463359"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.0013325","nivel_2_3":"0.0007823"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2013","periodo":"4","nivel_1":"0.0029076","nivel_2_3":"0.0021923"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2013","periodo":"1","nivel_1":"0.0011448","nivel_2_3":"0.0005644"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2012","periodo":"4","nivel_1":"0.02173464","nivel_2_3":"0.00483247"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2012","periodo":"3","nivel_1":"0.018149","nivel_2_3":"0.005342"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2016","periodo":"1","nivel_1":"0.0073116","nivel_2_3":"0.006103"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2013","periodo":"4","nivel_1":"0.0011308","nivel_2_3":"0.001188"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00171127","nivel_2_3":"0.00088223"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00022352","nivel_2_3":"0"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00325405","nivel_2_3":"0.00223294"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2015","periodo":"1","nivel_1":"0.001231","nivel_2_3":"0.0011682"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2014","periodo":"3","nivel_1":"0.0009326","nivel_2_3":"0.0001918"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00129251","nivel_2_3":"0.00050956"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00046","nivel_2_3":"0.0004575"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00675878","nivel_2_3":"0.00278882"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2018","periodo":"2","nivel_1":"0.00472658","nivel_2_3":"0.00170709"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0010162","nivel_2_3":"0.0006584"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2017","periodo":"4","nivel_1":"0.0108561","nivel_2_3":"0.0026141"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.01422057","nivel_2_3":"0.01096996"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2017","periodo":"3","nivel_1":"0.00246719","nivel_2_3":"0.00034793"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00190223","nivel_2_3":"0.00043026"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2018","periodo":"2","nivel_1":"0.0065892","nivel_2_3":"0.001848"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2019","periodo":"3","nivel_1":"0.00496954","nivel_2_3":"0.00356315"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0047722","nivel_2_3":"0.0032448"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2018","periodo":"1","nivel_1":"0.0034951","nivel_2_3":"0.0014468"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2018","periodo":"1","nivel_1":"0.0025353","nivel_2_3":"0.0014778"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2012","periodo":"4","nivel_1":"0.0005598","nivel_2_3":"0.0004396"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00178133","nivel_2_3":"0.00086801"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.0008819","nivel_2_3":"0.0012425"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.0008594","nivel_2_3":"0.000409"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00775207","nivel_2_3":"0.00243967"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2017","periodo":"4","nivel_1":"0.0031943","nivel_2_3":"0.0019382"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2017","periodo":"3","nivel_1":"0.0029178","nivel_2_3":"0.0022434"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2019","periodo":"2","nivel_1":"0.01946867","nivel_2_3":"0.01056933"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.0017111","nivel_2_3":"0.0008114"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00129063","nivel_2_3":"0.00097573"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.00114149","nivel_2_3":"0.00050765"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2017","periodo":"4","nivel_1":"0.00325218","nivel_2_3":"0.00044301"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2018","periodo":"1","nivel_1":"0.003519","nivel_2_3":"0.001378"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.0025153","nivel_2_3":"0.00065372"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2018","periodo":"1","nivel_1":"0.00261953","nivel_2_3":"0.00038376"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.0007802","nivel_2_3":"0.0003777"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.000755","nivel_2_3":"0.0010284"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2018","periodo":"1","nivel_1":"0.0110046","nivel_2_3":"0.0028984"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.0088998","nivel_2_3":"0.002173"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2018","periodo":"2","nivel_1":"0.0091839","nivel_2_3":"0.0013174"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00282832","nivel_2_3":"0.00081944"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00315705","nivel_2_3":"0.00191015"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.0011801","nivel_2_3":"0.0006208"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00165153","nivel_2_3":"0.00130389"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2017","periodo":"3","nivel_1":"0.0040742","nivel_2_3":"0.0016406"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00903543","nivel_2_3":"0.00795748"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2017","periodo":"3","nivel_1":"0.0064235","nivel_2_3":"0.0016051"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.0018","nivel_2_3":"0.001011"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.00764326","nivel_2_3":"0.0017663"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.01363407","nivel_2_3":"0.01085757"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00314273","nivel_2_3":"0.00180952"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2017","periodo":"3","nivel_1":"0.00608244","nivel_2_3":"0.00217646"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00017523","nivel_2_3":"0.00017366"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.00309414","nivel_2_3":"0.00089916"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2018","periodo":"2","nivel_1":"0.0028713","nivel_2_3":"0.001829"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.00291642","nivel_2_3":"0.00280243"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00371153","nivel_2_3":"0.00156714"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00170362","nivel_2_3":"0.00061915"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.0097949","nivel_2_3":"0.0041985"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00171084","nivel_2_3":"0.00166813"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.00399087","nivel_2_3":"0.00266667"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2017","periodo":"2","nivel_1":"0.0015136","nivel_2_3":"0.0006934"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00297438","nivel_2_3":"0.00100986"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.01066975","nivel_2_3":"0.00399803"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2018","periodo":"2","nivel_1":"0.00278713","nivel_2_3":"0.00040957"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2017","periodo":"4","nivel_1":"0.0025897","nivel_2_3":"0.0014507"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2017","periodo":"4","nivel_1":"0.0040908","nivel_2_3":"0.0024225"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2017","periodo":"4","nivel_1":"0.0044416","nivel_2_3":"0.00183586"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.01868282","nivel_2_3":"0.01343101"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2018","periodo":"2","nivel_1":"0.0034791","nivel_2_3":"0.0017066"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2018","periodo":"1","nivel_1":"0.00266129","nivel_2_3":"0.00133645"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2017","periodo":"3","nivel_1":"0.0068107","nivel_2_3":"0.0021728"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2017","periodo":"4","nivel_1":"0.00133388","nivel_2_3":"0.00062719"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2011","periodo":"3","nivel_1":"0.00216245","nivel_2_3":"0.00079958"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2020","periodo":"3","nivel_1":"0.0015052","nivel_2_3":"0.00063736"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2020","periodo":"3","nivel_1":"0.0156155","nivel_2_3":"0.0126197"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2020","periodo":"3","nivel_1":"0.0002135","nivel_2_3":"0"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00158357","nivel_2_3":"0.00085732"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2020","periodo":"3","nivel_1":"0.005573","nivel_2_3":"0.0005115"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2020","periodo":"3","nivel_1":"0.0100681","nivel_2_3":"0.004601"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2020","periodo":"3","nivel_1":"0.0085726","nivel_2_3":"0.006203"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00174968","nivel_2_3":"0.00074464"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2020","periodo":"4","nivel_1":"0.0059853","nivel_2_3":"0.004511"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2021","periodo":"1","nivel_1":"0.0050833","nivel_2_3":"0.0016835"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2021","periodo":"2","nivel_1":"0.003634","nivel_2_3":"0.0010514"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2021","periodo":"1","nivel_1":"0.00114784","nivel_2_3":"0.00040462"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2020","periodo":"4","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2021","periodo":"1","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2020","periodo":"4","nivel_1":"0.00125715","nivel_2_3":"0.00034613"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2018","periodo":"3","nivel_1":"0.0063039","nivel_2_3":"0.0009045"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.0014237","nivel_2_3":"0.0008255"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00021553","nivel_2_3":"0.00015848"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00292464","nivel_2_3":"0.00111424"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2018","periodo":"3","nivel_1":"0.003138","nivel_2_3":"0.0015845"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2020","periodo":"4","nivel_1":"0.0130896","nivel_2_3":"0.0050574"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2011","periodo":"2","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2021","periodo":"2","nivel_1":"0.0047029","nivel_2_3":"0.0021953"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2020","periodo":"1","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2018","periodo":"3","nivel_1":"0.013121","nivel_2_3":"0.009439"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2018","periodo":"3","nivel_1":"0.0063773","nivel_2_3":"0.0021342"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.01881492","nivel_2_3":"0.01368491"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2020","periodo":"2","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2020","periodo":"4","nivel_1":"0.0139068","nivel_2_3":"0.0069126"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2021","periodo":"1","nivel_1":"0.0111434","nivel_2_3":"0.0078261"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2021","periodo":"2","nivel_1":"0.0017987","nivel_2_3":"0.00053941"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00138918","nivel_2_3":"0.00112195"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2020","periodo":"3","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2021","periodo":"1","nivel_1":"0.010773","nivel_2_3":"0.0099807"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00238624","nivel_2_3":"0.00060422"}
+,{"id_empresa":"48307","empresa":"AIR-E S.A.S. E.S.P.","anio":"2020","periodo":"4","nivel_1":"0.0108411","nivel_2_3":"0.0092784"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2021","periodo":"2","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2021","periodo":"3","nivel_1":"0.0063994","nivel_2_3":"0.0033864"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2018","periodo":"3","nivel_1":"0.0033333","nivel_2_3":"0.001756"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2019","periodo":"3","nivel_1":"0.0028462","nivel_2_3":"0.0016454"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2019","periodo":"2","nivel_1":"0.0040498","nivel_2_3":"0.0023558"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00959673","nivel_2_3":"0.0027583"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2014","periodo":"3","nivel_1":"0.0036451","nivel_2_3":"0.001498"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00312388","nivel_2_3":"0.00169502"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2018","periodo":"3","nivel_1":"0.00476016","nivel_2_3":"0.00159352"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2012","periodo":"2","nivel_1":"0.0043047","nivel_2_3":"0.0022632"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2019","periodo":"3","nivel_1":"0.0022553","nivel_2_3":"0.0018927"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2016","periodo":"1","nivel_1":"0.0029298","nivel_2_3":"0.0016966"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2018","periodo":"1","nivel_1":"0.0026457","nivel_2_3":"0.0019887"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2015","periodo":"3","nivel_1":"0.0034441","nivel_2_3":"0.0018938"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2011","periodo":"1","nivel_1":"0.0037924","nivel_2_3":"0.0009876"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2016","periodo":"2","nivel_1":"0.003934","nivel_2_3":"0.0019362"}
+,{"id_empresa":"48305","empresa":"CARIBEMAR DE LA COSTA S.A.S. E.S.P.","anio":"2020","periodo":"4","nivel_1":"0.00330055","nivel_2_3":"0.00369896"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2018","periodo":"3","nivel_1":"0.00313735","nivel_2_3":"0.00045026"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00249181","nivel_2_3":"0.00099717"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2017","periodo":"4","nivel_1":"0.0064851","nivel_2_3":"0.0035409"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2013","periodo":"1","nivel_1":"0.0046232","nivel_2_3":"0.0025755"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.0101674","nivel_2_3":"0.00257081"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2014","periodo":"3","nivel_1":"0.0063218","nivel_2_3":"0.0039937"}
+,{"id_empresa":"599","empresa":"EMPRESA DE ENERGIA DE ARAUCA","anio":"2019","periodo":"4","nivel_1":"0.008987","nivel_2_3":"0.005329"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2019","periodo":"1","nivel_1":"0.0037429","nivel_2_3":"0.0002509"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2018","periodo":"1","nivel_1":"0.00148993","nivel_2_3":"0.00045714"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2019","periodo":"2","nivel_1":"0.0031588","nivel_2_3":"0.0012268"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2014","periodo":"1","nivel_1":"0.0061734","nivel_2_3":"0.0041569"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2016","periodo":"3","nivel_1":"0.0058109","nivel_2_3":"0.0034233"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.01936259","nivel_2_3":"0.01656889"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00188832","nivel_2_3":"0.00065802"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2016","periodo":"1","nivel_1":"0.00906","nivel_2_3":"0.0060747"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2015","periodo":"4","nivel_1":"0.0097381","nivel_2_3":"0.0055216"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.0005659","nivel_2_3":"0.0005571"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2018","periodo":"4","nivel_1":"0.00473376","nivel_2_3":"0.00308687"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2019","periodo":"2","nivel_1":"0.0035566","nivel_2_3":"0.0035471"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2012","periodo":"1","nivel_1":"0.00538584","nivel_2_3":"0.00157335"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00276598","nivel_2_3":"0.00150069"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00918883","nivel_2_3":"0.00303361"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2019","periodo":"1","nivel_1":"0.0064155","nivel_2_3":"0.0046423"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00007257","nivel_2_3":"0.00002264"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2018","periodo":"4","nivel_1":"0.007896","nivel_2_3":"0.0022473"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2014","periodo":"2","nivel_1":"0.0104966","nivel_2_3":"0.0047539"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2017","periodo":"2","nivel_1":"0.0070033","nivel_2_3":"0.0027211"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00249181","nivel_2_3":"0.00099717"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2011","periodo":"3","nivel_1":"0.0037394","nivel_2_3":"0.00267503"}
+,{"id_empresa":"523","empresa":"EMPRESA DE ENERGIA DEL  QUINDIO S.A.E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00152712","nivel_2_3":"0.0007628"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00134054","nivel_2_3":"0.0014579"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2013","periodo":"3","nivel_1":"0.00781219","nivel_2_3":"0.003663"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2017","periodo":"3","nivel_1":"0.0016592","nivel_2_3":"0.0007899"}
+,{"id_empresa":"604","empresa":"CENTRALES ELECTRICAS DEL NORTE DE SANTANDER S.A. ESP","anio":"2019","periodo":"2","nivel_1":"0.0066432","nivel_2_3":"0.00419356"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2019","periodo":"1","nivel_1":"0.00285424","nivel_2_3":"0.00058284"}
+,{"id_empresa":"520","empresa":"CENTRALES ELECTRICAS DE NARIÑO S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00962714","nivel_2_3":"0.00372837"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2019","periodo":"2","nivel_1":"0.0093307","nivel_2_3":"0.003647"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2016","periodo":"4","nivel_1":"0.0070055","nivel_2_3":"0.0030662"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2015","periodo":"2","nivel_1":"0.008851","nivel_2_3":"0.005748"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2012","periodo":"2","nivel_1":"0.00581324","nivel_2_3":"0.0042718"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2013","periodo":"1","nivel_1":"0.00548961","nivel_2_3":"0.00263754"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2018","periodo":"2","nivel_1":"0.00228458","nivel_2_3":"0.00070545"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2012","periodo":"1","nivel_1":"0.005115","nivel_2_3":"0.0012659"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2012","periodo":"3","nivel_1":"0.00543327","nivel_2_3":"0.00200957"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00342549","nivel_2_3":"0.00323838"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2019","periodo":"4","nivel_1":"0.0006865","nivel_2_3":"0.0005743"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2017","periodo":"3","nivel_1":"0.0058308","nivel_2_3":"0.0021553"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2013","periodo":"4","nivel_1":"0.008009","nivel_2_3":"0.0034869"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00326771","nivel_2_3":"0.00165469"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.0049581","nivel_2_3":"0.0029599"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.00131655","nivel_2_3":"0.000475"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.01075673","nivel_2_3":"0.00800859"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2019","periodo":"1","nivel_1":"0.0016893","nivel_2_3":"0.00047562"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.00298605","nivel_2_3":"0.00166874"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2014","periodo":"4","nivel_1":"0.0074748","nivel_2_3":"0.0040862"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2018","periodo":"3","nivel_1":"0.00083044","nivel_2_3":"0.00054386"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2011","periodo":"4","nivel_1":"0.00390296","nivel_2_3":"0.00261734"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2013","periodo":"3","nivel_1":"0.0055746","nivel_2_3":"0.0033338"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2013","periodo":"2","nivel_1":"0.00836103","nivel_2_3":"0.00359509"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2018","periodo":"4","nivel_1":"0.002635","nivel_2_3":"0.0017194"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.005295","nivel_2_3":"0.0030981"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2018","periodo":"4","nivel_1":"0.0032375","nivel_2_3":"0.002006"}
+,{"id_empresa":"2438","empresa":"EMPRESAS MUNICIPALES DE CALI   E.I.C.E  E.S.P","anio":"2019","periodo":"1","nivel_1":"0.0024511","nivel_2_3":"0.0014786"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2018","periodo":"4","nivel_1":"0.00339576","nivel_2_3":"0.00043041"}
+,{"id_empresa":"3332","empresa":"LATIN AMERICAN CAPITAL CORP SA ESP","anio":"2018","periodo":"4","nivel_1":"0.0068865","nivel_2_3":"0.0037951"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2019","periodo":"2","nivel_1":"0.0047449","nivel_2_3":"0.0014653"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2018","periodo":"4","nivel_1":"0.00305157","nivel_2_3":"0.00202107"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2019","periodo":"2","nivel_1":"0.006925","nivel_2_3":"0.0063533"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2016","periodo":"3","nivel_1":"0.001462","nivel_2_3":"0.0014645"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2016","periodo":"4","nivel_1":"0.0015951","nivel_2_3":"0.0014082"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2014","periodo":"3","nivel_1":"0.0014423","nivel_2_3":"0.0008508"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2015","periodo":"2","nivel_1":"0.00135","nivel_2_3":"0.0015377"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2011","periodo":"2","nivel_1":"0.00242944","nivel_2_3":"0.0015076"}
+,{"id_empresa":"637","empresa":"COMPAÑÍA DE ELECTRICIDAD DE TULUÁ S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.000462","nivel_2_3":"0.0003097"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.0119466","nivel_2_3":"0.0108474"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2019","periodo":"3","nivel_1":"0.0036233","nivel_2_3":"0.0018263"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2014","periodo":"4","nivel_1":"0.0015981","nivel_2_3":"0.0010718"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2017","periodo":"3","nivel_1":"0.0017067","nivel_2_3":"0.0017004"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2014","periodo":"1","nivel_1":"0.001287","nivel_2_3":"0.0010465"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00198304","nivel_2_3":"0.00072324"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2019","periodo":"3","nivel_1":"0.0035766","nivel_2_3":"0.0008221"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00475603","nivel_2_3":"0.00517824"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2019","periodo":"3","nivel_1":"0.00321251","nivel_2_3":"0.00168241"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2012","periodo":"3","nivel_1":"0.0014848","nivel_2_3":"0.0006654"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2012","periodo":"2","nivel_1":"0.001633","nivel_2_3":"0.0008812"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2013","periodo":"2","nivel_1":"0.0016887","nivel_2_3":"0.0018257"}
+,{"id_empresa":"536","empresa":"CELSIA COLOMBIA S.A. E.S.P.","anio":"2015","periodo":"4","nivel_1":"0.0013459","nivel_2_3":"0.0013942"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2019","periodo":"3","nivel_1":"0.0096634","nivel_2_3":"0.003946"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2014","periodo":"2","nivel_1":"0.0008459","nivel_2_3":"0.0001877"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2020","periodo":"2","nivel_1":"0.0146946","nivel_2_3":"0.0120197"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2017","periodo":"1","nivel_1":"0.0016611","nivel_2_3":"0.0010221"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2015","periodo":"3","nivel_1":"0.001006","nivel_2_3":"0.0004514"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2018","periodo":"3","nivel_1":"0.001187","nivel_2_3":"0.0012673"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2016","periodo":"1","nivel_1":"0.00111","nivel_2_3":"0.0002508"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2019","periodo":"3","nivel_1":"0.0007609","nivel_2_3":"0.0006829"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2014","periodo":"4","nivel_1":"0.0005407","nivel_2_3":"0.0002921"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2020","periodo":"1","nivel_1":"0.00118603","nivel_2_3":"0.00043593"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2013","periodo":"4","nivel_1":"0.0008892","nivel_2_3":"0.0004325"}
+,{"id_empresa":"23442","empresa":"COMPAÑIA ENERGETICA DE OCCIDENTE S.A.S.  E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.00240177","nivel_2_3":"0.00060282"}
+,{"id_empresa":"2249","empresa":"ELECTRIFICADORA DEL CARIBE S.A. E.S.P.","anio":"2020","periodo":"1","nivel_1":"0.0089225","nivel_2_3":"0.0071155"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2020","periodo":"1","nivel_1":"0.00290463","nivel_2_3":"0.00356253"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2020","periodo":"1","nivel_1":"0.0109406","nivel_2_3":"0.0030418"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2020","periodo":"1","nivel_1":"0.0033604","nivel_2_3":"0.0020137"}
+,{"id_empresa":"44278","empresa":"CELSIA TOLIMA S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0100737","nivel_2_3":"0.0086273"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2011","periodo":"4","nivel_1":"0.000857","nivel_2_3":"0.0002584"}
+,{"id_empresa":"564","empresa":"EMPRESAS PÚBLICAS DE MEDELLIN E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.0017249","nivel_2_3":"0.00052196"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2020","periodo":"2","nivel_1":"0.00064026","nivel_2_3":"0.00048834"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2020","periodo":"1","nivel_1":"0.0131428","nivel_2_3":"0.0125751"}
+,{"id_empresa":"2073","empresa":"EMPRESA DE ENERGÍA DE PEREIRA S.A. ESP.","anio":"2019","periodo":"4","nivel_1":"0.0044407","nivel_2_3":"0.0023514"}
+,{"id_empresa":"2103","empresa":"CODENSA S.A. ESP","anio":"2019","periodo":"4","nivel_1":"0.0038575","nivel_2_3":"0.00091713"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2017","periodo":"4","nivel_1":"0.0020032","nivel_2_3":"0.0021285"}
+,{"id_empresa":"1014","empresa":"ELECTRIFICADORA DEL HUILA S.A. E.S.P.","anio":"2020","periodo":"2","nivel_1":"0.0040504","nivel_2_3":"0.0042288"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2020","periodo":"1","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"524","empresa":"ELECTRIFICADORA DE SANTANDER S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.00204628","nivel_2_3":"0.00116353"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2020","periodo":"1","nivel_1":"0.0054563","nivel_2_3":"0.0007074"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2016","periodo":"4","nivel_1":"0.00148","nivel_2_3":"0.000678"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2018","periodo":"1","nivel_1":"0.0011656","nivel_2_3":"0.0007061"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2014","periodo":"1","nivel_1":"0.0007959","nivel_2_3":"0.0003893"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2019","periodo":"4","nivel_1":"0.0036548","nivel_2_3":"0.0009533"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2019","periodo":"4","nivel_1":"0.0118252","nivel_2_3":"0.002576"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2020","periodo":"2","nivel_1":"0.0059101","nivel_2_3":"0.0056465"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2020","periodo":"2","nivel_1":"0.00084763","nivel_2_3":"0.0004094"}
+,{"id_empresa":"1737","empresa":"RUITOQUE S.A. E.S.P.","anio":"2019","periodo":"4","nivel_1":"0.00070404","nivel_2_3":"0.00044149"}
+,{"id_empresa":"1032","empresa":"ELECTRIFICADORA DEL CAQUETA S.A. ESP","anio":"2020","periodo":"2","nivel_1":"0.0131928","nivel_2_3":"0.006317"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2011","periodo":"3","nivel_1":"0.0007665","nivel_2_3":"0.0002317"}
+,{"id_empresa":"3226","empresa":"EMPRESA DISTRIBUIDORA DEL PACIFICO S.A. E.S.P","anio":"2020","periodo":"2","nivel_1":"0.0037006","nivel_2_3":"0.0008033"}
+,{"id_empresa":"500","empresa":"EMPRESA DE ENERGIA DE BOYACA S.A. E.S.P. EMPRESA DE SERVICIOS PUBLICOS","anio":"2011","periodo":"2","nivel_1":"0.0008784","nivel_2_3":"0.0003012"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2015","periodo":"1","nivel_1":"0.0027219","nivel_2_3":"0.0015932"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2018","periodo":"2","nivel_1":"0.0040341","nivel_2_3":"0.00193"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2012","periodo":"3","nivel_1":"0.0053323","nivel_2_3":"0.0010594"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2016","periodo":"3","nivel_1":"0.0034245","nivel_2_3":"0.0020916"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2014","periodo":"2","nivel_1":"0.0038453","nivel_2_3":"0.0022909"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2010","periodo":"4","nivel_1":"0.0042059","nivel_2_3":"0.0021142"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2014","periodo":"4","nivel_1":"0.0038805","nivel_2_3":"0.0019173"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2019","periodo":"4","nivel_1":"0.0039369","nivel_2_3":"0.0024874"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2018","periodo":"4","nivel_1":"0.0035069","nivel_2_3":"0.0017146"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2011","periodo":"4","nivel_1":"0.0053684","nivel_2_3":"0.0018532"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2017","periodo":"4","nivel_1":"0.00404","nivel_2_3":"0.0030227"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2015","periodo":"2","nivel_1":"0.0043395","nivel_2_3":"0.0025534"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2018","periodo":"3","nivel_1":"0.0042982","nivel_2_3":"0.0027497"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2022","periodo":"2","nivel_1":"0.0150794","nivel_2_3":"0.0191343"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2022","periodo":"1","nivel_1":"0.0091757","nivel_2_3":"0.0082252"}
+,{"id_empresa":"2371","empresa":"EMPRESA DE ENERGIA DEL BAJO PUTUMAYO  S.A.  E.S.P.","anio":"2021","periodo":"4","nivel_1":"0.0090437","nivel_2_3":"0.008558"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2013","periodo":"4","nivel_1":"0.0040503","nivel_2_3":"0.0025234"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2013","periodo":"2","nivel_1":"0.0066966","nivel_2_3":"0.003826"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2017","periodo":"3","nivel_1":"0.0044164","nivel_2_3":"0.0026935"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2015","periodo":"4","nivel_1":"0.0041151","nivel_2_3":"0.0023913"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2014","periodo":"1","nivel_1":"0.0040237","nivel_2_3":"0.0026071"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2011","periodo":"2","nivel_1":"0.0043926","nivel_2_3":"0.0012337"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2016","periodo":"4","nivel_1":"0.0043347","nivel_2_3":"0.0022278"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2017","periodo":"2","nivel_1":"0.0043654","nivel_2_3":"0.003244"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2011","periodo":"3","nivel_1":"0.0059796","nivel_2_3":"0.0018926"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2012","periodo":"4","nivel_1":"0.0048824","nivel_2_3":"0.0011025"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2019","periodo":"1","nivel_1":"0.0029251","nivel_2_3":"0.0019049"}
+,{"id_empresa":"502","empresa":"CENTRAL HIDROELECTRICA DE CALDAS S.A. E.S.P. BIC BENEFICIO E INTERES COLECTIVO","anio":"2017","periodo":"1","nivel_1":"0.0029862","nivel_2_3":"0.0016244"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2021","periodo":"3","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2021","periodo":"4","nivel_1":"0","nivel_2_3":"0"}
+,{"id_empresa":"600","empresa":"ELECTRIFICADORA DEL META S.A. E.S.P.","anio":"2011","periodo":"3","nivel_1":"0","nivel_2_3":"0"}]
