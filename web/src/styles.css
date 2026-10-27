@@ -27,7 +27,8 @@ h3 { font-family: var(--sub); font-size: 12px; text-transform: uppercase; letter
 .shell { display: flex; height: 100%; }
 .side { width: 236px; flex: none; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; padding: 18px 12px; gap: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--head); font-weight: 700; font-size: 17px; padding: 4px 8px 4px; }
-.brand img { width: 28px; height: 28px; }
+.brand img { width: 34px; height: 34px; }
+.brand span { font-weight: 800; letter-spacing: -0.01em; font-size: 19px; }
 .navbtn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; border-radius: 8px; border: 0; background: none; text-align: left; cursor: pointer; color: var(--ink-2); }
 .navbtn:hover { background: var(--panel-2); color: var(--ink); }
 .navbtn.on { background: var(--panel-2); color: var(--ink); box-shadow: inset 3px 0 0 var(--blue); }
@@ -241,3 +242,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .precio-corto { font-size: 13px; color: var(--ink-2); }
 .precio-corto .mono { font-weight: 700; color: var(--ink); font-size: 15px; }
 @media (max-width: 860px) { .plan-hero { padding: 20px; } .plan-hero h1 { font-size: 23px; } .plan-precio .mono { font-size: 34px; } }
+
+/* ---------- Logo Radar Solar ---------- */
+.login-logo { display: block; align-self: stretch; margin: 2px 0 4px; }
+.login-logo img { display: block; width: 100%; max-width: 330px; height: auto; }
