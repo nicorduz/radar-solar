@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import { ColumnLayer, PathLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { ColumnLayer, IconLayer, PathLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
 import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
 
 const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 // Rampa azul Talera → naranja Talera (bajo → alto)
@@ -16,17 +17,20 @@ function colorAt(t) {
   return RAMP[i].map((c, k) => Math.round(c + (RAMP[i + 1][k] - c) * f));
 }
 const kvOf = (s) => Math.max(0, ...(String(s || '').match(/\d+(\.\d+)?/g) || ['0']).map(Number));
-// Colores de la red por tensión (líneas) y por tipo de elemento
 const KV_COLOR = (kv) => (kv >= 500 ? [226, 103, 91] : kv >= 220 ? [242, 195, 138] : [120, 190, 220]);
+const TOP_ICONS = 150; // en modo íconos se muestran solo los municipios con mayor valor, para que el mapa se lea fácil
+
 const LAYERS = {
-  lineas: { label: 'Líneas de transmisión (STN/STR)', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
-  subs: { label: 'Subestaciones', dot: '#B8C5C4', paid: false },
-  solar: { label: 'Plantas solares (XM)', dot: '#F7D154', paid: true },
+  solar: { label: 'Plantas solares (XM)', img: ICON_SOLAR, paid: true },
+  upme: { label: 'Proyectos registrados en la UPME', img: ICON_UPME, paid: true },
+  subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
+  lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
   mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
-  upme: { label: 'Proyectos registrados en la UPME', dot: '#A8C5FF', paid: true },
-  zni: { label: 'Zonas no interconectadas (IPSE)', dot: '#C77DDB', paid: true },
+  zni: { label: 'Zonas no interconectadas (IPSE)', img: ICON_ZNI, paid: true },
 };
-const DEFAULT_LAYERS = { instalador: ['lineas'], proveedor: [], desarrollador: ['lineas', 'subs', 'solar', 'upme'] };
+const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'] };
+const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
+const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
 
 export default function MapPage() {
   const { paid, profile, prof, scoreParams, go } = useApp();
@@ -34,18 +38,19 @@ export default function MapPage() {
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
   const [data, setData] = useState(null);
-  const [metric, setMetric] = useState('score');
+  const [show, setShow] = useState('score'); // 'nada' | 'score' | métrica
+  const [is3d, setIs3d] = useState(true);
+  const [menu, setMenu] = useState(null); // 'show' | 'layers' | null
   const [collapsed, setCollapsed] = useState(true);
   const [lockMsg, setLockMsg] = useState(null);
   const [red, setRed] = useState(null);
   const [mt, setMt] = useState(null);
   const [on, setOn] = useState(() => new Set(DEFAULT_LAYERS[profile] || []));
-  const [showLayers, setShowLayers] = useState(false);
 
   useEffect(() => {
     const map = new maplibregl.Map({
       container: el.current, style: STYLE, center: window.innerWidth < 860 ? [-74.2, 4.6] : [-73.9, 5.3], zoom: window.innerWidth < 860 ? 4.6 : 5.6,
-      pitch: 52, bearing: -12, maxPitch: 70, attributionControl: { compact: true },
+      pitch: 45, bearing: -10, maxPitch: 70, attributionControl: { compact: true }, maxBounds: [[-92, -14], [-52, 18]],
     });
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
     map.on('load', () => {
@@ -62,88 +67,103 @@ export default function MapPage() {
     return () => map.remove();
   }, []);
 
-  // Al cambiar de perfil: métrica y capas recomendadas
-  useEffect(() => { setMetric('score'); setOn(new Set(DEFAULT_LAYERS[profile] || [])); }, [profile]);
+  // Al cambiar de perfil: puntaje y capas recomendadas
+  useEffect(() => { setShow('score'); setOn(new Set(DEFAULT_LAYERS[profile] || [])); }, [profile]);
 
   useEffect(() => {
     setData(null);
     api('/map' + qs(scoreParams)).then(setData).catch(() => setData({ items: [] }));
   }, [JSON.stringify(scoreParams)]);
 
-  useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [] })); }, []);
+  useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
 
+  // Vista plana o 3D
+  const set3d = (v) => { setIs3d(v); mapRef.current?.easeTo({ pitch: v ? 45 : 0, bearing: v ? -10 : 0, duration: 700 }); };
+  const choose = (k) => { setShow(k); setMenu(null); if (k === 'nada') set3d(false); };
   const toggle = (k) => {
     if (LAYERS[k].paid && !paid) { setLockMsg({ layer: LAYERS[k].label }); return; }
     const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n);
   };
 
+  const dpto = data?.mode === 'dpto';
   const metricKeys = prof.metrics.filter((k) => METRICS[k]);
-  const M = data?.mode === 'dpto' ? METRICS.score : METRICS[metric] || METRICS.score;
+  const showKey = dpto && show !== 'nada' ? 'score' : show;
+  const M = METRICS[showKey] || METRICS.score;
+  const iconMode = showKey !== 'score' && showKey !== 'nada' && METRIC_ICON[showKey];
 
   const scaled = useMemo(() => {
-    if (!data) return [];
+    if (!data || showKey === 'nada') return [];
     const tr = (v) => (M.log ? Math.log1p(Math.max(0, v)) : v);
     const vals = data.items.map((d) => M.get(d)).filter((v) => v != null).map(tr);
     const lo = Math.min(...vals), hi = Math.max(...vals);
-    return data.items.map((d) => {
+    const rows = data.items.map((d) => {
       const v = M.get(d);
-      let t = v == null ? 0 : (tr(v) - lo) / (hi - lo || 1);
-      if (M.invert && v != null) t = 1 - t;
+      let t = v == null ? null : (tr(v) - lo) / (hi - lo || 1);
+      if (M.invert && t != null) t = 1 - t;
       return { ...d, t };
-    });
-  }, [data, metric]);
+    }).filter((d) => d.t != null);
+    if (!iconMode) return rows;
+    // Íconos: solo los municipios con mayor valor, con color y tamaño relativos entre ellos
+    const sel = rows.sort((a, b) => b.t - a.t).slice(0, TOP_ICONS);
+    const tMax = sel[0]?.t ?? 1, tMin = sel[sel.length - 1]?.t ?? 0;
+    return sel.map((d) => ({ ...d, t: (d.t - tMin) / (tMax - tMin || 1) }));
+  }, [data, showKey]);
 
   useEffect(() => {
     if (!overlayRef.current || !data) return;
-    const dpto = data.mode === 'dpto';
-    const trig = [metric, JSON.stringify(scoreParams)];
-    const layers = [];
+    const trig = [showKey, JSON.stringify(scoreParams)];
+    const layers = [
+      // Colombia resaltada: los países vecinos quedan oscurecidos
+      new SolidPolygonLayer({ id: 'mask', data: [COLOMBIA_MASK], getPolygon: (d) => d.geometry.coordinates, getFillColor: [16, 14, 42, 150], pickable: false }),
+      new SolidPolygonLayer({ id: 'colombia', data: [{ p: COLOMBIA }], getPolygon: (d) => d.p, getFillColor: [52, 120, 246, 18], pickable: false }),
+      new PathLayer({ id: 'contorno', data: [{ path: [...COLOMBIA, COLOMBIA[0]] }], getPath: (d) => d.path, getColor: [168, 197, 255, 200], widthUnits: 'pixels', getWidth: 1.6 }),
+    ];
     if (on.has('mt') && mt?.length) {
-      layers.push(new PathLayer({
-        id: 'mt', data: mt, getPath: (d) => d.c, getColor: (d) => (d.s === 'o' ? [79, 178, 134, 170] : [79, 178, 134, 90]),
-        widthUnits: 'pixels', getWidth: 1, pickable: false,
-      }));
+      layers.push(new PathLayer({ id: 'mt', data: mt, getPath: (d) => d.c, getColor: (d) => (d.s === 'o' ? [79, 178, 134, 170] : [79, 178, 134, 90]), widthUnits: 'pixels', getWidth: 1 }));
     }
     if (on.has('lineas') && red?.lineas?.length) {
       layers.push(new PathLayer({
-        id: 'lineas', data: red.lineas, getPath: (d) => d.c, getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 200],
-        widthUnits: 'pixels', getWidth: (d) => (kvOf(d.kv) >= 500 ? 2.6 : kvOf(d.kv) >= 220 ? 2 : 1.3), pickable: true,
+        id: 'lineas', data: red.lineas, getPath: (d) => d.c, getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 190],
+        widthUnits: 'pixels', getWidth: (d) => (kvOf(d.kv) >= 500 ? 2.4 : kvOf(d.kv) >= 220 ? 1.8 : 1.2), pickable: true,
       }));
     }
-    layers.push(new ColumnLayer({
-      id: 'cols', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 16000 : 4200, extruded: true, pickable: true,
-      elevationScale: dpto ? 1400 : 600, getPosition: (d) => [d.lon, d.lat],
-      getElevation: (d) => (dpto ? 15 + Math.pow(d.t, 1.3) * 120 : 3 + Math.pow(d.t, 2.2) * 220),
-      getFillColor: (d) => [...colorAt(d.t), on.size ? 200 : 235], material: { ambient: 0.5, diffuse: 0.6, shininess: 24 },
-      updateTriggers: { getElevation: trig, getFillColor: [...trig, on.size] },
-      onClick: ({ object }) => { if (!object) return; if (dpto) setLockMsg(object); else go('m', object.code); },
-    }));
+    const onMuni = ({ object }) => { if (!object) return; if (dpto) setLockMsg(object); else go('m', object.code); };
+    if (showKey === 'score' && is3d) {
+      layers.push(new ColumnLayer({
+        id: 'muni-3d', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 14000 : 3500, extruded: true, pickable: true,
+        elevationScale: dpto ? 700 : 220, getPosition: (d) => [d.lon, d.lat],
+        getElevation: (d) => (dpto ? 15 + Math.pow(d.t, 1.3) * 120 : 2 + Math.pow(d.t, 2.4) * 200),
+        getFillColor: (d) => [...colorAt(d.t), 225], material: { ambient: 0.55, diffuse: 0.6, shininess: 24 },
+        updateTriggers: { getElevation: trig, getFillColor: trig }, onClick: onMuni,
+      }));
+    } else if (showKey === 'score') {
+      layers.push(new ScatterplotLayer({
+        id: 'muni-2d', data: scaled, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => (dpto ? 10 + d.t * 16 : 2 + d.t * 7),
+        getFillColor: (d) => [...colorAt(d.t), 210], stroked: true, getLineColor: [16, 14, 42], lineWidthUnits: 'pixels', getLineWidth: 0.5,
+        pickable: true, updateTriggers: { getRadius: trig, getFillColor: trig }, onClick: onMuni,
+      }));
+    } else if (iconMode) {
+      layers.push(new IconLayer({
+        id: `muni-ic-${showKey}`, data: scaled, getPosition: (d) => [d.lon, d.lat], getIcon: () => maskIcon(METRIC_ICON[showKey]),
+        sizeUnits: 'pixels', getSize: (d) => 12 + d.t * 22, getColor: (d) => [...colorAt(d.t), 245],
+        pickable: true, updateTriggers: { getSize: trig, getColor: trig, getIcon: trig }, onClick: onMuni,
+      }));
+    }
     if (on.has('subs') && red?.subs?.length) {
-      layers.push(new ScatterplotLayer({
-        id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => (d.kvmax >= 220 ? 4.5 : 3),
-        getFillColor: [230, 236, 236, 230], getLineColor: [14, 21, 23], stroked: true, lineWidthUnits: 'pixels', getLineWidth: 1, pickable: true,
-      }));
-    }
-    if (on.has('solar') && red?.plantas?.length) {
-      layers.push(new ScatterplotLayer({
-        id: 'solar', data: red.plantas.filter((p) => p.tipo === 'solar'), getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels',
-        getRadius: (d) => 3 + Math.sqrt(d.mw || 1) * 0.9, getFillColor: (d) => (d.estado === 'Operación' ? [247, 209, 84, 220] : [247, 209, 84, 110]),
-        getLineColor: [60, 40, 0], stroked: true, lineWidthUnits: 'pixels', getLineWidth: 1, pickable: true,
-      }));
+      layers.push(new IconLayer({ id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), pickable: true }));
     }
     if (on.has('upme') && red?.upme?.length) {
-      layers.push(new ScatterplotLayer({
-        id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.02, d.lat + 0.02], radiusUnits: 'pixels',
-        getRadius: (d) => 4 + Math.sqrt(d.mw || 1) * 0.8, filled: false, stroked: true, lineWidthUnits: 'pixels', getLineWidth: 2.2,
-        getLineColor: (d) => (/SOLAR/i.test(d.tipo) ? [168, 197, 255, 255] : [168, 197, 255, 150]), pickable: true,
+      layers.push(new IconLayer({ id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), pickable: true }));
+    }
+    if (on.has('solar') && red?.plantas?.length) {
+      layers.push(new IconLayer({
+        id: 'solar', data: red.plantas.filter((p) => p.tipo === 'solar'), getPosition: (d) => [d.lon, d.lat],
+        getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), pickable: true,
       }));
     }
     if (on.has('zni') && red?.zni?.length) {
-      layers.push(new ScatterplotLayer({
-        id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => (d.horas < 12 ? 6 : 4),
-        getFillColor: (d) => (d.horas < 12 ? [199, 125, 219, 235] : [199, 125, 219, 140]), pickable: true,
-      }));
+      layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), pickable: true }));
     }
     overlayRef.current.setProps({
       layers,
@@ -153,52 +173,73 @@ export default function MapPage() {
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
-        else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B7C0D8">Inscrito ${d.inscrito || 's/d'} · operación prevista ${d.operacion?.slice(0, 7) || 's/d'}<br/>UPME, registro de proyectos (ubicación = municipio)</span>`;
-        else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día · ${fmt(d.kwh_mes)} kWh/mes<br/><span style="color:#B3BCDA">IPSE, ${d.ultimo}</span>`;
-        else if (data.mode === 'dpto') html = `<b>${d.dpto}</b><br/>Puntaje departamental ${d.score}<br/><span style="color:#B3BCDA">${d.municipios} municipios · detalle en plan completo</span>`;
-        else html = `<b>${d.name}</b> · ${d.dpto}<br/>#${d.rank} · puntaje ${d.score}<br/>${metricKeys.filter((k) => k !== 'score').slice(0, 4).map((k) => `${METRICS[k].short}: ${METRICS[k].f(METRICS[k].get(d))}`).join('<br/>')}`;
+        else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'} · UPME</span>`;
+        else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día<br/><span style="color:#B3BCDA">IPSE, ${d.ultimo}</span>`;
+        else if (!layer.id.startsWith('muni-')) return null;
+        else if (dpto) html = `<b>${d.dpto}</b><br/>Puntaje departamental ${d.score}<br/><span style="color:#B3BCDA">${d.municipios} municipios · detalle en plan completo</span>`;
+        else html = `<b>${d.name}</b> · ${d.dpto}<br/>${showKey === 'score' ? `#${d.rank} · puntaje ${d.score}` : `${M.label}: <b>${M.f(M.get(d))}</b>`}<br/><span style="color:#B3BCDA">Clic para ver la ficha</span>`;
         return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
       },
     });
-  }, [scaled, data, metric, go, on, red, mt]);
+  }, [scaled, data, showKey, is3d, go, on, red, mt]);
 
   const top = useMemo(() => (data?.mode === 'municipio' ? data.items.slice(0, 25) : []), [data]);
-  const fly = (d) => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: 9, pitch: 58, speed: 1.4 });
+  const fly = (d) => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: 9, pitch: is3d ? 50 : 0, speed: 1.4 });
   const sub = (d) => metricKeys.filter((k) => k !== 'score').slice(0, 2).map((k) => `${METRICS[k].short} ${METRICS[k].f(METRICS[k].get(d))}`).join(' · ');
+  const showLabel = show === 'nada' ? 'Nada' : (METRICS[show]?.short || 'Puntaje');
+  const MenuIcon = ({ k }) => (k === 'nada' ? <Icon name="map" size={18} /> : k === 'score' ? <Icon name="chart" size={18} /> : <img src={METRIC_ICON[k]} alt="" width="18" height="18" />);
 
   return (
-    <div className="mapwrap">
+    <div className="mapwrap" onClick={(e) => { if (menu && !e.target.closest('.dd')) setMenu(null); }}>
       <div ref={el} style={{ position: 'absolute', inset: 0 }} />
       <div className="map-top">
-        <div className="glass" style={{ padding: 8 }}><WeightsControl compact /></div>
-        <div style={{ position: 'relative' }}>
-          <button className={`btn sm glass ${showLayers ? 'on' : ''}`} onClick={() => setShowLayers(!showLayers)} aria-expanded={showLayers}><Icon name="layers" size={16} />Capas{on.size ? ` (${on.size})` : ''}</button>
-        {showLayers && (
-          <div className="glass layers" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 290, zIndex: 6 }}>
-            {Object.entries(LAYERS).map(([k, l]) => (
-              <label key={k} className={l.paid && !paid ? 'dis' : ''}>
-                <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
-                {l.dot ? <span className="dot" style={{ background: l.dot }} /> : <span className="sw" style={{ background: l.swatch }} />}
-                <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}</span>
-              </label>
-            ))}
-            {on.has('mt') && <span className="small muted">Media tensión: modelo gridfinder (2020) con datos de OpenStreetMap. Es una estimación, no la red oficial del operador.</span>}
-            {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
-          </div>
-        )}
+        <div className="dd">
+          <button className={`btn sm glass ${menu === 'show' ? 'on' : ''}`} onClick={() => setMenu(menu === 'show' ? null : 'show')} aria-expanded={menu === 'show'}>
+            <MenuIcon k={show} />Mostrar: <b>{showLabel}</b><span className="caret">▾</span>
+          </button>
+          {menu === 'show' && (
+            <div className="glass dd-menu" role="menu">
+              <button className={show === 'nada' ? 'on' : ''} onClick={() => choose('nada')}><MenuIcon k="nada" /><span><b>Nada</b><br /><span className="small muted">Solo el mapa de Colombia</span></span></button>
+              <button className={show === 'score' ? 'on' : ''} onClick={() => choose('score')}><MenuIcon k="score" /><span><b>Puntaje de oportunidad</b><br /><span className="small muted">Columnas en 3D o puntos en plano</span></span></button>
+              {paid && metricKeys.filter((k) => k !== 'score').map((k) => (
+                <button key={k} className={show === k ? 'on' : ''} onClick={() => choose(k)}><MenuIcon k={k} /><span><b>{METRICS[k].label}</b><br /><span className="small muted">Los {TOP_ICONS} municipios con mayor valor</span></span></button>
+              ))}
+              {!paid && <span className="small muted" style={{ padding: '6px 10px' }}>Tarifas, radiación, cortes y más en el plan completo.</span>}
+            </div>
+          )}
         </div>
-        {paid && (
-          <div className="glass seg" role="group" aria-label="Métrica del mapa">
-            {metricKeys.map((k) => <button key={k} className={metric === k ? 'on' : ''} onClick={() => setMetric(k)}>{METRICS[k].short}</button>)}
-          </div>
-        )}
+        <div className="dd">
+          <button className={`btn sm glass ${menu === 'layers' ? 'on' : ''}`} onClick={() => setMenu(menu === 'layers' ? null : 'layers')} aria-expanded={menu === 'layers'}>
+            <Icon name="layers" size={16} />Red y plantas{on.size ? ` (${on.size})` : ''}<span className="caret">▾</span>
+          </button>
+          {menu === 'layers' && (
+            <div className="glass dd-menu layers" role="menu">
+              {Object.entries(LAYERS).map(([k, l]) => (
+                <label key={k} className={l.paid && !paid ? 'dis' : ''}>
+                  <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
+                  {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
+                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}</span>
+                </label>
+              ))}
+              {on.has('mt') && <span className="small muted">Media tensión: modelo gridfinder (2020). Es una estimación, no la red oficial.</span>}
+              {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
+            </div>
+          )}
+        </div>
+        <div className="glass seg" role="group" aria-label="Vista">
+          <button className={!is3d ? 'on' : ''} onClick={() => set3d(false)}>Plano</button>
+          <button className={is3d ? 'on' : ''} onClick={() => set3d(true)}>3D</button>
+        </div>
+        <div className="glass" style={{ padding: 6 }}><WeightsControl compact /></div>
       </div>
 
-      <div className="legend glass">
-        <span>{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
-        <div className="ramp" />
-        <span className="muted">Columnas = {data?.mode === 'dpto' ? 'puntaje por departamento' : M.short.toLowerCase()} · {prof.short}</span>
-      </div>
+      {showKey !== 'nada' && (
+        <div className="legend glass">
+          <span className="row" style={{ gap: 6 }}>{iconMode && <img src={METRIC_ICON[showKey]} alt="" width="16" height="16" />}{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
+          <div className="ramp" />
+          <span className="muted">{dpto ? 'Puntaje por departamento' : iconMode ? `Tamaño y color = valor · ${TOP_ICONS} municipios con mayor valor` : `${is3d ? 'Altura' : 'Tamaño'} y color = puntaje · ${prof.short}`}</span>
+        </div>
+      )}
 
       <div className={`map-panel glass ${collapsed ? 'collapsed' : ''}`}>
         <button className="row" onClick={() => setCollapsed(!collapsed)} style={{ padding: '14px 16px', border: 0, background: 'none', justifyContent: 'space-between', cursor: 'pointer', width: '100%' }} aria-expanded={!collapsed}>
@@ -213,7 +254,7 @@ export default function MapPage() {
               <span className="row" style={{ gap: 6 }}><ScoreBadge score={d.score} tier={d.tier} /><a className="small" href={`#/m/${d.code}`} onClick={(e) => e.stopPropagation()}>Ver</a></span>
             </button>
           ))}
-          {data?.mode === 'dpto' && (
+          {dpto && (
             <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="card" style={{ background: 'var(--panel-2)' }}>
                 <h3>Municipio #1 del país · {prof.short}</h3>
