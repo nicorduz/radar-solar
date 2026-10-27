@@ -30,8 +30,9 @@ export const config = {
   contact: { whatsapp: e.CONTACT_WHATSAPP || '', email: e.CONTACT_EMAIL || '' },
   bootstrapAdmin: { user: e.ADMIN_USER || '', password: e.ADMIN_PASSWORD || '' },
   ai: {
-    provider: (e.AI_PROVIDER || (e.GEMINI_API_KEY ? 'gemini' : e.GROQ_API_KEY ? 'groq' : e.OPENAI_API_KEY ? 'openai' : 'none')).toLowerCase(),
+    provider: (e.AI_PROVIDER || (e.XAI_API_KEY ? 'xai' : e.GEMINI_API_KEY ? 'gemini' : e.GROQ_API_KEY ? 'groq' : e.OPENAI_API_KEY ? 'openai' : 'none')).toLowerCase(),
     gemini: { key: e.GEMINI_API_KEY, model: e.GEMINI_MODEL || 'gemini-2.5-flash' },
+    xai: { key: e.XAI_API_KEY, model: e.XAI_MODEL || '' },
     groq: { key: e.GROQ_API_KEY, model: e.GROQ_MODEL || 'llama-3.3-70b-versatile' },
     openai: { key: e.OPENAI_API_KEY, model: e.OPENAI_MODEL || 'gpt-4o-mini', base: e.OPENAI_BASE_URL || 'https://api.openai.com/v1' },
     dailyTrial: +(e.AI_DAILY_TRIAL || 3),
