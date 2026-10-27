@@ -141,3 +141,17 @@ export function Contact({ tel, mail, web }) {
     </span>
   );
 }
+
+// Sección desplegable: título con ícono y un resumen de una línea; el detalle se abre al tocarla
+export function Section({ icon, title, hint, open = false, children }) {
+  return (
+    <details className="sec" open={open}>
+      <summary>
+        <span className="sec-ic">{icon}</span>
+        <span className="sec-t"><b>{title}</b>{hint && <span className="small muted">{hint}</span>}</span>
+        <span className="caret" aria-hidden="true">▾</span>
+      </summary>
+      <div className="sec-body">{children}</div>
+    </details>
+  );
+}
