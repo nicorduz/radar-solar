@@ -14,6 +14,7 @@ import Clientes from './pages/Clientes.jsx';
 import Mercado from './pages/Mercado.jsx';
 import { ProfileSwitch } from './components/ui.jsx';
 import Terminos, { LegalLine, TerminosTexto } from './pages/Terminos.jsx';
+import Plan, { PoweredBy } from './pages/Plan.jsx';
 
 export const Ctx = createContext(null);
 // localStorage puede fallar (modo privado): se usa con try/catch
@@ -113,6 +114,7 @@ export default function App() {
   else if (view === 'admin' && user.role === 'admin') page = <Admin />;
   else if (view === 'cuenta') page = <Cuenta />;
   else if (view === 'terminos') page = <Terminos appName={cfg.appName} />;
+  else if (view === 'plan') page = <Plan />;
   else page = <MapPage />;
 
   const active = view === 'm' ? 'ranking' : view;
@@ -121,7 +123,7 @@ export default function App() {
       <div className="shell">
         <aside className="side">
           <div className="brand"><img src="/icon.svg" alt="" />{cfg.appName}</div>
-          <div className="brand-by">por <img src="/talera-logo.png" alt="Talera" /></div>
+          <PoweredBy />
           <ProfileSwitch />
           {nav.map((n) => (
             <button key={n.id} className={`navbtn ${active === n.id ? 'on' : ''}`} onClick={() => go(n.id)}>
@@ -129,7 +131,7 @@ export default function App() {
             </button>
           ))}
           <div className="spacer" />
-          {!paid && <div className="alert small" style={{ margin: '0 4px 8px' }}>Versión de prueba. <a href="#/cuenta">Ver plan completo</a></div>}
+          {!paid && <button className="btn primary sm" style={{ margin: '0 4px 8px' }} onClick={() => go('plan')}>Plan completo · pago único</button>}
           <button className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} onClick={() => go('cuenta')}><Icon name="user" />{user.name || user.username}</button>
           <div className="legal-foot"><LegalLine go={go} /></div>
         </aside>
