@@ -6,7 +6,9 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   let data = null;
   try { data = await r.json(); } catch { /* vacío */ }
   if (!r.ok) {
-    const err = new Error(data?.error || `Error ${r.status}`);
+    // 502/503/504 sin mensaje propio = el servidor se está reiniciando, despertando o actualizando
+    const caido = !data?.error && [502, 503, 504].includes(r.status);
+    const err = new Error(data?.error || (caido ? 'El servidor se está iniciando o actualizando. Intenta de nuevo en un minuto.' : `Error ${r.status}`));
     err.status = r.status; err.data = data;
     throw err;
   }
