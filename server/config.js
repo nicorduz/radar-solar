@@ -30,7 +30,7 @@ export const config = {
   contact: { whatsapp: e.CONTACT_WHATSAPP || '', email: e.CONTACT_EMAIL || '' },
   bootstrapAdmin: { user: e.ADMIN_USER || '', password: e.ADMIN_PASSWORD || '' },
   ai: {
-    provider: (e.AI_PROVIDER || (e.XAI_API_KEY ? 'xai' : e.GEMINI_API_KEY ? 'gemini' : e.GROQ_API_KEY ? 'groq' : e.OPENAI_API_KEY ? 'openai' : 'none')).toLowerCase(),
+    provider: (e.AI_PROVIDER || (e.GROQ_API_KEY ? 'groq' : e.GEMINI_API_KEY ? 'gemini' : e.XAI_API_KEY ? 'xai' : e.OPENAI_API_KEY ? 'openai' : 'none')).toLowerCase(),
     gemini: { key: e.GEMINI_API_KEY, model: e.GEMINI_MODEL || 'gemini-2.5-flash' },
     xai: { key: e.XAI_API_KEY, model: e.XAI_MODEL || '' },
     groq: { key: e.GROQ_API_KEY, model: e.GROQ_MODEL || 'llama-3.3-70b-versatile' },
