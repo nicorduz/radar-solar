@@ -18,7 +18,10 @@ function colorAt(t) {
 }
 const kvOf = (s) => Math.max(0, ...(String(s || '').match(/\d+(\.\d+)?/g) || ['0']).map(Number));
 const KV_COLOR = (kv) => (kv >= 500 ? [226, 103, 91] : kv >= 220 ? [242, 195, 138] : [120, 190, 220]);
-const TOP_ICONS = 150; // en modo íconos se muestran solo los municipios con mayor valor, para que el mapa se lea fácil
+// Altura en metros de la columna (3D) según el valor normalizado t (0 a 1)
+const elevOf = (t) => 2500 + Math.pow(t, 1.4) * 70000;
+// Los íconos se dibujan siempre encima (sin recortarse contra el plano del mapa en 3D)
+const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false };
 
 const LAYERS = {
   solar: { label: 'Plantas solares (XM)', img: ICON_SOLAR, paid: true },
@@ -103,11 +106,8 @@ export default function MapPage() {
       if (M.invert && t != null) t = 1 - t;
       return { ...d, t };
     }).filter((d) => d.t != null);
-    if (!iconMode) return rows;
-    // Íconos: solo los municipios con mayor valor, con color y tamaño relativos entre ellos
-    const sel = rows.sort((a, b) => b.t - a.t).slice(0, TOP_ICONS);
-    const tMax = sel[0]?.t ?? 1, tMin = sel[sel.length - 1]?.t ?? 0;
-    return sel.map((d) => ({ ...d, t: (d.t - tMin) / (tMax - tMin || 1) }));
+    // Todos los municipios; los de menor valor se dibujan primero para que los altos queden encima
+    return rows.sort((a, b) => a.t - b.t);
   }, [data, showKey]);
 
   useEffect(() => {
@@ -144,26 +144,36 @@ export default function MapPage() {
         pickable: true, updateTriggers: { getRadius: trig, getFillColor: trig }, onClick: onMuni,
       }));
     } else if (iconMode) {
+      // 3D: columna delgada con la altura del valor y el ícono en la punta. Plano: solo el ícono.
+      if (is3d) {
+        layers.push(new ColumnLayer({
+          id: `muni-col-${showKey}`, data: scaled, diskResolution: 8, radius: 1600, extruded: true, pickable: true,
+          getPosition: (d) => [d.lon, d.lat], getElevation: (d) => elevOf(d.t), elevationScale: 1,
+          getFillColor: (d) => [...colorAt(d.t), 200], material: { ambient: 0.6, diffuse: 0.5 },
+          updateTriggers: { getElevation: trig, getFillColor: trig }, onClick: onMuni,
+        }));
+      }
       layers.push(new IconLayer({
-        id: `muni-ic-${showKey}`, data: scaled, getPosition: (d) => [d.lon, d.lat], getIcon: () => maskIcon(METRIC_ICON[showKey]),
-        sizeUnits: 'pixels', getSize: (d) => 12 + d.t * 22, getColor: (d) => [...colorAt(d.t), 245],
-        pickable: true, updateTriggers: { getSize: trig, getColor: trig, getIcon: trig }, onClick: onMuni,
+        id: `muni-ic-${showKey}-${is3d ? '3d' : '2d'}`, data: scaled, getPosition: (d) => [d.lon, d.lat, is3d ? elevOf(d.t) : 0],
+        getIcon: () => maskIcon(METRIC_ICON[showKey]), sizeUnits: 'pixels', getSize: (d) => (is3d ? 10 + d.t * 14 : 7 + d.t * 14),
+        getColor: (d) => [...colorAt(d.t), 245], parameters: ON_TOP,
+        pickable: true, updateTriggers: { getSize: trig, getColor: trig, getIcon: trig, getPosition: trig }, onClick: onMuni,
       }));
     }
     if (on.has('subs') && red?.subs?.length) {
-      layers.push(new IconLayer({ id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), pickable: true }));
+      layers.push(new IconLayer({ id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('upme') && red?.upme?.length) {
-      layers.push(new IconLayer({ id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), pickable: true }));
+      layers.push(new IconLayer({ id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('solar') && red?.plantas?.length) {
       layers.push(new IconLayer({
         id: 'solar', data: red.plantas.filter((p) => p.tipo === 'solar'), getPosition: (d) => [d.lon, d.lat],
-        getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), pickable: true,
+        getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), parameters: ON_TOP, pickable: true,
       }));
     }
     if (on.has('zni') && red?.zni?.length) {
-      layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), pickable: true }));
+      layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
     }
     overlayRef.current.setProps({
       layers,
@@ -202,7 +212,7 @@ export default function MapPage() {
               <button className={show === 'nada' ? 'on' : ''} onClick={() => choose('nada')}><MenuIcon k="nada" /><span><b>Nada</b><br /><span className="small muted">Solo el mapa de Colombia</span></span></button>
               <button className={show === 'score' ? 'on' : ''} onClick={() => choose('score')}><MenuIcon k="score" /><span><b>Puntaje de oportunidad</b><br /><span className="small muted">Columnas en 3D o puntos en plano</span></span></button>
               {paid && metricKeys.filter((k) => k !== 'score').map((k) => (
-                <button key={k} className={show === k ? 'on' : ''} onClick={() => choose(k)}><MenuIcon k={k} /><span><b>{METRICS[k].label}</b><br /><span className="small muted">Los {TOP_ICONS} municipios con mayor valor</span></span></button>
+                <button key={k} className={show === k ? 'on' : ''} onClick={() => choose(k)}><MenuIcon k={k} /><span><b>{METRICS[k].label}</b><br /><span className="small muted">{is3d ? 'Ícono y columna por municipio' : 'Ícono por municipio'}</span></span></button>
               ))}
               {!paid && <span className="small muted" style={{ padding: '6px 10px' }}>Tarifas, radiación, cortes y más en el plan completo.</span>}
             </div>
@@ -237,7 +247,7 @@ export default function MapPage() {
         <div className="legend glass">
           <span className="row" style={{ gap: 6 }}>{iconMode && <img src={METRIC_ICON[showKey]} alt="" width="16" height="16" />}{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
           <div className="ramp" />
-          <span className="muted">{dpto ? 'Puntaje por departamento' : iconMode ? `Tamaño y color = valor · ${TOP_ICONS} municipios con mayor valor` : `${is3d ? 'Altura' : 'Tamaño'} y color = puntaje · ${prof.short}`}</span>
+          <span className="muted">{dpto ? 'Puntaje por departamento' : iconMode ? `${is3d ? 'Altura, tamaño' : 'Tamaño'} y color = valor · todos los municipios` : `${is3d ? 'Altura' : 'Tamaño'} y color = puntaje · ${prof.short}`}</span>
         </div>
       )}
 
