@@ -122,7 +122,7 @@ export default function App() {
     <Ctx.Provider value={ctx}>
       <div className="shell">
         <aside className="side">
-          <div className="brand"><img src="/icon.svg" alt="" />{cfg.appName}</div>
+          <div className="brand"><img src="/icon.svg" alt="" /><span>{cfg.appName}</span></div>
           <PoweredBy />
           <ProfileSwitch />
           {nav.map((n) => (
