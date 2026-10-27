@@ -81,5 +81,17 @@ export function ensureBootstrapAdmin() {
   } else if (n === 0) {
     console.warn('No hay administradores. Define ADMIN_USER y ADMIN_PASSWORD o usa: npm run admin -- crear <usuario> <contraseña> admin');
   }
+  // Usuarios de demostración desde la variable SEED_USERS (útil en hostings gratuitos sin disco persistente,
+  // donde la base se borra al reiniciar). Formato: usuario:clave:rol:perfil;usuario2:clave2:rol:perfil
+  // rol = trial | paid | admin ; perfil = todos | instalador | proveedor | desarrollador. Solo crea los que no existan.
+  for (const item of String(process.env.SEED_USERS || '').split(';').map((x) => x.trim()).filter(Boolean)) {
+    const [u, p, role = 'trial', profile = 'todos'] = item.split(':').map((x) => x.trim());
+    if (!u || !p || p.length < 8 || !['trial', 'paid', 'admin'].includes(role) || !['todos', 'instalador', 'proveedor', 'desarrollador'].includes(profile)) {
+      console.warn(`SEED_USERS: se omite "${u || '?'}" (revisa usuario, clave de 8+ caracteres, rol y perfil)`); continue;
+    }
+    if (db.prepare('SELECT 1 FROM users WHERE username=?').get(u)) continue;
+    db.prepare('INSERT INTO users(username,pass_hash,role,profile,name) VALUES(?,?,?,?,?)').run(u, hashPassword(p), role, profile, u);
+    console.log(`Usuario de demostración creado: ${u} (${role}, ${profile})`);
+  }
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOString());
 }
