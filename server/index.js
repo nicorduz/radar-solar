@@ -517,3 +517,7 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(config.port, () => console.log(`${config.appName} escuchando en http://localhost:${config.port}`));
+
+// Un error inesperado no debe tumbar el servidor (en el hosting eso se ve como "Error 502")
+process.on('unhandledRejection', (e) => console.error('Error no controlado:', e));
+process.on('uncaughtException', (e) => console.error('Excepción no controlada:', e));
