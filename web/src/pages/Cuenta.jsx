@@ -17,6 +17,7 @@ export default function Cuenta() {
   };
   return (
     <div className="page" style={{ maxWidth: 760 }}>
+      <img className="mobile-only" src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" style={{ width: '78%', maxWidth: 320, height: 'auto', margin: '4px 0 2px' }} />
       <h1>Cuenta</h1>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
