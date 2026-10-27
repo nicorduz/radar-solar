@@ -194,3 +194,26 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .legal h2 { margin: 18px 0 6px; color: var(--ink); }
 .legal p, .legal li { font-size: 14px; }
 .diag { position: absolute; top: 0; right: 0; width: 140px; height: 140px; background: linear-gradient(225deg, var(--blue) 0 34%, transparent 34%); opacity: 0.9; pointer-events: none; border-top-right-radius: inherit; }
+
+/* ---------- Secciones desplegables y menús del mapa ---------- */
+.sec { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.sec + .sec { margin-top: -6px; }
+.sec > summary { list-style: none; display: grid; grid-template-columns: 36px 1fr 20px; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; min-height: 60px; }
+.sec > summary::-webkit-details-marker { display: none; }
+.sec > summary:hover { background: var(--panel-2); border-radius: var(--radius); }
+.sec-ic { width: 36px; height: 36px; border-radius: 9px; background: var(--panel-2); display: inline-flex; align-items: center; justify-content: center; color: var(--sky); }
+.sec-ic svg { width: 20px; height: 20px; }
+.sec-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sec-t b { font-family: var(--sub); font-size: 15px; }
+.sec .caret { color: var(--muted); transition: transform 0.15s; text-align: center; }
+.sec[open] > summary .caret { transform: rotate(180deg); }
+.sec[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
+.sec-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.dd { position: relative; }
+.dd .caret { margin-left: 2px; color: var(--muted); }
+.dd-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 7; width: 320px; max-height: 70vh; overflow: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.dd-menu > button { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: center; text-align: left; padding: 9px 10px; min-height: 48px; border: 0; border-radius: 8px; background: none; cursor: pointer; color: var(--ink); }
+.dd-menu > button:hover { background: var(--panel-2); }
+.dd-menu > button.on { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--blue); }
+.dd-menu.layers label { min-height: 38px; }
+@media (max-width: 860px) { .dd-menu { width: min(320px, calc(100vw - 16px)); } }
