@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../App.jsx';
 import { Icon } from './Icon.jsx';
 import { fmt, PROFILE_ICONS } from '../api.js';
+import { PLAN_PRECIO } from '../pages/Plan.jsx';
 
 export function Spinner() { return <div className="row" style={{ justifyContent: 'center', padding: 30 }}><div className="spinner" /></div>; }
 
@@ -13,8 +14,10 @@ export function ContactCTA({ text = 'Activa el plan completo para ver todos los 
       <Icon name="lock" size={22} />
       <strong>Contenido del plan completo</strong>
       <span className="muted small">{text}</span>
+      <span className="small"><b className="mono">${PLAN_PRECIO.toLocaleString('es-CO')}</b> COP · pago único, sin mensualidades</span>
       <div className="row" style={{ justifyContent: 'center' }}>
-        {wa && <a className="btn primary" href={wa} target="_blank" rel="noreferrer">Escribir por WhatsApp</a>}
+        <a className="btn primary" href="#/plan">Ver qué incluye</a>
+        {wa && <a className="btn" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}
         {cfg.contact?.email && <a className="btn" href={`mailto:${cfg.contact.email}?subject=Plan completo ${cfg.appName}`}>Correo</a>}
         {!wa && !cfg.contact?.email && <span className="small">Pide al administrador que active tu plan.</span>}
       </div>
