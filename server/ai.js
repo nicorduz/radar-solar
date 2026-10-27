@@ -41,7 +41,7 @@ const esCupoCero = (e) => /limit: 0|free_tier|quota/i.test(e.message || '');
 // Cliente compatible con OpenAI (Groq, xAI, OpenRouter, OpenAI)
 async function openaiLike({ base, key, model, system, messages, json, temperature, maxTokens }) {
   const r = await fetch(`${base.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(60000), method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({ model, temperature, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, ...messages], ...(json ? { response_format: { type: 'json_object' } } : {}) }),
   });
   const j = await r.json().catch(() => ({}));
@@ -109,7 +109,7 @@ async function geminiUna(model, { system, messages, json, temperature, maxTokens
     generationConfig: { temperature, maxOutputTokens: maxTokens, ...(json && !gemma ? { responseMimeType: 'application/json' } : {}) },
   };
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000), method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error?.message || `HTTP ${r.status}`), { status: r.status });
