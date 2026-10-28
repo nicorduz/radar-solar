@@ -1,5 +1,5 @@
-
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
@@ -22,7 +22,8 @@ if ((store.meta.schema || 1) < 2) {
   try { startJob('reconstruir', rebuild); console.log('Base de versión anterior: reconstruyendo con las fuentes nuevas…'); } catch (e) { console.error(e.message); }
 }
 
-const TERMS_VERSION = '2026-10';
+const TERMS_VERSION = '2026-11';
+const isAdmin = (req) => req.role === 'admin';
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
@@ -68,11 +69,11 @@ app.post('/api/me/password', requireUser, (req, res) => {
 app.get('/api/meta', requireUser, (req, res) => {
   const m = store.meta;
   res.json({
-    role: req.role, paid: isPaid(req),
+    role: req.role, paid: isPaid(req), admin: isAdmin(req), ci_anio: store.ciAnio,
     segments: Object.fromEntries(Object.entries(SEGMENTS).map(([k, v]) => [k, v.label])),
     profiles: Object.fromEntries(allowedProfiles(req.user).map((k) => { const P = PROFILES[k]; return [k, { label: P.label, short: P.short, desc: P.desc, segments: P.segments, metrics: P.metrics, weights: defaultWeights(k), factors: Object.fromEntries(Object.entries(P.factors).map(([f, v]) => [f, v.label])) }]; })),
     cortes: { upme: m.upme_corte, generado: m.generado, elic: m.elic_corte, snr: m.snr_corte, sui: m.sui_periodo, agpe_xm: m.agpe_xm_fecha, dna: m.dna_periodo },
-    totals: { municipios: store.municipios.length, secop: m.secop_n, empresas: store.empresas.length, agpe: m.agpe_zonas ? Object.values(m.agpe_zonas).reduce((a, z) => a + z.n, 0) : m.agpe_n, clientes: store.clientes.length, plantas: m.red_n?.plantas, subs: m.red_n?.subs },
+    totals: { municipios: store.municipios.length, secop: m.secop_n, empresas: store.empresas.length, agpe: m.agpe_zonas ? Object.values(m.agpe_zonas).reduce((a, z) => a + z.n, 0) : m.agpe_n, clientes: store.clientes.length, ci: store.ci.length, plantas: m.red_n?.plantas, subs: m.red_n?.subs },
     tarifas: m.tarifas, capex_kwp: getSetting('capex_kwp', config.capexKwp),
     ors: [...new Set(store.municipios.map((x) => x.or_name))].sort(),
     dptos: [...new Set(store.municipios.map((x) => x.dpto))].sort(),
@@ -102,6 +103,10 @@ app.get('/api/ranking', requireUser, (req, res) => {
     if (dpto) rows = rows.filter((r) => r.dpto === dpto);
     if (or) rows = rows.filter((r) => r.or === or);
     if (minPop) rows = rows.filter((r) => (r.pop || 0) >= +minPop);
+    // Filtro de sitios para desarrolladores: distancia a subestación, radiación y tensión disponible
+    if (req.query.maxSubKm) rows = rows.filter((r) => r.sub_km != null && r.sub_km <= +req.query.maxSubKm);
+    if (req.query.minGhi) rows = rows.filter((r) => (r.ghi || 0) >= +req.query.minGhi);
+    if (req.query.minKv) rows = rows.filter((r) => (store.byCode.get(r.code)?.kv30 || 0) >= +req.query.minKv);
     if (q) { const n = norm(q); rows = rows.filter((r) => norm(r.name).includes(n) || norm(r.dpto).includes(n)); }
     const limit = Math.min(+req.query.limit || 100, 1200);
     return res.json({ total: rows.length, rows: rows.slice(0, limit), locked: false });
@@ -123,7 +128,8 @@ app.get('/api/municipio/:code', requireUser, (req, res) => {
   const t = store.meta.tarifas?.[m.or_key] || {};
   res.json({
     ...m, rank: r.rank, score: r.score, comp: r.comp, tier: r.score != null ? tier(r.score) : null, total_rank: sc.rows.length,
-    payback: payback(m), tarifa_info: t, proyectos: projectsFor(m.code).slice(0, 60),
+    payback: payback(m), tarifa_info: t, proyectos: projectsFor(m.code).slice(0, 60).map((p) => (isAdmin(req) ? p : { ...p, fuente: undefined, origen: undefined })),
+    ci: isPaid(req) ? store.ci.filter((e) => e.code === m.code).slice(0, 12) : [], ci_n: store.ci.filter((e) => e.code === m.code).length,
     secop: secopLocal, secop_dpto: secopDpto,
     docs: db.prepare("SELECT id,title,created_at FROM documents WHERE municipio=? AND purpose='ia'").all(m.code),
     clientes: store.clientes.filter((c) => c.code === m.code).slice(0, isPaid(req) ? 15 : 1).map((c) => (isPaid(req) ? c : { ...c, tel: null, mail: null, dir: null })),
@@ -180,6 +186,77 @@ app.get('/api/clientes', requireUser, (req, res) => {
   const page = Math.max(0, +req.query.page || 0);
   if (!isPaid(req)) return res.json({ total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...view(c), tel: null, mail: null, dir: null })), locked: true });
   res.json({ total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
+});
+
+// Empresas grandes del país (clientes comerciales e industriales)
+app.get('/api/ci', requireUser, (req, res) => {
+  let rows = store.ci;
+  const { q, code, dpto, sector, consumo, contacto, minIng } = req.query;
+  if (code) rows = rows.filter((e) => e.code === code);
+  else if (dpto) rows = rows.filter((e) => store.byCode.get(e.code)?.dpto === dpto);
+  if (sector) rows = rows.filter((e) => e.sector === sector);
+  if (consumo) rows = rows.filter((e) => e.consumo === consumo);
+  if (contacto) rows = rows.filter((e) => e.tel || e.mail);
+  if (minIng) rows = rows.filter((e) => (e.ing || 0) >= +minIng);
+  if (q) { const n = norm(q); rows = rows.filter((e) => norm(e.n).includes(n) || e.nit === q); }
+  const sectores = {};
+  for (const e of store.ci) sectores[e.sector] = (sectores[e.sector] || 0) + 1;
+  const view = (e) => { const m = store.byCode.get(e.code); return { ...e, mun: m?.name || e.ciudad, dpto: m?.dpto, tarifa_com: m?.tarifa_com ?? m?.tarifa, ghi: m?.ghi }; };
+  const page = Math.max(0, +req.query.page || 0);
+  if (!isPaid(req)) return res.json({ total: rows.length, sectores, anio: store.ciAnio, rows: rows.slice(0, 1).map((e) => ({ ...view(e), tel: null, mail: null, web: null })), locked: true });
+  res.json({ total: rows.length, sectores, anio: store.ciAnio, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
+});
+
+// Novedades de las zonas que el usuario sigue: licitaciones, licencias y proyectos de generación
+app.post('/api/novedades', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
+  const codes = (Array.isArray(req.body?.codes) ? req.body.codes : []).filter((c) => store.byCode.has(c)).slice(0, 60);
+  const items = [];
+  for (const code of codes) {
+    const m = store.byCode.get(code);
+    for (const s of store.secop.filter((x) => x.code === code).slice(0, 25)) {
+      items.push({ tipo: 'licitacion', code, mun: m.name, fecha: s.fecha, titulo: s.nombre, detalle: `${s.entidad} · ${s.estado}`, valor: s.precio, abierto: /presentaci|abierto|publicad|borrador/i.test(s.estado || '') && !s.adjudicado, url: s.url, id: 's' + s.id });
+    }
+    for (const p of projectsFor(code).slice(0, 20)) {
+      const f = /^\d{4}-\d{2}/.test(p.fecha || '') ? p.fecha.slice(0, 10) : null;
+      items.push({ tipo: 'obra', code, mun: m.name, fecha: f, titulo: p.nombre, detalle: [p.uso, p.unidades ? `${p.unidades} unidades` : null, p.etapa].filter(Boolean).join(' · '), id: 'p' + code + (p.id || p.acto || p.nombre) });
+    }
+    for (const p of (store.red.upme || []).filter((x) => x.code === code || (x.lat && m.lat && kmBetween(m, x) <= 20))) {
+      items.push({ tipo: 'proyecto', code, mun: m.name, fecha: p.inscrito, titulo: p.n, detalle: `${fmt(p.mw)} MW · ${p.tipo} · ${p.fase} · ${p.mun}`, id: 'u' + p.id });
+    }
+  }
+  const seen = new Set();
+  const out = items.filter((x) => (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+  res.json({ items: out.slice(0, 400) });
+});
+
+// Enlaces de solo lectura para compartir la ficha de un municipio (válidos 30 días, sin datos de contacto)
+const shareSign = (payload) => crypto.createHmac('sha256', config.secret).update(payload).digest('base64url').slice(0, 22);
+app.post('/api/share/:code', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
+  const m = store.byCode.get(req.params.code); if (!m) return res.status(404).json({ error: 'No encontrado' });
+  const { profile } = parseQuery({ profile: req.body?.profile }, req.user, true);
+  const exp = Math.floor(Date.now() / 1000) + 30 * 86400;
+  const payload = Buffer.from(JSON.stringify({ c: m.code, p: profile, e: exp, by: (req.user.company || req.user.name || '').slice(0, 60) })).toString('base64url');
+  res.json({ token: `${payload}.${shareSign(payload)}`, expira: new Date(exp * 1000).toISOString().slice(0, 10) });
+});
+app.get('/api/public/ficha/:token', (req, res) => {
+  const [payload, sig] = String(req.params.token).split('.');
+  if (!payload || !sig || sig.length !== 22 || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(shareSign(payload)))) return res.status(404).json({ error: 'Enlace no válido' });
+  let d; try { d = JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch { return res.status(404).json({ error: 'Enlace no válido' }); }
+  if (d.e * 1000 < Date.now()) return res.status(410).json({ error: 'Este enlace ya venció. Pide uno nuevo a quien te lo compartió.' });
+  const m = store.byCode.get(d.c); if (!m) return res.status(404).json({ error: 'No encontrado' });
+  const profile = PROFILES[d.p] ? d.p : 'instalador';
+  const sc = scored(profile, null, 'campestre');
+  const r = sc.byCode.get(m.code) || {};
+  res.json({
+    by: d.by, expira: new Date(d.e * 1000).toISOString().slice(0, 10), perfil: PROFILES[profile].label,
+    code: m.code, name: m.name, dpto: m.dpto, pop: m.pop, or: m.or_name, rank: r.rank, total: sc.rows.length, score: r.score, tier: r.score != null ? tier(r.score) : null,
+    factors: Object.fromEntries(Object.entries(PROFILES[profile].factors).map(([k, v]) => [v.label, r.comp?.[k] ?? null])),
+    tarifa: m.tarifa, tarifa_com: m.tarifa_com, ghi: m.ghi, temp: m.temp, dna_1k: m.dna_1k, dna_dias: m.dna_dias,
+    viv12: m.viv12 || 0, viv12_alto: m.viv12_alto || 0, rnt_hab: m.rnt_hab || 0, agpe_est: m.agpe_est || 0, inst_n: m.inst_n || 0,
+    sub_km: m.sub_km, sub_kv: m.sub_kv, solar30_mw: m.solar30_mw || 0, upme_mw: Math.round(m.upme_mw || 0), payback: payback(m),
+  });
 });
 
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
@@ -288,6 +365,11 @@ function buildContext(req, question, code) {
     parts.push(`\nEMPRESAS EN ${areaTxt.toUpperCase()} (Registro Mercantil + SECOP II; contratos solares = procesos SECOP con "solar" o "fotovoltaico" adjudicados). Total que cumplen el filtro: ${store.empresas.filter((e) => inArea(e.code) && e.sol_n).length} con contratos solares.\n` +
       (emp.length ? emp.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.cat}, ${store.byCode.get(e.code)?.name || e.cam}; contratos solares: ${e.sol_n || 0}${e.sol_valor ? ` por ${money(e.sol_valor)}` : ''}${e.sol_ultimo ? `, último ${e.sol_ultimo}` : ''}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n') : '(sin empresas con ubicación en esa zona)'));
   }
+  // Clientes comerciales e industriales (empresas grandes)
+  if (has(/industri|fabrica|empresa grande|grandes empresas|c&i|comercial e industrial|supermercado|clinica|hospital|bodega|agroindustria|cliente/)) {
+    const ci = store.ci.filter((e) => inArea(e.code)).slice(0, 12);
+    if (ci.length) parts.push(`\nEMPRESAS GRANDES (CLIENTES COMERCIALES E INDUSTRIALES) EN ${areaTxt.toUpperCase()}, por ingresos (corte ${store.ciAnio}):\n` + ci.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.sector}, ${store.byCode.get(e.code)?.name || e.ciudad}; ingresos ${fmt(e.ing)} mil millones; consumo típico del sector ${e.consumo}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n'));
+  }
   // Licitaciones
   if (has(/licitac|secop|contrato|proceso|entidad|public/)) {
     const sec = store.secop.filter((x) => inArea(x.code) || (dptos.length && dptos.some((d) => norm(x.dpto) === norm(d)))).slice(0, 12);
@@ -309,17 +391,21 @@ function buildContext(req, question, code) {
 }
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const SYSTEM = `Eres el analista comercial de ${config.appName}, plataforma de inteligencia de mercado solar en Colombia para instaladores, proveedores de equipos y desarrolladores o inversionistas.
+const SYSTEM_BASE = `Eres el analista comercial de ${config.appName}, plataforma de inteligencia de mercado solar en Colombia para instaladores, proveedores de equipos y desarrolladores o inversionistas.
 Respondes en español, claro y práctico, adaptado al perfil del usuario del CONTEXTO.
 
 Reglas:
 - Usa SOLO los datos del CONTEXTO para cifras, empresas, municipios y proyectos. Si algo no está en el CONTEXTO, dilo en una frase y sugiere la sección de la app donde buscarlo. No inventes cifras, nombres, filtros ni fuentes.
 - Cuando el CONTEXTO trae una lista (empresas, licitaciones, hoteles, proyectos), úsala: resume y destaca los más relevantes.
-- Qué es cada fuente (no la describas de otra forma): DANE ELIC = licencias de construcción de vivienda y otros usos; SNR = actos de curadurías urbanas; SUI = tarifas y consumo de energía de Superservicios; XM = autogeneradores, cortes (demanda no atendida), precio de bolsa y mapa de red; UPME = registro de proyectos de generación; RNT = Registro Nacional de Turismo; SECOP II = licitaciones y contratos públicos; Registro Mercantil = empresas.
-- Secciones de la app: Mapa, Ranking, Ficha del municipio, Hoteles y turismo, Instaladores y empresas, Mercado y red, Licitaciones.
+- [FUENTES]Qué es cada fuente (no la describas de otra forma): DANE ELIC = licencias de construcción de vivienda y otros usos; SNR = actos de curadurías urbanas; SUI = tarifas y consumo de energía de Superservicios; XM = autogeneradores, cortes (demanda no atendida), precio de bolsa y mapa de red; UPME = registro de proyectos de generación; RNT = Registro Nacional de Turismo; SECOP II = licitaciones y contratos públicos; Registro Mercantil = empresas.
+- Secciones de la app: Mapa (con herramientas para dibujar zonas y medir), Ranking, Ficha del municipio, Empresas e industrias (clientes C&I), Hoteles y turismo, Instaladores y empresas, Mercado y red, Licitaciones, Mis prospectos (zonas que sigue, novedades y prospectos), Calculadora financiera (retorno, financiación y beneficios tributarios), Propuestas en PDF.
 - Puedes dar recomendaciones comerciales generales, aclarando que son sugerencias.
 
 Formato (Markdown): empieza con la respuesta directa en 1 o 2 frases. Luego usa títulos cortos con ###, listas con viñetas y **negritas** para cifras clave. Usa una tabla solo para comparar 3 o más elementos con varias columnas. Termina, si aplica, con "Siguiente paso" en una línea. Máximo 250 palabras salvo que pidan más.`;
+// Solo los administradores ven de dónde sale cada dato; a los demás usuarios no se les nombran las fuentes
+const systemFor = (req) => (isAdmin(req)
+  ? SYSTEM_BASE.replace('[FUENTES]', '')
+  : SYSTEM_BASE.replace(/- \[FUENTES\][^\n]*\n/, '- Nunca nombres las fuentes ni las entidades de donde vienen los datos (por ejemplo DANE, SUI, Superservicios, XM, UPME, RNT, MinCIT, SECOP, Registro Mercantil, Confecámaras, Supersociedades, NASA, IPSE, datos.gov.co). Si preguntan de dónde salen los datos, responde que son datos de Radar Solar construidos a partir de información pública oficial.\n'));
 
 app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
   const quota = aiQuota(req);
@@ -327,7 +413,7 @@ app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
   const msgs = (req.body?.messages || []).slice(-8).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 2000) }));
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return res.status(400).json({ error: 'Falta la pregunta' });
   const ctx = buildContext(req, msgs[msgs.length - 1].content, req.body?.code);
-  const answer = await complete({ system: SYSTEM + '\n\nCONTEXTO:\n' + ctx, messages: msgs });
+  const answer = await complete({ system: systemFor(req) + '\n\nCONTEXTO:\n' + ctx, messages: msgs });
   bumpQuota(req, quota.day);
   res.json({ answer, quota: aiQuota(req) });
 }));
@@ -338,15 +424,45 @@ app.post('/api/ai/pitch/:code', requireUser, wrap(async (req, res) => {
   const quota = aiQuota(req); if (!quota.left) return res.status(429).json({ error: 'Límite diario alcanzado' });
   const { profile } = parseQuery({ profile: req.body?.profile }, req.user, true);
   const sc = scored(profile, null, 'campestre');
-  const prompt = profile === 'proveedor'
+  const prompt = profile === 'servicios'
+    ? `Redacta para una empresa de mantenimiento (O&M) y servicios solares: (1) diagnóstico de 3 frases de ${m.name} como mercado de mantenimiento (sistemas instalados, plantas cercanas, proyectos nuevos, cortes), (2) qué servicios ofrecer (limpieza, revisión, monitoreo, repotenciación), (3) a quién contactar primero, (4) un mensaje corto (máx. 60 palabras) para ofrecer mantenimiento.`
+    : profile === 'respaldo'
+      ? `Redacta para un vendedor de baterías y sistemas de respaldo: (1) diagnóstico de 3 frases de ${m.name} según cortes de energía, tarifa y tipo de clientes, (2) el cliente ideal (hogar, hotel, comercio, finca), (3) tres argumentos de venta con cifras del contexto, (4) un mensaje de WhatsApp corto (máx. 60 palabras).`
+      : profile === 'proveedor'
     ? `Redacta para un proveedor de equipos solares: (1) diagnóstico de 3 frases de ${m.name} como plaza de distribución, (2) qué instaladores o contratistas priorizar y por qué, (3) tres argumentos comerciales con cifras del contexto, (4) un mensaje corto (máx. 60 palabras) para presentarse a un instalador de la zona.`
     : profile === 'desarrollador'
       ? `Redacta para un desarrollador o inversionista solar: (1) diagnóstico de 3 frases de ${m.name} para una planta o autogeneración remota (sol, red, tarifa, contingencias, competencia), (2) riesgos principales, (3) qué verificar en campo y con el operador de red, (4) un resumen ejecutivo de 60 palabras.`
       : `Redacta para un instalador solar: (1) un diagnóstico de 3 frases de por qué ${m.name} es o no buena zona de venta, (2) el perfil de cliente ideal allí, (3) tres argumentos de venta con cifras del contexto, (4) un mensaje de WhatsApp corto (máx. 60 palabras) para administradores de conjuntos o propietarios de casas campestres. Público objetivo: ${req.body?.segmento || 'residencial'}.`;
-  const answer = await complete({ system: SYSTEM + '\n\nCONTEXTO:\n' + muniBrief(m, sc.byCode.get(m.code), true), messages: [{ role: 'user', content: prompt }], temperature: 0.5 });
+  const answer = await complete({ system: systemFor(req) + '\n\nCONTEXTO:\n' + muniBrief(m, sc.byCode.get(m.code), true), messages: [{ role: 'user', content: prompt }], temperature: 0.5 });
   bumpQuota(req, quota.day);
   res.json({ answer });
 }));
+
+// Texto de introducción para propuestas e informes en PDF
+app.post('/api/ai/propuesta/:code', requireUser, wrap(async (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
+  const m = store.byCode.get(req.params.code); if (!m) return res.status(404).json({ error: 'No encontrado' });
+  const quota = aiQuota(req); if (!quota.left) return res.status(429).json({ error: 'Límite diario alcanzado' });
+  const { profile } = parseQuery({ profile: req.body?.profile }, req.user, true);
+  const sc = scored(profile, null, 'campestre');
+  const cliente = String(req.body?.cliente || '').slice(0, 120);
+  const tipo = req.body?.tipo;
+  const kwp = Math.max(1, Math.min(5000, +req.body?.kwp || 6));
+  const prompt = tipo === 'alcaldia'
+    ? `Escribe la introducción (máx. 150 palabras, en párrafos, sin títulos ni listas) de un informe para la alcaldía de ${m.name} sobre el potencial de la energía solar en el municipio: radiación, tarifa, cortes y beneficios para hogares, edificios públicos y comercio. Tono institucional.`
+    : tipo === 'zona'
+      ? `Escribe un resumen ejecutivo (máx. 150 palabras, en párrafos, sin títulos ni listas) de ${m.name} como zona de oportunidad para un ${PROFILES[profile].label.toLowerCase()}, con las cifras clave del contexto.`
+      : `Escribe la introducción (máx. 140 palabras, en párrafos, sin títulos ni listas) de una propuesta comercial de un sistema solar de ${kwp} kWp${cliente ? ` para ${cliente}` : ''} en ${m.name}. Explica por qué conviene allí (tarifa, radiación, cortes) con cifras del contexto. Tono cercano y profesional, en segunda persona dirigida al cliente. No prometas cifras distintas a las del contexto.`;
+  const answer = await complete({ system: systemFor(req) + '\n\nCONTEXTO:\n' + muniBrief(m, sc.byCode.get(m.code), true), messages: [{ role: 'user', content: prompt }], temperature: 0.4, maxTokens: 600 });
+  bumpQuota(req, quota.day);
+  res.json({ answer });
+}));
+
+// Equipo: usuarios de la misma empresa
+app.get('/api/team', requireUser, (req, res) => {
+  if (!req.user.company) return res.json({ company: null, members: [] });
+  res.json({ company: req.user.company, members: db.prepare('SELECT username, name, last_login FROM users WHERE company=? AND active=1 ORDER BY username').all(req.user.company) });
+});
 
 // ---------------- Administración ----------------
 const admin = express.Router();
@@ -363,6 +479,24 @@ admin.post('/users', (req, res) => {
   if (db.prepare('SELECT 1 FROM users WHERE username=?').get(username)) return res.status(409).json({ error: 'Ese usuario ya existe' });
   const r = db.prepare('INSERT INTO users(username,pass_hash,role,name,company,phone,notes,paid_until,profile) VALUES(?,?,?,?,?,?,?,?,?)').run(username.trim(), hashPassword(password), role, name || null, company || null, phone || null, notes || null, paid_until || null, profile);
   res.json({ id: r.lastInsertRowid });
+});
+// Crea varios usuarios de una misma empresa (licencia de equipo) con contraseñas generadas
+admin.post('/users/team', (req, res) => {
+  const { company, n = 3, prefix, role = 'paid', profile = 'todos', paid_until } = req.body || {};
+  const count = Math.max(1, Math.min(50, +n || 0));
+  if (!company || String(company).trim().length < 2) return res.status(400).json({ error: 'Escribe el nombre de la empresa' });
+  if (!PROF_OK.includes(profile)) return res.status(400).json({ error: 'Perfil inválido' });
+  if (!['trial', 'paid'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
+  const base = String(prefix || company).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || 'equipo';
+  const out = [];
+  for (let i = 1; out.length < count && i < 500; i++) {
+    const username = `${base}${i}`;
+    if (db.prepare('SELECT 1 FROM users WHERE username=?').get(username)) continue;
+    const password = crypto.randomBytes(9).toString('base64url');
+    db.prepare('INSERT INTO users(username,pass_hash,role,company,paid_until,profile,name) VALUES(?,?,?,?,?,?,?)').run(username, hashPassword(password), role, String(company).trim(), paid_until || null, profile, username);
+    out.push({ username, password });
+  }
+  res.json({ users: out, seed: out.map((u) => `${u.username}:${u.password}:${role}:${profile}:${String(company).trim().replace(/[:;]/g, ' ')}`).join(';') });
 });
 admin.patch('/users/:id', (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(+req.params.id); if (!u) return res.status(404).json({ error: 'No existe' });
