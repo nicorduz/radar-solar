@@ -15,6 +15,13 @@ import Mercado from './pages/Mercado.jsx';
 import { ProfileSwitch } from './components/ui.jsx';
 import Terminos, { LegalLine, TerminosTexto } from './pages/Terminos.jsx';
 import Plan, { PoweredBy } from './pages/Plan.jsx';
+import Industrias from './pages/Industrias.jsx';
+import Prospectos from './pages/Prospectos.jsx';
+import Calculadora from './pages/Calculadora.jsx';
+import Propuesta from './pages/Propuesta.jsx';
+import Compartido from './pages/Compartido.jsx';
+import Tour from './components/Tour.jsx';
+import { useLocal, FOLLOWS, SEEN } from './local.js';
 
 export const Ctx = createContext(null);
 // localStorage puede fallar (modo privado): se usa con try/catch
@@ -35,15 +42,20 @@ const PAGES = {
   mapa: { label: 'Mapa', icon: 'map' },
   ranking: { label: 'Ranking', icon: 'list' },
   clientes: { label: 'Hoteles y turismo', icon: 'hotel' },
+  industrias: { label: 'Empresas e industrias', icon: 'factory' },
+  prospectos: { label: 'Mis prospectos', icon: 'star' },
+  calculadora: { label: 'Calculadora financiera', icon: 'calc' },
   empresas: { label: 'Instaladores y empresas', icon: 'building' },
   mercado: { label: 'Mercado y red', icon: 'chart' },
   licitaciones: { label: 'Licitaciones', icon: 'doc' },
   asistente: { label: 'Asistente IA', icon: 'spark' },
 };
 const ORDER = {
-  instalador: ['mapa', 'ranking', 'clientes', 'licitaciones', 'mercado', 'empresas', 'asistente'],
-  proveedor: ['mapa', 'ranking', 'empresas', 'mercado', 'licitaciones', 'clientes', 'asistente'],
-  desarrollador: ['mapa', 'ranking', 'mercado', 'licitaciones', 'empresas', 'clientes', 'asistente'],
+  instalador: ['mapa', 'ranking', 'clientes', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'asistente'],
+  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'calculadora', 'asistente'],
+  desarrollador: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'empresas', 'clientes', 'asistente'],
+  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'calculadora', 'asistente'],
+  respaldo: ['mapa', 'ranking', 'clientes', 'prospectos', 'industrias', 'mercado', 'licitaciones', 'calculadora', 'empresas', 'asistente'],
 };
 const navFor = (profile) => (ORDER[profile] || ORDER.instalador).map((id) => ({ id, ...PAGES[id] }));
 
@@ -55,6 +67,9 @@ export default function App() {
   const [segment, setSegment] = useState(() => store.get('rs_segment') || 'campestre');
   const [profile, setProfile] = useState(() => store.get('rs_profile'));
   const [weights, setWeights] = useState(null);
+  const [follows] = useLocal(FOLLOWS, []);
+  const [seen] = useLocal(SEEN, []);
+  const [nov, setNov] = useState(null);
 
   useEffect(() => {
     api('/config').then(setCfg).catch(() => {});
@@ -81,12 +96,21 @@ export default function App() {
     setWeights(w);
   }, [meta, profile]);
 
+  // Cuántas novedades sin ver hay en las zonas que sigue (se consulta al entrar y cuando cambia la lista)
+  useEffect(() => {
+    if (!meta?.paid || !follows.length) { setNov(null); return; }
+    api('/novedades', { method: 'POST', body: { codes: follows.map((f) => f.code) } }).then((r) => setNov(r.items.map((x) => x.id))).catch(() => setNov(null));
+  }, [meta?.paid, follows.map((f) => f.code).join(',')]);
+  const sinVer = nov ? nov.filter((id) => !seen.includes(id)).length : 0;
+
   const go = useCallback((view, arg) => { window.location.hash = `/${view}${arg ? '/' + encodeURIComponent(arg) : ''}`; }, []);
   const updateWeights = (w) => { setWeights(w); store.set('rs_weights_' + profile, JSON.stringify(w)); };
   const updateSegment = (s) => { setSegment(s); store.set('rs_segment', s); };
   const updateProfile = (p) => { setWeights(null); setProfile(p); store.set('rs_profile', p); };
   const logout = async () => { await api('/logout', { method: 'POST' }).catch(() => {}); setUser(null); setMeta(null); };
 
+  // Ficha compartida por enlace: se ve sin iniciar sesión
+  if (route.view === 'compartido' && route.arg) return <Compartido token={route.arg} />;
   if (user === undefined) return <div className="login"><div className="spinner" /></div>;
   if (!user) {
     if (route.view === 'terminos') return <div className="login" style={{ alignItems: 'flex-start' }}><div className="card" style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 14 }}><a href="#/" className="small">← Volver al ingreso</a><h1>Términos de la licencia de uso</h1><TerminosTexto appName={cfg.appName} /></div></div>;
@@ -115,9 +139,13 @@ export default function App() {
   else if (view === 'cuenta') page = <Cuenta />;
   else if (view === 'terminos') page = <Terminos appName={cfg.appName} />;
   else if (view === 'plan') page = <Plan />;
+  else if (view === 'industrias') page = <Industrias code={arg} />;
+  else if (view === 'prospectos') page = <Prospectos />;
+  else if (view === 'calculadora') page = <Calculadora code={arg} />;
+  else if (view === 'propuesta' && arg) page = <Propuesta key={arg} arg={arg} />;
   else page = <MapPage />;
 
-  const active = view === 'm' ? 'ranking' : view;
+  const active = view === 'm' || view === 'propuesta' ? 'ranking' : view;
   return (
     <Ctx.Provider value={ctx}>
       <div className="shell">
@@ -127,7 +155,7 @@ export default function App() {
           <ProfileSwitch />
           {nav.map((n) => (
             <button key={n.id} className={`navbtn ${active === n.id ? 'on' : ''}`} onClick={() => go(n.id)}>
-              <Icon name={n.icon} />{n.label}
+              <Icon name={n.icon} />{n.label}{n.id === 'prospectos' && sinVer > 0 && <span className="badge" aria-label={`${sinVer} novedades sin ver`}>{sinVer > 99 ? '99+' : sinVer}</span>}
             </button>
           ))}
           <div className="spacer" />
@@ -136,6 +164,7 @@ export default function App() {
           <div className="legal-foot"><LegalLine go={go} /></div>
         </aside>
         <main className="main">{page}</main>
+        <Tour paid={paid} go={go} />
         <nav className="bottomnav">
           {[...NAV.slice(0, 3), PAGES.asistente && { id: 'asistente', ...PAGES.asistente }, { id: 'cuenta', label: 'Más', icon: 'menu' }].map((n) => (
             <button key={n.id} className={active === n.id || (n.id === 'cuenta' && !['mapa', 'ranking', 'asistente', NAV[2].id].includes(active)) ? 'on' : ''} onClick={() => go(n.id)}>
