@@ -38,7 +38,7 @@ export default function Licitaciones() {
                   <td className="small">{s.estado}</td>
                   <td className="num">{money(s.precio)}</td>
                   <td className="num small">{s.adjudicado ? <>{s.proveedor}<br />{money(s.valor_adj)}</> : '—'}</td>
-                  <td><span style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>{s.url && <a href={s.url} target="_blank" rel="noreferrer" className="small">Ver proceso</a>}{paid && <ProspectButton p={{ tipo: 'licitacion', ref: s.id, nombre: s.nombre, code: s.code, mun: `${s.ciudad}, ${s.dpto}`, valor: s.precio, url: s.url, detalle: `${s.entidad} · ${s.estado} · ${s.fecha}` }} />}</span></td>
+                  <td><span style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>{s.url && <a href={s.url} target="_blank" rel="noreferrer" className="small">Ver proceso</a>}{<ProspectButton p={{ tipo: 'licitacion', ref: s.id, nombre: s.nombre, code: s.code, mun: `${s.ciudad}, ${s.dpto}`, valor: s.precio, url: s.url, detalle: `${s.entidad} · ${s.estado} · ${s.fecha}` }} />}</span></td>
                 </tr>))}</tbody>
             </table>
             {data.locked && <LockedRows cols={7} n={8} text={`${fmt(data.total - 1)} procesos más, con filtros por departamento, estado y quién ganó cada contrato.`} />}
