@@ -6,7 +6,7 @@ import { WeightsControl, ScoreBadge, LockedRows, Spinner } from '../components/u
 export default function Ranking() {
   const { meta, paid, prof, profile, scoreParams, go } = useApp();
   const cols = prof.metrics.filter((k) => k !== 'score' && METRICS[k]);
-  const [f, setF] = useState({ q: '', dpto: '', or: '', minPop: '' });
+  const [f, setF] = useState({ q: '', dpto: '', or: '', minPop: '', maxSubKm: '', minGhi: '', minKv: '' });
   const [data, setData] = useState(null);
   const [limit, setLimit] = useState(100);
 
@@ -42,6 +42,15 @@ export default function Ranking() {
           {data && <button className="btn sm" onClick={csv}>Descargar CSV</button>}
         </div>
       )}
+      {paid && (profile === 'desarrollador' || profile === 'servicios') && (
+        <div className="row site-filter">
+          <span className="small"><b>Filtro de sitios</b></span>
+          <select className="select" style={{ maxWidth: 240 }} value={f.maxSubKm} onChange={(e) => setF({ ...f, maxSubKm: e.target.value })} aria-label="Distancia máxima a subestación"><option value="">Subestación a cualquier distancia</option><option value="5">Subestación a 5 km o menos</option><option value="10">A 10 km o menos</option><option value="20">A 20 km o menos</option></select>
+          <select className="select" style={{ maxWidth: 190 }} value={f.minGhi} onChange={(e) => setF({ ...f, minGhi: e.target.value })} aria-label="Radiación mínima"><option value="">Cualquier radiación</option><option value="4.5">Radiación 4,5 o más</option><option value="5">5,0 o más</option><option value="5.5">5,5 o más</option></select>
+          <select className="select" style={{ maxWidth: 240 }} value={f.minKv} onChange={(e) => setF({ ...f, minKv: e.target.value })} aria-label="Tensión mínima a 30 km"><option value="">Cualquier tensión a 30 km</option><option value="110">110 kV o más a 30 km</option><option value="220">220 kV o más</option><option value="500">500 kV</option></select>
+          <span className="small muted">Luego dibuja el predio en el mapa para ver la red más cercana.</span>
+        </div>
+      )}
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
@@ -66,7 +75,8 @@ export default function Ranking() {
             {data.locked && <LockedRows cols={6} n={10} text={`Hay ${fmt(data.total - 1)} municipios más en el ranking. Actívalo para verlos, filtrarlos y descargarlos.`} />}
           </div>
           {paid && data.total > data.rows.length && <button className="btn" onClick={() => setLimit(limit + 200)}>Mostrar más ({fmt(data.total - data.rows.length)} restantes)</button>}
-          <p className="small muted">Tarifa: valor facturado por kWh a usuarios residenciales estratos 4 a 6 del mercado regulado (SUI, {meta.cortes.sui}); comercial, igual para usuarios comerciales. Vivienda: licencias DANE ELIC (corte {meta.cortes.elic}). Cortes: demanda no atendida de la subárea eléctrica en 12 meses (XM, {meta.cortes.dna}) por cada 1.000 habitantes. Turismo: habitaciones y viviendas turísticas del RNT por tamaño del municipio. AGPE est.: autogeneradores de XM ({meta.cortes.agpe_xm}) repartidos por municipio dentro de su mercado. Instaladores: empresas con CIIU de instalación o contratos solares en SECOP ubicadas en el municipio. Radiación NASA POWER.</p>
+          {meta.admin ? <p className="small muted"><span className="tag">Solo admin</span> Tarifa: valor facturado por kWh a usuarios residenciales estratos 4 a 6 del mercado regulado (SUI, {meta.cortes.sui}); comercial, igual para usuarios comerciales. Vivienda: licencias DANE ELIC (corte {meta.cortes.elic}). Cortes: demanda no atendida de la subárea eléctrica en 12 meses (XM, {meta.cortes.dna}) por cada 1.000 habitantes. Turismo: habitaciones y viviendas turísticas del RNT por tamaño del municipio. AGPE est.: autogeneradores de XM ({meta.cortes.agpe_xm}) repartidos por municipio dentro de su mercado. Instaladores: empresas con CIIU de instalación o contratos solares en SECOP ubicadas en el municipio. Radiación NASA POWER.</p>
+            : <p className="small muted">Tarifa: valor por kWh que pagan los usuarios residenciales estratos 4 a 6 (comercial: usuarios comerciales). Vivienda: viviendas con licencia de construcción en los últimos 12 meses. Cortes: energía no atendida de la zona eléctrica en 12 meses por cada 1.000 habitantes. Turismo: habitaciones y viviendas turísticas según el tamaño del municipio. AGPE est.: autogeneradores estimados en el municipio. Instaladores: empresas de instalación eléctrica o con contratos solares ubicadas en el municipio.</p>}
         </>
       )}
     </div>
