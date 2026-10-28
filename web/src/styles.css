@@ -106,7 +106,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 /* ---------- Mapa ---------- */
 .mapwrap { position: absolute; inset: 0; }
 .mapwrap .maplibregl-map { position: absolute; inset: 0; }
-.map-top { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; pointer-events: none; }
+.map-top { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 8; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; pointer-events: none; }
 .map-top > * { pointer-events: auto; }
 .glass { background: rgba(25, 21, 67, 0.93); border: 1px solid var(--line-2); border-radius: 10px; backdrop-filter: blur(6px); }
 .map-panel { position: absolute; z-index: 5; right: 12px; top: 72px; bottom: 12px; width: 360px; display: flex; flex-direction: column; overflow: hidden; }
@@ -246,3 +246,57 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 /* ---------- Logo Radar Solar ---------- */
 .login-logo { display: block; align-self: stretch; margin: 2px 0 4px; }
 .login-logo img { display: block; width: 100%; max-width: 330px; height: auto; }
+
+/* ---------- Respuestas de la IA en Markdown ---------- */
+.msg.assistant { white-space: normal; line-height: 1.6; position: relative; }
+.msg .copy { position: absolute; top: 6px; right: 6px; min-height: 26px; padding: 0 8px; font-size: 11.5px; opacity: 0; transition: opacity 0.15s; }
+.msg:hover .copy, .msg .copy:focus { opacity: 1; }
+@media (hover: none) { .msg .copy { opacity: 0.8; } }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 10px; }
+.md .md-h { margin: 16px 0 8px; font-family: var(--sub); font-weight: 700; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.md h3.md-h { font-size: 16px; }
+.md h4.md-h { font-size: 14.5px; color: var(--sky); }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md li::marker { color: var(--sky); }
+.md strong { color: var(--ink); font-weight: 700; }
+.md a { color: var(--sky); }
+.md code { font-family: var(--mono); font-size: 0.9em; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+.md pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 0 0 10px; }
+.md pre code { border: 0; padding: 0; background: none; }
+.md blockquote { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--blue); background: var(--panel-2); border-radius: 0 8px 8px 0; color: var(--ink-2); }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.md-table { overflow-x: auto; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 8px; }
+.md-table table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.md-table th { text-align: left; background: var(--panel-2); color: var(--ink); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.md-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.md-table tr:last-child td { border-bottom: 0; }
+
+/* ---------- Búsqueda y herramientas de dibujo del mapa ---------- */
+.map-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: 38px; width: 300px; max-width: 100%; color: var(--muted); }
+.map-search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font-size: 14px; padding: 8px 0; }
+.map-search input::placeholder { color: var(--muted); }
+.map-search:focus-within { border-color: var(--sky); }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; }
+.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+.draw-bar { position: absolute; z-index: 5; left: 12px; top: 120px; display: flex; flex-direction: column; gap: 2px; padding: 5px; }
+.draw-bar button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
+.draw-bar button:hover { background: var(--panel-2); color: var(--ink); }
+.draw-bar button.on { background: var(--blue-btn); color: #fff; }
+.draw-hint, .draw-info { position: absolute; z-index: 6; left: 64px; top: 120px; width: 270px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.draw-info { width: 290px; }
+.draw-top { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.draw-top button { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; background: none; color: var(--ink); padding: 5px 4px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 13px; }
+.draw-top button:hover { background: var(--panel-2); }
+.draw-top-one { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; background: var(--panel-2); color: var(--ink); padding: 6px 8px; border-radius: 6px; cursor: pointer; text-align: left; }
+.panel-scope { margin: 0 14px 10px; display: flex; }
+.panel-scope button { flex: 1; font-size: 12.5px; padding: 6px 8px; min-height: 32px; }
+@media (max-width: 860px) {
+  .map-search { width: 100%; order: -1; }
+  .draw-bar { top: auto; bottom: calc(var(--nav-h) + 120px); left: 8px; flex-direction: row; flex-wrap: wrap; max-width: 140px; }
+  .draw-bar button { width: 36px; height: 36px; }
+  .draw-hint, .draw-info { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(var(--nav-h) + 200px); }
+  .draw-hint > .small { display: none; }
+}
