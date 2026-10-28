@@ -170,10 +170,12 @@ export function Fuente({ children, style }) {
 
 // Botón para guardar una empresa, hotel o licitación como prospecto
 export function ProspectButton({ p, small = true }) {
+  const { paid } = useApp();
   const [list] = useLocal(PROSPECTS, []);
   const saved = hasProspect(list, p);
+  const lleno = !paid && !saved && list.length >= 3; // la versión de prueba permite 3 prospectos
   return (
-    <button className={`btn ${small ? 'sm' : ''} ${saved ? 'ghost' : ''}`} disabled={saved} onClick={(e) => { e.stopPropagation(); addProspect(p); }} title={saved ? 'Ya está en Mis prospectos' : 'Agregar a Mis prospectos'}>
+    <button className={`btn ${small ? 'sm' : ''} ${saved ? 'ghost' : ''}`} disabled={saved || lleno} onClick={(e) => { e.stopPropagation(); addProspect(p); }} title={saved ? 'Ya está en Mis prospectos' : lleno ? 'La versión de prueba permite 3 prospectos' : 'Agregar a Mis prospectos'}>
       <Icon name={saved ? 'check' : 'plus'} size={14} />{saved ? 'En prospectos' : 'Prospecto'}
     </button>
   );
