@@ -4,7 +4,7 @@ import { useApp } from '../App.jsx';
 import { Spinner } from '../components/ui.jsx';
 
 const ROLES = { trial: 'Prueba', paid: 'Pago', admin: 'Administrador' };
-const PERFILES = { todos: 'Todos los perfiles', instalador: 'Instalador solar', proveedor: 'Proveedor de equipos', desarrollador: 'Desarrollador o inversionista' };
+const PERFILES = { todos: 'Todos los perfiles', instalador: 'Instalador solar', proveedor: 'Proveedor de equipos', desarrollador: 'Desarrollador o inversionista', servicios: 'Mantenimiento y servicios (O&M)', respaldo: 'Baterías y respaldo' };
 
 export default function Admin() {
   const [tab, setTab] = useState('usuarios');
@@ -27,7 +27,14 @@ function Usuarios() {
   const [list, setList] = useState(null);
   const [edit, setEdit] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [team, setTeam] = useState(null);
+  const [teamOut, setTeamOut] = useState(null);
   const load = () => api('/admin/users').then(setList);
+  const saveTeam = async (e) => {
+    e.preventDefault(); setMsg(null);
+    try { const r = await api('/admin/users/team', { method: 'POST', body: team }); setTeamOut(r); setTeam(null); load(); }
+    catch (e2) { setMsg({ ok: false, t: e2.message }); }
+  };
   useEffect(() => { load(); }, []);
   const save = async (e) => {
     e.preventDefault(); setMsg(null);
@@ -44,8 +51,36 @@ function Usuarios() {
     <>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className="muted small">{list.length} usuarios · {list.filter((u) => u.role === 'paid').length} de pago</span>
-        <button className="btn primary" onClick={() => setEdit({ username: '', password: '', role: 'trial', profile: 'todos', name: '', company: '', phone: '', paid_until: '', active: 1 })}>Crear usuario</button>
+        <span className="row" style={{ gap: 6 }}><button className="btn" onClick={() => setTeam({ company: '', n: 3, prefix: '', role: 'paid', profile: 'todos', paid_until: '' })}>Crear equipo</button>
+        <button className="btn primary" onClick={() => setEdit({ username: '', password: '', role: 'trial', profile: 'todos', name: '', company: '', phone: '', paid_until: '', active: 1 })}>Crear usuario</button></span>
       </div>
+      {teamOut && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <b>Equipo creado. Copia estas claves ahora: no se vuelven a mostrar.</b>
+          <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Usuario</th><th>Contraseña</th></tr></thead><tbody>{teamOut.users.map((u) => <tr key={u.username}><td className="mono">{u.username}</td><td className="mono">{u.password}</td></tr>)}</tbody></table></div>
+          <span className="small muted">En el plan gratis de Render los usuarios creados aquí se borran al reiniciar. Para que no se pierdan, agrega este texto al final de la variable SEED_USERS (separado con punto y coma):</span>
+          <textarea className="input mono small" rows={3} readOnly value={teamOut.seed} onFocus={(e) => e.target.select()} />
+          <div className="row"><button className="btn sm" onClick={() => navigator.clipboard?.writeText(teamOut.seed)}>Copiar para SEED_USERS</button><button className="btn sm ghost" onClick={() => setTeamOut(null)}>Cerrar</button></div>
+        </div>
+      )}
+      {team && (
+        <div className="modal-bg" onClick={() => setTeam(null)}>
+          <form className="card modal" onClick={(e) => e.stopPropagation()} onSubmit={saveTeam} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h2>Crear licencia de equipo</h2>
+            <label className="f">Empresa<input className="input" required value={team.company} onChange={(e) => setTeam({ ...team, company: e.target.value })} /></label>
+            <div className="grid g2" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <label className="f">Número de usuarios<input className="input" type="number" min="1" max="50" value={team.n} onChange={(e) => setTeam({ ...team, n: +e.target.value })} /></label>
+              <label className="f">Prefijo de usuario (opcional)<input className="input" value={team.prefix} placeholder="ej. solaris" onChange={(e) => setTeam({ ...team, prefix: e.target.value })} /></label>
+            </div>
+            <label className="f">Tipo<select className="select" value={team.role} onChange={(e) => setTeam({ ...team, role: e.target.value })}><option value="paid">Pago: acceso completo</option><option value="trial">Prueba</option></select></label>
+            <label className="f">Perfil<select className="select" value={team.profile} onChange={(e) => setTeam({ ...team, profile: e.target.value })}>{Object.entries(PERFILES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            <label className="f">Pago válido hasta (opcional)<input className="input" type="date" value={team.paid_until} onChange={(e) => setTeam({ ...team, paid_until: e.target.value })} /></label>
+            <span className="small muted">Se crean usuarios como prefijo1, prefijo2… con contraseñas aleatorias. Todos quedan en la misma empresa y se ven como equipo.</span>
+            {msg && !msg.ok && <div className="alert err">{msg.t}</div>}
+            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost" onClick={() => setTeam(null)}>Cancelar</button><button className="btn primary">Crear usuarios</button></div>
+          </form>
+        </div>
+      )}
       {msg && <div className={`alert ${msg.ok ? 'ok' : 'err'}`}>{msg.t}</div>}
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Usuario</th><th>Rol</th><th>Perfil</th><th>Empresa</th><th>Pago hasta</th><th>Último ingreso</th><th>Estado</th><th></th></tr></thead><tbody>
         {list.map((u) => (
