@@ -2,6 +2,7 @@ import React from 'react';
 import { fmt, money } from '../api.js';
 import MapSnapshot from './MapSnapshot.jsx';
 import { inkOn, readableOnWhite, SELLO } from '../branding.js';
+import { SemanaChart, DiaChart as DiaHoras, CostTable, saldo } from '../pages/Diseno.jsx';
 
 // Reporte PDF del diseño solar con la marca de la empresa del usuario.
 // Gráficas en SVG (se imprimen nítidas); cada sección es una página A4.
@@ -28,19 +29,23 @@ function diaTipico({ consumoDia, genDia, tipo, batUtil }) {
   return { load, gen, auto, bat };
 }
 
-export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, genAnual, compensa, gen, consumo, sinBat, conBat, bat, batKwh, respaldoH, inversor, costoPV, costoBat, solar, tarifa }) {
+export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, bat, batKwh, respaldoH, sitio, tarifa, caras }) {
   const c1 = marca.color1 || '#231D5D', c2 = marca.color2 || '#FF7A00';
   const t1 = readableOnWhite(c1), t2 = readableOnWhite(c2);
-  const conviene = conBat && conBat.r.neto >= sinBat.r.neto * 0.9; // la batería se recomienda si su valor neto es parecido o mayor
+  const conviene = conBat && conBat.fin.neto >= sinBat.fin.neto * 0.9; // la batería se recomienda si su valor neto es parecido o mayor
   const best = conviene ? conBat : sinBat;
-  const r = best.r;
-  const costo = costoPV + (conviene ? costoBat : 0);
+  const r = { ...best.fin, ahorro1: best.ahorro1, facturaAntes: best.facturaAntes, facturaDespues: best.facturaDespues, sinHacer: best.sinHacer };
+  const costo = best.cap.total;
+  const compensa = (genAnual / Math.max(1, consumoAnual)) * 100;
+  const consumo = best.sim.mes.map((m) => m.consumo);
+  const solar = { muni: sitio?.muni, anual: kwp ? genAnual / kwp : 0, mensual: best.sim.mes.map((m) => (kwp ? m.gen / kwp : 0)) };
+  const inversor = kwAc;
   const hoy = new Date();
   const fecha = hoy.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
   const vence = new Date(hoy.getTime() + (marca.validez || 30) * 864e5).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
   const codigo = `RS-${hoy.toISOString().slice(2, 10).replace(/-/g, '')}-${String(Math.round(kwp * 100)).padStart(4, '0')}`;
   const co2 = r.serie.reduce((a, s, i) => a + genAnual * Math.pow(0.995, i), 0) / 1000 * FE_RED;
-  const dia = diaTipico({ consumoDia: consumo[0] / 30.4, genDia: genAnual / 365, tipo: d.tipo, batUtil: bat ? batKwh * bat.dod : 0 });
+  const sumF = (e, k) => e.fact.reduce((a, m) => a + m[k], 0);
   const paginas = ['portada', 'resumen', 'techo', 'energia', 'inversion', ...(conBat ? ['respaldo'] : []), 'cierre'];
   const num = (k) => paginas.indexOf(k) + 1;
   const style = { '--c1': c1, '--c2': c2, '--t1': t1, '--t2': t2, '--k1': inkOn(c1) };
@@ -93,7 +98,7 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
             <Tile l="Generación al año" v={`${fmt(genAnual)} kWh`} />
             <Tile l="Consumo al año" v={`${fmt(consumo.reduce((a, b) => a + b, 0))} kWh`} />
             <Tile l="Factura hoy" v={`${money(r.facturaAntes / 12)}/mes`} />
-            <Tile l="Factura con el sistema" v={`${money(Math.max(0, r.facturaDespues / 12))}/mes`} />
+            <Tile l="Factura con el sistema" v={`${saldo(r.facturaDespues / 12)}/mes`} />
             <Tile l="Inversión" v={money(costo)} />
             <Tile l="CO₂ evitado en 25 años" v={`${fmt(co2, 1)} t`} />
           </div>
@@ -104,10 +109,10 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
           <p>{conviene
             ? `La batería aprovecha la energía que sobra al mediodía para la noche y le da ${fmt(respaldoH, 1)} horas de respaldo cuando se va la luz, con un retorno parecido al del sistema solo con paneles.`
             : conBat
-              ? `La batería le daría ${fmt(respaldoH, 1)} horas de respaldo, pero alarga el retorno a ${conBat.r.payback != null ? fmt(conBat.r.payback, 1) + ' años' : 'más de 25 años'}. Se puede agregar después.`
+              ? `La batería le daría ${fmt(respaldoH, 1)} horas de respaldo, pero alarga el retorno a ${conBat.fin.payback != null ? fmt(conBat.fin.payback, 1) + ' años' : 'más de 25 años'}. Se puede agregar después.`
               : `El sistema se paga en ${r.payback != null ? fmt(r.payback, 1) + ' años' : 'más de 25 años'} y después la energía es prácticamente gratis por el resto de su vida útil.`}</p>
         </div>
-        <div className="r2-nada"><span>Si no hace nada, en 25 años pagará en energía cerca de</span><b>{money(r.sinHacer)}</b><span>(con un aumento de tarifa de {d.incr} % al año)</span></div>
+        <div className="r2-nada"><span>Si no hace nada, en 25 años pagará en energía cerca de</span><b>{money(r.sinHacer)}</b><span>(con un aumento de tarifa de {d.f.incr} % al año)</span></div>
         <Foot k="resumen" />
       </section>
 
@@ -117,15 +122,18 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
         <h2 className="r2-h">{fmt(n)} paneles en {fmt(n * (panel.largo * panel.ancho) / 1e6)} m² de su techo</h2>
         <div className="r2-two">
           <MapSnapshot sat={cfg.sat} fc={fc} width={800} height={800} className="r2-snap sq" alt="Detalle del techo" />
-          <table className="r2-facts"><tbody>
-            <tr><td>Potencia instalada</td><td>{fmt(kwp, 2)} kWp</td></tr>
-            <tr><td>Paneles</td><td>{fmt(n)} × {panel.w} W</td></tr>
-            <tr><td>Inclinación</td><td>{d.tilt}°</td></tr>
-            <tr><td>Orientación</td><td>hacia el {AZ[d.azimuth] || 'sur'}</td></tr>
-            <tr><td>Altura del techo</td><td>{fmt(+d.altura, 1)} m</td></tr>
-            <tr><td>Producción por kWp</td><td>{fmt(solar?.anual)} kWh/año</td></tr>
-            <tr><td>Tarifa de energía</td><td>{fmt(tarifa)} $/kWh</td></tr>
-          </tbody></table>
+          <div>
+            <table className="r2-facts"><tbody>
+              <tr><td>Potencia instalada</td><td>{fmt(kwp, 2)} kWp</td></tr>
+              <tr><td>Paneles</td><td>{fmt(n)} × {panel.w} W</td></tr>
+              <tr><td>Inversor</td><td>{fmt(kwAc, 1)} kW</td></tr>
+              <tr><td>Producción por kWp</td><td>{fmt(solar.anual)} kWh/año</td></tr>
+              <tr><td>Tarifa de energía</td><td>{fmt(tarifa)} $/kWh</td></tr>
+            </tbody></table>
+            <table className="r2-tbl" style={{ marginTop: 10 }}><thead><tr><th>Cara del techo</th><th>Paneles</th><th>Inclinación</th><th>Mira al</th></tr></thead><tbody>
+              {caras.filter((c) => c.info).map((c) => <tr key={c.nombre}><td>{c.nombre}</td><td>{fmt(c.usados)}</td><td>{fmt(c.info.tilt)}°</td><td>{AZN(c.info.aspect)}</td></tr>)}
+            </tbody></table>
+          </div>
         </div>
         <h3 className="r2-h3">Cuánta energía da cada kWp, mes a mes</h3>
         <LineMes data={solar?.mensual || []} c={c2} unit="kWh por kWp" />
@@ -137,10 +145,22 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
       <section className="r2-page">
         <Head k="energia" titulo="Su energía" />
         <h2 className="r2-h">De dónde vendrá su energía cada mes</h2>
-        <Stacked m={best.m} c1={c1} c2={c2} />
-        <h3 className="r2-h3">Un día típico en su {d.tipo === 'empresa' ? 'negocio' : 'casa'}</h3>
-        <DiaChart dia={dia} c1={c1} c2={c2} conBat={!!(conviene && bat)} />
-        <p className="r2-note">Perfil de consumo típico de {d.tipo === 'empresa' ? 'un negocio' : 'un hogar'} ({d.diaFrac} % de día). La curva real depende de sus hábitos.</p>
+        <Stacked m={best.sim.mes} c1={c1} c2={c2} />
+        <div className="r2-two">
+          <div><h3 className="r2-h3">Su semana</h3><SemanaChart s={best.sim.semana} light /><p className="r2-leg"><span><i style={{ background: '#8A93B8' }} />Consumo</span><span><i style={{ background: '#FF7A00' }} />Solar usada</span><span><i style={{ background: '#FF7A00', opacity: 0.35 }} />Solar total</span></p></div>
+          <div><h3 className="r2-h3">Un día, hora a hora</h3><DiaHoras dia={best.sim.dia} light /></div>
+        </div>
+        <div className="r2-reco">
+          <span className="r2-reco-tag">Cómo se liquida su energía en un año</span>
+          <div className="r2-liq">
+            <div><span>Solar usada en el sitio</span><b>{fmt(best.sim.mes.reduce((a, m) => a + m.auto, 0))} kWh</b></div>
+            <div><span>Comprada a la red</span><b>{fmt(sumF(best, 'imp'))} kWh</b></div>
+            <div><span>Excedentes descontados de la factura</span><b>{fmt(sumF(best, 'permuta'))} kWh</b></div>
+            <div><span>Excedentes vendidos a precio de bolsa</span><b>{fmt(sumF(best, 'exceso'))} kWh</b></div>
+          </div>
+          <p className="r2-note">Según la regulación de autogeneradores (CREG 174 de 2021), cada mes los excedentes hasta la energía comprada se descuentan de la factura{kwAc <= 100 ? ' menos el costo de comercialización' : ' al valor del componente de generación'}, y los que superan esa energía se pagan a precio de bolsa.</p>
+        </div>
+        <p className="r2-note">Simulación hora a hora de un año con radiación satelital del sitio y el perfil de consumo {d.perfilSemana === 'personalizado' ? 'definido para este cliente' : 'típico elegido'}.</p>
         <Foot k="energia" />
       </section>
 
@@ -148,15 +168,21 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
       <section className="r2-page">
         <Head k="inversion" titulo="Su inversión" />
         <h2 className="r2-h">El sistema se paga en {r.payback != null ? <em>{fmt(r.payback, 1)} años</em> : 'más de 25 años'}</h2>
-        <Cash a={sinBat.r} b={conBat?.r} c1={c1} c2={c2} />
+        <Cash a={sinBat.fin} b={conBat?.fin} c1={c1} c2={c2} />
         <div className="r2-two">
-          <Bills antes={r.facturaAntes / 12} solo={Math.max(0, sinBat.r.facturaDespues / 12)} con={conBat ? Math.max(0, conBat.r.facturaDespues / 12) : null} c1={c1} c2={c2} />
+          <Bills antes={r.facturaAntes / 12} solo={sinBat.facturaDespues / 12} con={conBat ? conBat.facturaDespues / 12 : null} c1={c1} c2={c2} />
           <table className="r2-tbl"><thead><tr><th>Año</th><th>Ahorro del año</th><th>Acumulado</th></tr></thead><tbody>
             {[1, 5, 10, 15, 20, 25].map((y) => { const s = r.serie[y - 1]; return <tr key={y}><td>{y}</td><td>{money(s.ahorro)}</td><td className={s.acum >= 0 ? 'pos' : 'neg'}>{money(s.acum)}</td></tr>; })}
           </tbody></table>
         </div>
+        <div className="r2-kpis-row">
+          <Tile l={`Valor presente neto (${d.f.descuento} %)`} v={money(r.vpn)} />
+          <Tile l="Tasa interna de retorno" v={r.tir != null ? `${fmt(r.tir, 1)} %` : '—'} />
+          <Tile l="Costo de su energía solar" v={r.lcoe ? `${fmt(r.lcoe)} $/kWh` : '—'} />
+          <Tile l={d.f.financiado > 0 ? `Cuota mensual (${d.f.financiado} % a ${d.f.plazo} años)` : 'Tarifa de la red hoy'} v={d.f.financiado > 0 ? money(r.cuota) : `${fmt(tarifa)} $/kWh`} />
+        </div>
         {d.tipo === 'empresa' && <p className="r2-note">Las empresas pueden acceder a beneficios tributarios por invertir en energía solar (Ley 1715 de 2014 y Ley 2099 de 2021): deducción en renta de hasta el 50 % de la inversión, depreciación acelerada y exclusión de IVA, con la certificación del proyecto. No están incluidos en estas cifras; confírmelos con su contador.</p>}
-        <p className="r2-note">Supuestos: aumento de tarifa de {d.incr} % anual, pérdida de rendimiento de los paneles de 0,5 % anual y mantenimiento de 1 % de la inversión al año{conBat ? '; la batería se reemplaza en el año 12' : ''}.</p>
+        <p className="r2-note">Supuestos: aumento de tarifa de {d.f.incr} % anual, pérdida de rendimiento de los paneles de {fmt(d.f.degr, 1)} % anual, mantenimiento de {fmt(d.f.om, 1)} % de la inversión al año, cambio de inversor en el año {d.f.invAnio}{conviene ? ` y de batería en el año ${d.f.batAnio}` : ''}.</p>
         <Foot k="inversion" />
       </section>
 
@@ -168,25 +194,28 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
           <div className="r2-two">
             <Gauge horas={respaldoH} c={c2} carga={+d.cargaCritica} />
             <table className="r2-tbl wide"><thead><tr><th></th><th>Solo paneles</th><th>Con batería</th></tr></thead><tbody>
-              <tr><td>Inversión</td><td>{money(costoPV)}</td><td>{money(costoPV + costoBat)}</td></tr>
-              <tr><td>Energía solar usada en casa</td><td>{fmt(pctAuto(sinBat.m, genAnual))} %</td><td>{fmt(pctAuto(conBat.m, genAnual))} %</td></tr>
-              <tr><td>Factura mensual</td><td>{money(Math.max(0, sinBat.r.facturaDespues / 12))}</td><td>{money(Math.max(0, conBat.r.facturaDespues / 12))}</td></tr>
-              <tr><td>Retorno</td><td>{sinBat.r.payback != null ? `${fmt(sinBat.r.payback, 1)} años` : '> 25'}</td><td>{conBat.r.payback != null ? `${fmt(conBat.r.payback, 1)} años` : '> 25'}</td></tr>
-              <tr><td>Ahorro neto 25 años</td><td>{money(sinBat.r.neto)}</td><td>{money(conBat.r.neto)}</td></tr>
+              <tr><td>Inversión</td><td>{money(sinBat.cap.total)}</td><td>{money(conBat.cap.total)}</td></tr>
+              <tr><td>Energía solar usada en casa</td><td>{fmt(pctAuto(sinBat.sim.mes, genAnual))} %</td><td>{fmt(pctAuto(conBat.sim.mes, genAnual))} %</td></tr>
+              <tr><td>Factura mensual</td><td>{saldo(sinBat.facturaDespues / 12)}</td><td>{saldo(conBat.facturaDespues / 12)}</td></tr>
+              <tr><td>Retorno</td><td>{sinBat.fin.payback != null ? `${fmt(sinBat.fin.payback, 1)} años` : '> 25'}</td><td>{conBat.fin.payback != null ? `${fmt(conBat.fin.payback, 1)} años` : '> 25'}</td></tr>
+              <tr><td>Ahorro neto 25 años</td><td>{money(sinBat.fin.neto)}</td><td>{money(conBat.fin.neto)}</td></tr>
             </tbody></table>
           </div>
-          {solar?.muni?.dna_dias > 0 && <div className="r2-reco"><span className="r2-reco-tag">Contexto de su zona</span><p>La zona eléctrica de {solar.muni.name} registró cortes en <b>{fmt(solar.muni.dna_dias)} días</b> del último año.</p></div>}
+          {sitio?.muni?.dna_dias > 0 && <div className="r2-reco"><span className="r2-reco-tag">Contexto de su zona</span><p>La zona eléctrica de {sitio.muni.name} registró cortes en <b>{fmt(sitio.muni.dna_dias)} días</b> del último año.</p></div>}
           <Foot k="respaldo" />
         </section>
       )}
 
       {/* Cierre: equipos, pasos y contacto */}
       <section className="r2-page">
-        <Head k="cierre" titulo="Equipos y próximos pasos" />
-        <div className="r2-eqs">
+        <Head k="cierre" titulo="Equipos, inversión y próximos pasos" />
+        <div className="r2-two">
+          <div className="r2-eqs col">
           <div className="r2-eq"><Art t="panel" c1={c1} /><b>{fmt(n)} módulos solares</b><span>{conMarca(panel)}</span><span>{panel.w} W · {panel.largo}×{panel.ancho} mm{panel.garantia ? ` · ${panel.garantia} años de garantía` : ''}</span></div>
           <div className="r2-eq"><Art t="inv" c1={c1} c2={c2} /><b>Inversor de {fmt(inversor, 1)} kW</b><span>Convierte la energía solar para su uso</span><span>Con monitoreo de la producción</span></div>
           {bat && <div className="r2-eq"><Art t="bat" c1={c1} c2={c2} /><b>Batería de {fmt(batKwh, 1)} kWh</b><span>{d.batN > 1 ? `${d.batN} × ` : ''}{conMarca(bat)}</span><span>{conviene ? 'Recomendada' : 'Opcional'}</span></div>}
+        </div>
+          <div><h3 className="r2-h3" style={{ marginTop: 0 }}>Inversión detallada</h3><div className="r2-costs"><CostTable cap={best.cap} kwp={kwp} /></div></div>
         </div>
         <h3 className="r2-h3">Próximos pasos</h3>
         <ol className="r2-steps">
@@ -215,6 +244,7 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, g
 
 // Nombre del equipo con su marca, sin repetirla si el modelo ya la incluye
 const conMarca = (e) => (e.marca === 'Genérico' || e.nombre.toLowerCase().startsWith(e.marca.toLowerCase()) ? e.nombre : `${e.marca} ${e.nombre}`);
+const AZN = (a) => { const k = Math.round(a / 45) * 45; return { 0: 'sur', 45: 'suroeste', 90: 'oeste', 135: 'noroeste', 180: 'norte', '-180': 'norte', '-45': 'sureste', '-90': 'este', '-135': 'noreste' }[k] || 'sur'; };
 const pctAuto = (m, g) => (m.reduce((a, x) => a + x.auto, 0) / Math.max(1, g)) * 100;
 const Tile = ({ l, v }) => <div className="r2-tile"><span>{l}</span><b>{v}</b></div>;
 
@@ -309,7 +339,7 @@ function Bills({ antes, solo, con, c1, c2 }) {
   return (
     <div className="r2-bills">
       <b>Su factura mensual</b>
-      {rows.map(([l, v, c]) => <div key={l} className="r2-bill"><span>{l}</span><i style={{ width: `${Math.max(2, (v / max) * 100)}%`, background: c }} /><b>{money(v)}</b></div>)}
+      {rows.map(([l, v, c]) => <div key={l} className="r2-bill"><span>{l}</span><i style={{ width: `${Math.max(2, (Math.max(0, v) / max) * 100)}%`, background: c }} /><b>{saldo(v)}</b></div>)}
     </div>
   );
 }
