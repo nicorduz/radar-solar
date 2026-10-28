@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ROOT, STORAGE, config } from './config.js';
 import { db, getSetting } from './db.js';
 
-export const store = { municipios: [], byCode: new Map(), secop: [], empresas: [], proyectosBase: [], clientes: [], red: null, meta: {} };
+export const store = { municipios: [], byCode: new Map(), secop: [], empresas: [], proyectosBase: [], clientes: [], ci: [], ciAnio: null, red: null, meta: {} };
 
 export function builtDir() {
   const s = path.join(STORAGE, 'built');
@@ -18,6 +18,8 @@ export function loadData() {
   store.empresas = r('empresas.json');
   store.proyectosBase = r('proyectos_base.json');
   store.clientes = r('clientes.json');
+  const ci = r('ci.json', { anio: null, empresas: [] });
+  store.ci = ci.empresas || []; store.ciAnio = ci.anio;
   store.red = r('red.json', { subs: [], plantas: [], lineas: [], zni: [] });
   store.redMtFile = fs.existsSync(path.join(dir, 'red_mt.json')) ? path.join(dir, 'red_mt.json') : null;
   store.meta = r('meta.json', {});
@@ -78,6 +80,34 @@ export const PROFILES = {
     },
     weights: { radiacion: 30, red: 20, tension: 10, tarifa_ci: 15, contingencias: 10, saturacion: 15 },
     metrics: ['score', 'ghi', 'sub_km', 'solar30_mw', 'upme_mw', 'tarifa_com'],
+  },
+  servicios: {
+    label: 'Mantenimiento y servicios (O&M)', short: 'O&M', segments: false, gate: (m) => (m.agpe_est || 0) + (m.solar30_mw || 0) * 5,
+    desc: 'Dónde hay más sistemas y plantas solares que mantener, proyectos nuevos en camino y pocas empresas para atenderlos.',
+    factors: {
+      sistemas: { label: 'Autogeneradores instalados', get: (m) => L(m.agpe_est) },
+      plantas: { label: 'Plantas solares cerca (MW)', get: (m) => L(m.solar30_mw) },
+      proyectos: { label: 'Proyectos nuevos en camino (MW)', get: (m) => L(m.upme_mw) },
+      atencion: { label: 'Pocas empresas por sistema', get: (m) => (m.agpe_est ? -((m.inst_n || 0) / m.agpe_est) : null) },
+      contingencias: { label: 'Cortes de red (más fallas)', get: (m) => m.dna_1k },
+      calor: { label: 'Clima cálido (más desgaste)', get: (m) => m.temp },
+    },
+    weights: { sistemas: 30, plantas: 25, proyectos: 15, atencion: 10, contingencias: 10, calor: 10 },
+    metrics: ['score', 'agpe_est', 'solar30_mw', 'upme_mw', 'inst_n'],
+  },
+  respaldo: {
+    label: 'Baterías y respaldo', short: 'Baterías', segments: false, gate: (m) => (m.pop || 0) / 100 + (m.rnt_hab || 0) + (m.comer12_m2 || 0) / 50,
+    desc: 'Dónde se va más la luz y la energía es cara: hogares, hoteles y comercios que necesitan baterías o sistemas híbridos.',
+    factors: {
+      contingencias: { label: 'Cortes de energía', get: (m) => m.dna_1k },
+      dias: { label: 'Días con cortes al año', get: (m) => m.dna_dias },
+      tarifa: { label: 'Tarifa de energía', get: (m) => m.tarifa },
+      turismo: { label: 'Hoteles y turismo', get: (m) => m.turismo_idx },
+      comercio: { label: 'Comercio y obra no residencial', get: (m) => L(m.nores12_m2) },
+      aislado: { label: 'Localidades sin red', get: (m) => m.zni_n || 0 },
+    },
+    weights: { contingencias: 35, dias: 15, tarifa: 15, turismo: 15, comercio: 10, aislado: 10 },
+    metrics: ['score', 'dna_1k', 'tarifa', 'turismo_idx', 'ghi'],
   },
 };
 export const PROFILE_KEYS = Object.keys(PROFILES);
@@ -153,7 +183,7 @@ export function rowView(m, r) {
     or: m.or_name, tarifa: m.tarifa, tarifa_com: m.tarifa_com, ghi: m.ghi, temp: m.temp, pop: m.pop,
     viv12: m.viv12 || 0, viv12_alto: m.viv12_alto || 0, nores12_m2: Math.round(m.nores12_m2 || 0),
     agpe_est: m.agpe_est ?? m.agpe_n ?? 0, agpe_10k: m.agpe_10k, secop_n: m.secop_n || 0,
-    turismo_idx: m.turismo_idx || 0, rnt_hab: m.rnt_hab || 0, rnt_vivtur: m.rnt_vivtur || 0, dna_1k: m.dna_1k, subarea: m.subarea,
+    turismo_idx: m.turismo_idx || 0, rnt_hab: m.rnt_hab || 0, rnt_vivtur: m.rnt_vivtur || 0, dna_1k: m.dna_1k, dna_dias: m.dna_dias, zni_n: m.zni_n || 0, kv30: m.kv30, subarea: m.subarea,
     inst_n: m.inst_n || 0, inst_sol: m.inst_sol || 0, mayor_n: m.mayor_n || 0,
     sub_km: m.sub_km, sub_n: m.sub_n, sub_kv: m.sub_kv, solar30_mw: m.solar30_mw || 0, solar30: m.solar30 || 0, kwh_mes_alto: m.kwh_mes_alto,
     upme_n: m.upme_n || 0, upme_mw: Math.round(m.upme_mw || 0),
