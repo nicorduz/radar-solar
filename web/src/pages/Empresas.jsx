@@ -38,7 +38,7 @@ export default function Empresas() {
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
-            <table className="tbl"><thead><tr><th>Empresa</th><th className="hs">Actividad</th><th>Ubicación</th><th className="num">Contratos solares</th><th>Contacto</th>{paid && <th></th>}</tr></thead>
+            <table className="tbl"><thead><tr><th>Empresa</th><th className="hs">Actividad</th><th>Ubicación</th><th className="num">Contratos solares</th><th>Contacto</th><th></th></tr></thead>
               <tbody>{data.rows.map((e) => (
                 <tr key={e.nit + e.n}>
                   <td className="name">{e.n}<br /><span className="small muted">NIT {e.nit} · {e.cat}{e.pyme ? ' · pyme' : ''}</span></td>
@@ -46,7 +46,7 @@ export default function Empresas() {
                   <td className="small">{e.code ? <a href={`#/m/${e.code}`}>{e.ubic}</a> : <span className="muted">Cámara de {e.cam}</span>}</td>
                   <td className="num small">{e.sol_n ? <>{e.sol_n}<br /><span className="muted">{money(e.sol_valor)} · {e.sol_ultimo?.slice(0, 7)}</span></> : '—'}</td>
                   <td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} /></td>
-                  {paid && <td><ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: e.code, mun: e.ubic, tel: e.tel, mail: e.mail, detalle: e.cat }} /></td>}
+                  <td><ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: e.code, mun: e.ubic, tel: e.tel, mail: e.mail, detalle: e.cat }} /></td>
                 </tr>))}</tbody>
             </table>
             {data.locked && <LockedRows cols={6} n={8} text={`Directorio de ${fmt(data.total)} empresas con municipio, teléfono, correo y contratos solares ganados.`} />}
