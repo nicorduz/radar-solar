@@ -11,14 +11,6 @@ const TIPO_NOV = { licitacion: ['doc', 'Licitación'], obra: ['home', 'Obra o li
 export default function Prospectos() {
   const { paid, go } = useApp();
   const [tab, setTab] = useState('novedades');
-  if (!paid) {
-    return (
-      <div className="page" style={{ maxWidth: 900 }}>
-        <h1>Mis prospectos</h1>
-        <ContactCTA text="Sigue municipios, recibe las novedades de licitaciones, obras y proyectos en tus zonas y lleva el seguimiento de tus clientes potenciales." />
-      </div>
-    );
-  }
   return (
     <div className="page" style={{ maxWidth: 1100 }}>
       <div className="page-head">
@@ -28,7 +20,7 @@ export default function Prospectos() {
           <button className={tab === 'prospectos' ? 'on' : ''} onClick={() => setTab('prospectos')}>Prospectos</button>
         </div>
       </div>
-      {tab === 'novedades' ? <Novedades go={go} /> : <Tablero />}
+      {tab === 'novedades' ? (paid ? <Novedades go={go} /> : <ContactCTA text="Sigue municipios y recibe las novedades de licitaciones, obras y proyectos en tus zonas. En la versión de prueba puedes probar el tablero de prospectos con hasta 3 clientes." />) : <Tablero paid={paid} />}
     </div>
   );
 }
@@ -126,7 +118,7 @@ function Novedades({ go }) {
   );
 }
 
-function Tablero() {
+function Tablero({ paid }) {
   const [list, setList] = useLocal(PROSPECTS, []);
   const [estado, setEstado] = useState('');
   const [q, setQ] = useState('');
@@ -169,7 +161,7 @@ function Tablero() {
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div className="row">
           <input className="input" style={{ maxWidth: 240 }} placeholder="Buscar prospecto" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar prospecto" />
-          <button className="btn sm primary" onClick={() => setNuevo({ nombre: '', mun: '', tel: '', mail: '', valor: '', nota: '' })}><Icon name="plus" size={14} />Nuevo prospecto</button>
+          <button className="btn sm primary" disabled={!paid && list.length >= 3} title={!paid && list.length >= 3 ? 'La versión de prueba permite 3 prospectos' : ''} onClick={() => setNuevo({ nombre: '', mun: '', tel: '', mail: '', valor: '', nota: '' })}><Icon name="plus" size={14} />Nuevo prospecto</button>
           {valorAbierto > 0 && <span className="small muted">Valor en curso: <b className="mono">{money(valorAbierto)}</b></span>}
         </div>
         <div className="row" style={{ gap: 6 }}>
