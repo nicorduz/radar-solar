@@ -44,7 +44,7 @@ const upload = multer({ dest: path.join(STORAGE, 'tmp'), limits: { fileSize: 40 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ---------------- Sesión ----------------
-app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact: config.contact, ai: aiInfo().configured }));
+app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact: config.contact, ai: aiInfo().configured, sat: { tiles: config.satTiles, attribution: config.satAttribution } }));
 
 app.post('/api/login', loginThrottle, (req, res) => {
   const { username, password } = req.body || {};
@@ -258,6 +258,44 @@ app.get('/api/public/ficha/:token', (req, res) => {
     sub_km: m.sub_km, sub_kv: m.sub_kv, solar30_mw: m.solar30_mw || 0, upme_mw: Math.round(m.upme_mw || 0), payback: payback(m),
   });
 });
+
+// Recurso solar de un punto para el módulo de diseño: generación mensual por kWp (PVGIS, gratis),
+// con respaldo en la radiación satelital de NASA POWER y, si ambas fallan, la del municipio más cercano
+const solarCache = new Map();
+app.get('/api/solar', requireUser, wrap(async (req, res) => {
+  const lat = +req.query.lat, lon = +req.query.lon;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -5 || lat > 14 || lon < -82 || lon > -66) return res.status(400).json({ error: 'Coordenadas fuera de Colombia' });
+  const angle = Math.max(0, Math.min(60, +req.query.angle || 10)), aspect = Math.max(-180, Math.min(180, +req.query.aspect || 0));
+  let near = null, bd = Infinity;
+  for (const m of store.municipios) { if (m.lat == null) continue; const d = kmBetween({ lat, lon }, m); if (d < bd) { bd = d; near = m; } }
+  const muni = near ? { code: near.code, name: near.name, dpto: near.dpto, or: near.or_name, tarifa: near.tarifa ?? near.tarifa_ult, tarifa_com: near.tarifa_com ?? near.tarifa, ghi: near.ghi, dna_dias: near.dna_dias, dna_1k: near.dna_1k } : null;
+  const key = [lat.toFixed(3), lon.toFixed(3), angle, aspect].join('|');
+  let solar = solarCache.get(key);
+  if (!solar) {
+    try {
+      const r = await fetch(`https://re.jrc.ec.europa.eu/api/v5_2/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=14&angle=${angle}&aspect=${aspect}&outputformat=json`, { signal: AbortSignal.timeout(20000) });
+      const j = await r.json();
+      const mon = j.outputs?.monthly?.fixed;
+      if (!r.ok || !mon?.length) throw new Error('sin datos');
+      solar = { metodo: 'pvgis', mensual: mon.map((x) => +x.E_m.toFixed(1)), anual: +j.outputs.totals.fixed.E_y.toFixed(0) };
+    } catch {
+      try {
+        const r = await fetch(`https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN&community=RE&longitude=${lon}&latitude=${lat}&format=JSON`, { signal: AbortSignal.timeout(20000) });
+        const p = (await r.json()).properties.parameter.ALLSKY_SFC_SW_DWN;
+        const dias = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        const mensual = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'].map((k, i) => +(p[k] * dias[i] * 0.78).toFixed(1));
+        solar = { metodo: 'nasa', mensual, anual: Math.round(mensual.reduce((a, b) => a + b, 0)) };
+      } catch {
+        const g = near?.ghi || 4.5;
+        const mensual = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].map((d) => +(g * d * 0.78).toFixed(1));
+        solar = { metodo: 'municipio', mensual, anual: Math.round(mensual.reduce((a, b) => a + b, 0)) };
+      }
+    }
+    solarCache.set(key, solar);
+    if (solarCache.size > 500) solarCache.delete(solarCache.keys().next().value);
+  }
+  res.json({ ...solar, angle, aspect, muni });
+}));
 
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
 app.get('/api/red', requireUser, (req, res) => {
