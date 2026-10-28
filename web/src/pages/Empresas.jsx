@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, qs, fmt, money } from '../api.js';
 import { useApp } from '../App.jsx';
-import { LockedRows, Spinner, Contact, PrivacyNote } from '../components/ui.jsx';
+import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton } from '../components/ui.jsx';
 
 const CIIU = { 4321: 'Instalaciones eléctricas', 4322: 'Fontanería y climatización', 4330: 'Terminación de edificaciones', 3511: 'Generación de energía', 3514: 'Comercialización de energía', 4659: 'Comercio mayorista de maquinaria y equipo', 4669: 'Comercio mayorista especializado', 2790: 'Fabricación de otros equipos eléctricos', 2710: 'Fabricación de motores y transformadores', 7112: 'Ingeniería', 4290: 'Otras obras civiles' };
 
@@ -19,7 +19,7 @@ export default function Empresas() {
 
   return (
     <div className="page">
-      <div className="page-head"><div><h1>{profile === 'proveedor' ? 'Instaladores para venderles' : 'Instaladores, proveedores y competencia'}</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Empresas activas del Registro Mercantil con actividad eléctrica, de energía o de equipos, cruzadas con SECOP II para saber dónde están, cómo contactarlas y cuántos contratos solares han ganado.</p></div></div>
+      <div className="page-head"><div><h1>{profile === 'proveedor' ? 'Instaladores para venderles' : 'Instaladores, proveedores y competencia'}</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Empresas activas con actividad eléctrica, de energía o de equipos: dónde están, cómo contactarlas y cuántos contratos solares públicos han ganado.</p></div></div>
       {data && (
         <div className="row">
           {Object.entries(data.cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
@@ -38,20 +38,21 @@ export default function Empresas() {
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
-            <table className="tbl"><thead><tr><th>Empresa</th><th className="hs">Actividad</th><th>Ubicación</th><th className="num">Contratos solares</th><th>Contacto</th></tr></thead>
+            <table className="tbl"><thead><tr><th>Empresa</th><th className="hs">Actividad</th><th>Ubicación</th><th className="num">Contratos solares</th><th>Contacto</th>{paid && <th></th>}</tr></thead>
               <tbody>{data.rows.map((e) => (
                 <tr key={e.nit + e.n}>
                   <td className="name">{e.n}<br /><span className="small muted">NIT {e.nit} · {e.cat}{e.pyme ? ' · pyme' : ''}</span></td>
-                  <td className="small hs">{e.ciiu ? `${e.ciiu} ${CIIU[e.ciiu] || ''}` : 'Según SECOP'}{e.mat ? <><br /><span className="muted">matrícula {e.mat.slice(0, 4)}{e.ren ? ` · renovó ${e.ren}` : ''}</span></> : null}</td>
+                  <td className="small hs">{e.ciiu ? `${e.ciiu} ${CIIU[e.ciiu] || ''}` : 'Contratista público'}{e.mat ? <><br /><span className="muted">matrícula {e.mat.slice(0, 4)}{e.ren ? ` · renovó ${e.ren}` : ''}</span></> : null}</td>
                   <td className="small">{e.code ? <a href={`#/m/${e.code}`}>{e.ubic}</a> : <span className="muted">Cámara de {e.cam}</span>}</td>
                   <td className="num small">{e.sol_n ? <>{e.sol_n}<br /><span className="muted">{money(e.sol_valor)} · {e.sol_ultimo?.slice(0, 7)}</span></> : '—'}</td>
                   <td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} /></td>
+                  {paid && <td><ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: e.code, mun: e.ubic, tel: e.tel, mail: e.mail, detalle: e.cat }} /></td>}
                 </tr>))}</tbody>
             </table>
             {data.locked && <LockedRows cols={6} n={8} text={`Directorio de ${fmt(data.total)} empresas con municipio, teléfono, correo y contratos solares ganados.`} />}
           </div>
           {paid && <div className="row"><button className="btn sm" disabled={!page} onClick={() => setPage(page - 1)}>Anterior</button><span className="small muted">{fmt(data.total)} empresas · página {page + 1}</span><button className="btn sm" disabled={(page + 1) * 50 >= data.total} onClick={() => setPage(page + 1)}>Siguiente</button></div>}
-          <p className="small muted">Fuentes: Confecámaras, Registro Mercantil (c82u-588k); SECOP II, proveedores registrados (qmzu-gj57) para teléfono, correo y municipio; SECOP II, procesos con "solar" o "fotovoltaico" adjudicados. Cuando la empresa no tiene registro en SECOP, solo se conoce la cámara de comercio donde está matriculada.</p>
+          <Fuente>Confecámaras, Registro Mercantil (c82u-588k); SECOP II, proveedores registrados (qmzu-gj57) para teléfono, correo y municipio; SECOP II, procesos con "solar" o "fotovoltaico" adjudicados. Cuando la empresa no tiene registro en SECOP, solo se conoce la cámara de comercio donde está matriculada.</Fuente>
           <PrivacyNote />
         </>
       )}
