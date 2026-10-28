@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, qs, fmt, money, cop } from '../api.js';
 import { useApp } from '../App.jsx';
-import { ScoreBadge, Stat, Bars, Spinner, ContactCTA, Spark, PrivacyNote, Contact, Section } from '../components/ui.jsx';
+import { ScoreBadge, Stat, Bars, Spinner, ContactCTA, Spark, PrivacyNote, Contact, Section, Fuente, ProspectButton, FollowButton, waShare } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import Markdown from '../components/Markdown.jsx';
 
@@ -10,8 +10,12 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 const ORDEN = {
   instalador: ['puntaje', 'retorno', 'clientes', 'energia', 'vivienda', 'ia', 'instaladores', 'mercado', 'red', 'proyectos', 'licitaciones'],
   proveedor: ['puntaje', 'instaladores', 'mercado', 'vivienda', 'ia', 'clientes', 'energia', 'red', 'proyectos', 'licitaciones'],
-  desarrollador: ['puntaje', 'red', 'energia', 'retorno', 'ia', 'mercado', 'licitaciones', 'instaladores', 'vivienda', 'clientes', 'proyectos'],
+  desarrollador: ['puntaje', 'red', 'energia', 'retorno', 'ia', 'mercado', 'licitaciones', 'industrias', 'instaladores', 'vivienda', 'clientes', 'proyectos'],
+  servicios: ['puntaje', 'mercado', 'red', 'instaladores', 'ia', 'energia', 'industrias', 'clientes', 'licitaciones', 'retorno', 'vivienda', 'proyectos'],
+  respaldo: ['puntaje', 'energia', 'clientes', 'industrias', 'retorno', 'ia', 'vivienda', 'instaladores', 'mercado', 'red', 'proyectos', 'licitaciones'],
 };
+ORDEN.instalador.splice(3, 0, 'industrias');
+ORDEN.proveedor.splice(5, 0, 'industrias');
 
 export default function Municipio({ code }) {
   const { meta, paid, segment, weights, prof, profile, scoreParams, go } = useApp();
@@ -20,9 +24,10 @@ export default function Municipio({ code }) {
   const [kwp, setKwp] = useState(6);
   const [pitch, setPitch] = useState(null);
   const [pitchBusy, setPitchBusy] = useState(false);
+  const [share, setShare] = useState(null);
 
   useEffect(() => {
-    setM(null); setErr(null); setPitch(null);
+    setM(null); setErr(null); setPitch(null); setShare(null);
     api(`/municipio/${code}` + qs(scoreParams)).then(setM).catch((e) => setErr(e));
   }, [code, JSON.stringify(scoreParams)]);
 
@@ -51,8 +56,8 @@ export default function Municipio({ code }) {
   const subTxt = m.sub_km != null ? (m.sub_km < 0.5 ? 'en el municipio' : `a ${fmt(m.sub_km, 1)} km`) : 's/d';
 
   const KPIS = {
-    tarifa: ['Tarifa residencial estratos 4-6', `${fmt(m.tarifa)} $/kWh`, m.tarifa_periodo ? `SUI ${m.tarifa_periodo}` : null],
-    tarifa_com: ['Tarifa comercial', `${fmt(m.tarifa_com ?? m.tarifa)} $/kWh`, m.tarifa_periodo ? `SUI ${m.tarifa_periodo}` : null],
+    tarifa: ['Tarifa residencial estratos 4-6', `${fmt(m.tarifa)} $/kWh`, m.tarifa_periodo ? `periodo ${m.tarifa_periodo}` : null],
+    tarifa_com: ['Tarifa comercial', `${fmt(m.tarifa_com ?? m.tarifa)} $/kWh`, m.tarifa_periodo ? `periodo ${m.tarifa_periodo}` : null],
     viv: ['Vivienda nueva 12 meses', fmt(m.viv12 || 0), `${fmt(m.viv12_alto || 0)} de estratos 4-6`],
     ghi: ['Radiación', `${fmt(m.ghi, 2)} kWh/m²`, `por día · ${fmt(m.temp, 1)} °C`],
     dna: ['Cortes de energía', m.dna_1k != null ? `${fmt(m.dna_1k)} kWh` : 's/d', 'no atendidos por 1.000 hab. al año'],
@@ -61,8 +66,10 @@ export default function Municipio({ code }) {
     agpe: ['Autogeneradores', fmt(m.agpe_est || 0), 'estimados en el municipio'],
     sub: ['Subestación', m.sub_km != null ? (m.sub_km < 0.5 ? 'En el mpio.' : `${fmt(m.sub_km, 1)} km`) : 's/d', m.sub_kv || null],
     solar30: ['Solar a 30 km', `${fmt(m.solar30_mw || 0)} MW`, `${fmt(m.solar30 || 0)} plantas`],
+    dias: ['Días con cortes', m.dna_dias != null ? fmt(m.dna_dias) : 's/d', 'en los últimos 12 meses'],
+    upme: ['Proyectos nuevos', `${fmt(m.upme_mw || 0)} MW`, `${fmt(m.upme_n || 0)} registrados en la zona`],
   };
-  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'solar30', 'tarifa_com'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
+  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'solar30', 'tarifa_com'], servicios: ['agpe', 'solar30', 'upme', 'inst'], respaldo: ['dna', 'dias', 'tarifa', 'turismo'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
 
   const getPitch = async () => {
     setPitchBusy(true);
@@ -98,7 +105,7 @@ export default function Municipio({ code }) {
     instaladores: { icon: 'building', title: 'Instaladores de la zona', hint: `${fmt(m.instaladores_n?.municipio || 0)} en el municipio · ${fmt(m.instaladores_n?.departamento || 0)} en ${m.dpto}`, body: (<>
       {m.instaladores?.length ? (
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Empresa</th><th className="num">Contratos solares</th><th>Contacto</th></tr></thead><tbody>
-          {m.instaladores.map((e) => <tr key={e.nit + e.n}><td className="name">{e.n}<br /><span className="small muted">{e.mun || '—'}{e.ambito === 'departamento' ? ' · otro municipio' : ''}</span></td><td className="num">{e.sol_n || '—'}</td><td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} /></td></tr>)}
+          {m.instaladores.map((e) => <tr key={e.nit + e.n}><td className="name">{e.n}<br /><span className="small muted">{e.mun || '—'}{e.ambito === 'departamento' ? ' · otro municipio' : ''}</span></td><td className="num">{e.sol_n || '—'}</td><td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} />{paid && <ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: m.code, mun: e.mun, tel: e.tel, mail: e.mail, detalle: e.cat }} />}</td></tr>)}
         </tbody></table></div>
       ) : <p className="muted small" style={{ margin: 0 }}>No hay instaladores ubicados en esta zona.</p>}
       {!paid && <ContactCTA text="La lista completa de instaladores con teléfono y correo está en el plan completo." />}
@@ -109,9 +116,9 @@ export default function Municipio({ code }) {
     clientes: { icon: 'hotel', title: 'Hoteles y turismo', hint: `${fmt(m.clientes_n || 0)} establecimientos · ${fmt(m.rnt_hab || 0)} habitaciones`, body: (<>
       {m.clientes?.length ? (
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Establecimiento</th><th className="num">Habitaciones</th><th>Contacto</th></tr></thead><tbody>
-          {m.clientes.map((c) => <tr key={c.id}><td className="name">{c.n}<br /><span className="small muted">{c.sub}</span></td><td className="num">{fmt(c.hab)}</td><td className="small"><Contact tel={c.tel} mail={c.mail} /></td></tr>)}
+          {m.clientes.map((c) => <tr key={c.id}><td className="name">{c.n}<br /><span className="small muted">{c.sub}</span></td><td className="num">{fmt(c.hab)}</td><td className="small"><Contact tel={c.tel} mail={c.mail} />{paid && <ProspectButton p={{ tipo: 'hotel', ref: c.id, nombre: c.n, code: m.code, mun: m.name, tel: c.tel, mail: c.mail, detalle: `${c.sub} · ${c.hab} habitaciones` }} />}</td></tr>)}
         </tbody></table></div>
-      ) : <p className="muted small" style={{ margin: 0 }}>No hay alojamientos activos en el Registro Nacional de Turismo.</p>}
+      ) : <p className="muted small" style={{ margin: 0 }}>No hay alojamientos turísticos activos registrados.</p>}
       {!paid && m.clientes_n > 1 && <ContactCTA text={`Hay ${fmt(m.clientes_n - 1)} establecimientos más con su contacto en el plan completo.`} />}
       {paid && m.clientes_n > m.clientes.length && <div className="row"><a className="btn sm" href={`#/clientes/${m.code}`}>Ver los {fmt(m.clientes_n)}</a></div>}
     </>) },
@@ -127,10 +134,10 @@ export default function Municipio({ code }) {
         {m.zni_n > 0 && <><span className="k">Localidades no interconectadas</span><span className="v">{m.zni_n} · {fmt(m.zni_horas, 1)} h/día</span></>}
       </div>
       {m.dna_serie?.length > 1 && <><h3>Cortes por mes en la subárea (kWh)</h3><Spark data={m.dna_serie} unit="kWh" title="Demanda no atendida mensual" /></>}
-      <p className="small muted" style={{ margin: 0 }}>Más cortes, más interés en baterías y sistemas híbridos. Fuentes: SUI y XM ({meta.cortes.dna}).</p>
+      <p className="small muted" style={{ margin: 0 }}>Más cortes, más interés en baterías y sistemas híbridos. Cortes de {meta.cortes.dna}.</p><Fuente>SUI y XM.</Fuente>
     </>) },
 
-    red: { icon: 'layers', title: 'Red eléctrica, plantas y proyectos', hint: `Subestación ${subTxt} · ${fmt(m.solar30_mw || 0)} MW solares a 30 km · ${m.upme?.length || 0} proyectos UPME`, body: (<>
+    red: { icon: 'layers', title: 'Red eléctrica, plantas y proyectos', hint: `Subestación ${subTxt} · ${fmt(m.solar30_mw || 0)} MW solares a 30 km · ${m.upme?.length || 0} proyectos registrados`, body: (<>
       <div className="kv">
         <span className="k">Subestación más cercana</span><span className="v">{m.sub_n ? `${m.sub_n} · ${m.sub_kv} · ${subTxt}` : 's/d'}</span>
         <span className="k">Subestaciones a menos de 30 km</span><span className="v">{fmt(m.subs30 || 0)} (máx. {fmt(m.kv30 || 0)} kV)</span>
@@ -142,12 +149,12 @@ export default function Municipio({ code }) {
         </tbody></table></div>
       )}
       {m.upme?.length > 0 && (
-        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Proyecto registrado (UPME)</th><th className="num">MW</th><th>Operación prevista</th></tr></thead><tbody>
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Proyecto de generación registrado</th><th className="num">MW</th><th>Operación prevista</th></tr></thead><tbody>
           {m.upme.map((p) => <tr key={p.id}><td className="name">{p.n}<br /><span className="small muted">{p.mun} · {p.fase}{p.km ? ` · ${p.km} km` : ''}</span></td><td className="num">{fmt(p.mw, 1)}</td><td className="small">{p.operacion?.slice(0, 7) || 's/d'}</td></tr>)}
         </tbody></table></div>
       )}
       <div className="row"><a className="btn sm" href={`https://www.google.com/search?q=${encodeURIComponent(`${m.or_name} "Resolución CREG 174 de 2021" disponibilidad de red`)}`} target="_blank" rel="noreferrer">Ver disponibilidad de red de {m.or_name}</a></div>
-      <p className="small muted" style={{ margin: 0 }}>Cada operador publica gratis la capacidad disponible de sus transformadores (Resolución CREG 174 de 2021, art. 7). Fuentes: XM Paratec y UPME.</p>
+      <p className="small muted" style={{ margin: 0 }}>Cada operador publica gratis la capacidad disponible de sus transformadores (Resolución CREG 174 de 2021, art. 7).</p><Fuente>XM Paratec y UPME.</Fuente>
     </>) },
 
     vivienda: { icon: 'home', title: 'Vivienda y obra nueva', hint: `${fmt(m.viv12 || 0)} viviendas licenciadas en 12 meses · ${fmt(m.viv12_alto || 0)} de estratos 4-6`, body: (<>
@@ -157,7 +164,7 @@ export default function Municipio({ code }) {
         <span className="k">Casas (no apartamentos)</span><span className="v">{fmt(m.viv12_casas || 0)}</span>
         <span className="k">Área comercial y de alojamiento</span><span className="v">{fmt(m.comer12_m2 || 0)} m²</span>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Fuente: DANE, licencias de construcción, corte {meta.cortes.elic}.</p>
+      <p className="small muted" style={{ margin: 0 }}>Licencias de construcción, corte {meta.cortes.elic}.</p><Fuente>DANE ELIC.</Fuente>
     </>) },
 
     mercado: { icon: 'box', title: 'Mercado solar y competencia', hint: `${fmt(m.agpe_est || 0)} autogeneradores estimados · ${fmt(m.mayor_n || 0)} mayoristas`, body: (<>
@@ -168,7 +175,7 @@ export default function Municipio({ code }) {
         <span className="k">Mayoristas de equipo</span><span className="v">{fmt(m.mayor_n || 0)}</span>
         <span className="k">Licitaciones solares locales</span><span className="v">{fmt(m.secop_n || 0)}</span>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>XM publica los autogeneradores por mercado; el valor del municipio es un estimado.</p>
+      <p className="small muted" style={{ margin: 0 }}>Los autogeneradores se conocen por mercado; el valor del municipio es un estimado.</p>
     </>) },
 
     proyectos: { icon: 'doc', title: 'Proyectos y licencias detectados', hint: `${m.proyectos.length} registrados`, body: (
@@ -179,12 +186,23 @@ export default function Municipio({ code }) {
       ) : <p className="muted small" style={{ margin: 0 }}>Aún no hay proyectos individuales. El administrador puede cargarlos o extraerlos con IA de los avisos de la curaduría.</p>
     ) },
 
+    industrias: { icon: 'factory', title: 'Empresas grandes e industrias', hint: m.ci_n ? `${fmt(m.ci_n)} de las 10.000 empresas más grandes del país tienen sede aquí` : 'Ninguna de las empresas más grandes tiene sede aquí', body: (<>
+      {m.ci?.length ? (
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Empresa</th><th className="num">Ingresos</th><th>Contacto</th></tr></thead><tbody>
+          {m.ci.map((e) => <tr key={e.nit}><td className="name">{e.n}<br /><span className="small muted">{e.sector} · consumo {{ alta: 'alto', media: 'medio', baja: 'bajo' }[e.consumo]}</span></td><td className="num small">{fmt(e.ing)} mil M</td><td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} /><ProspectButton p={{ tipo: 'industria', nit: e.nit, nombre: e.n, code: m.code, mun: m.name, tel: e.tel, mail: e.mail, detalle: e.sector }} /></td></tr>)}
+        </tbody></table></div>
+      ) : <p className="muted small" style={{ margin: 0 }}>{paid ? 'Sin empresas grandes con sede en el municipio.' : ''}</p>}
+      {!paid && m.ci_n > 0 && <ContactCTA text="La lista de empresas grandes con sector, ingresos y contacto está en el plan completo." />}
+      <p className="small muted" style={{ margin: 0 }}>La sede es el domicilio principal; sus plantas o tiendas pueden estar en otros municipios. Consumo típico del sector como referencia.</p>
+      {paid && <div className="row"><a className="btn sm" href={`#/industrias/${m.code}`}>Ver todas</a></div>}
+    </>) },
+
     licitaciones: { icon: 'doc', title: 'Licitaciones públicas solares', hint: m.secop.length ? `${m.secop.length} en el municipio` : `${m.secop_dpto.length} en ${m.dpto}`, body: (<>
       {(m.secop.length ? m.secop : m.secop_dpto).slice(0, 10).map((s) => (
         <div key={s.id} className="row" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
           <span style={{ flex: '1 1 300px' }}><b>{s.nombre}</b><br /><span className="small muted">{s.entidad} · {s.fecha} · {s.estado}</span></span>
           <span className="mono small">{money(s.precio)}</span>
-          {s.url && <a className="small" href={s.url} target="_blank" rel="noreferrer">SECOP</a>}
+          {s.url && <a className="small" href={s.url} target="_blank" rel="noreferrer">Ver proceso</a>}
         </div>
       ))}
       {!m.secop.length && !m.secop_dpto.length && <p className="muted small" style={{ margin: 0 }}>Sin procesos registrados.</p>}
@@ -198,10 +216,31 @@ export default function Municipio({ code }) {
       <div className="page-head">
         <div>
           <h1>{m.name} <span className="muted" style={{ fontWeight: 400 }}>· {m.dpto}</span></h1>
-          <p className="muted small" style={{ margin: '4px 0 0' }}>{m.or_name} · {fmt(m.pop)} habitantes · código DANE {m.code}</p>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>{m.or_name} · {fmt(m.pop)} habitantes · código {m.code}</p>
         </div>
         <div className="row"><span className="muted small">Puesto {m.rank} de {m.total_rank}</span><ScoreBadge score={m.score} tier={m.tier} /></div>
       </div>
+      {paid && (
+        <div className="row ficha-actions">
+          <FollowButton m={m} />
+          <button className="btn sm" onClick={() => go('propuesta', m.code)}><Icon name="pdf" size={15} />Propuesta o informe PDF</button>
+          <button className="btn sm" onClick={() => go('calculadora', m.code)}><Icon name="calc" size={15} />Calculadora financiera</button>
+          <button className="btn sm" onClick={async () => { try { const r = await api(`/share/${m.code}`, { method: 'POST', body: { profile } }); setShare({ url: `${location.origin}/#/compartido/${r.token}`, expira: r.expira }); } catch (e) { setShare({ error: e.message }); } }}><Icon name="share" size={15} />Compartir ficha</button>
+        </div>
+      )}
+      {share && (
+        <div className="card share-box">
+          {share.error ? <span className="small">{share.error}</span> : (<>
+            <span className="small">Enlace de solo lectura, sin datos de contacto. Vence el {share.expira}.</span>
+            <input className="input mono small" readOnly value={share.url} onFocus={(e) => e.target.select()} aria-label="Enlace para compartir" />
+            <div className="row" style={{ gap: 6 }}>
+              <a className="btn sm primary" href={waShare(`Mira la oportunidad solar de ${m.name} (${m.dpto}) en Radar Solar: ${share.url}`)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={15} />Enviar por WhatsApp</a>
+              <button className="btn sm" onClick={() => navigator.clipboard?.writeText(share.url)}>Copiar enlace</button>
+              <button className="btn sm ghost" onClick={() => setShare(null)}>Cerrar</button>
+            </div>
+          </>)}
+        </div>
+      )}
 
       <div className="grid g4">
         {kpis.map(([l, v, sub]) => <div key={l} className="card"><Stat label={l} value={v} sub={sub} /></div>)}
