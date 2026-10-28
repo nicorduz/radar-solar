@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../App.jsx';
 import { Icon } from './Icon.jsx';
 import { fmt, PROFILE_ICONS } from '../api.js';
@@ -76,7 +77,7 @@ export function WeightsControl({ compact }) {
         </div>
       )}
       <button className="btn sm" onClick={() => setOpen(!open)} aria-expanded={open}><Icon name="sliders" size={16} />Pesos</button>
-      {open && (
+      {open && createPortal(
         <div className="modal-bg" onClick={() => setOpen(false)}>
           <div className="card modal" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="row" style={{ justifyContent: 'space-between' }}><h2>Puntaje · {prof.label}</h2><button className="btn sm ghost" onClick={() => setOpen(false)}>Cerrar</button></div>
@@ -91,7 +92,7 @@ export function WeightsControl({ compact }) {
             {paid && <button className="btn" onClick={() => setWeights(prof.weights)}>Restablecer pesos por defecto</button>}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
