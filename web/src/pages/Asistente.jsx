@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useApp } from '../App.jsx';
 import { Icon } from '../components/Icon.jsx';
+import Markdown from '../components/Markdown.jsx';
 
 const SUGS = {
   instalador: ['¿Dónde conviene vender sistemas con baterías por los cortes de energía?', '¿Qué municipios con hoteles y tarifa alta debería visitar primero?', 'Compara Anapoima, Melgar y Girardot para vender casas campestres', 'Dame un guion de llamada para un hotel de 40 habitaciones'],
@@ -43,7 +44,9 @@ export default function Asistente({ code }) {
       {status && !status.configured && <div className="alert">La IA aún no está configurada en el servidor. El administrador debe agregar una clave gratuita (GEMINI_API_KEY o GROQ_API_KEY).</div>}
       <div className="chat">
         {!msgs.length && <div className="grid g2">{(SUGS[profile] || SUGS.instalador).map((s) => <button key={s} className="card" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => send(s)}>{s}</button>)}</div>}
-        {msgs.map((m, i) => <div key={i} className={`msg ${m.role}`}>{m.content}</div>)}
+        {msgs.map((m, i) => (m.role === 'assistant'
+          ? <div key={i} className="msg assistant"><Markdown text={m.content} /><button className="btn sm ghost copy" onClick={() => navigator.clipboard?.writeText(m.content)} title="Copiar respuesta">Copiar</button></div>
+          : <div key={i} className="msg user">{m.content}</div>))}
         {busy && <div className="msg assistant"><div className="spinner" /></div>}
         <div ref={end} />
       </div>
