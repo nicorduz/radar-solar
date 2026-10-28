@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon.jsx';
 import Markdown from '../components/Markdown.jsx';
 import { readLocal, writeLocal } from '../local.js';
 import { model } from './Calculadora.jsx';
+import MapSnapshot from '../components/MapSnapshot.jsx';
 
 const TIPOS = {
   comercial: ['Propuesta comercial para un cliente', 'Propuesta de energía solar'],
@@ -16,7 +17,7 @@ const HOGAR_PERSONAS = 3.1; // personas por hogar (supuesto de referencia)
 
 // Propuestas e informes listos para descargar en PDF (desde el diálogo de impresión del navegador)
 export default function Propuesta({ arg }) {
-  const { user, paid, profile, prof, scoreParams, meta } = useApp();
+  const { user, paid, profile, prof, scoreParams, meta, cfg } = useApp();
   const zona = arg === 'zona';
   const [m, setM] = useState(null);
   const [err, setErr] = useState(null);
@@ -32,9 +33,9 @@ export default function Propuesta({ arg }) {
   const code = zona ? z?.ref?.code : arg;
 
   useEffect(() => {
-    if (!code || !paid) return;
+    if (!code) return;
     api(`/municipio/${code}` + qs(scoreParams)).then(setM).catch(setErr);
-  }, [code, paid]);
+  }, [code]);
   useEffect(() => { writeLocal('rs_propuesta_datos', { por: f.por, contacto: f.contacto }); }, [f.por, f.contacto]);
 
   const fin = useMemo(() => {
@@ -44,8 +45,8 @@ export default function Propuesta({ arg }) {
     return model({ tipo: f.cliente, kwp: +f.kwp || 1, capexKwp: meta.capex_kwp, tarifa, ghi: m.ghi || 4.5, pr: 78, autoconsumo: 100, exportPrecio: tarifa * 0.4, incr: 4, degr: 0.5, om: 1, vida: 25, financiado: 0, tasa: 18, plazo: 5, descuento: 12, renta: 35, deduccion: empresa, deducAnios: 5, rentaLiquida: 0, depAcelerada: empresa, ivaExcluido: false });
   }, [m, f.cliente, f.kwp]);
 
-  if (!paid) return <div className="page" style={{ maxWidth: 900 }}><h1>Propuestas en PDF</h1><ContactCTA text="Genera propuestas comerciales e informes de zona con tu marca, listos para enviar a tus clientes." /></div>;
   if (zona && !z) return <div className="page"><div className="alert">Dibuja una zona en el mapa, selecciónala y toca "Informe PDF de esta zona".</div></div>;
+  if (err?.status === 402) return <div className="page" style={{ maxWidth: 900 }}><h1>Propuestas en PDF</h1><ContactCTA text="En la versión de prueba puedes crear la propuesta del municipio desbloqueado y diseños en la pestaña Diseño. Con el plan completo, de cualquier municipio y sin marca de agua." /></div>;
   if (err) return <div className="page"><div className="alert err">{err.message}</div></div>;
   if (!m) return <Spinner />;
 
@@ -95,6 +96,10 @@ export default function Propuesta({ arg }) {
           <h1>{zona ? `Zona de estudio cerca de ${z.ref.name}` : f.tipo === 'comercial' ? `${titulo}${f.kwp ? ` de ${f.kwp} kWp` : ''}` : `${titulo}: ${m.name}`}</h1>
           <p>{m.name}, {m.dpto}{f.para ? ` · Para ${f.para}` : ''}</p>
         </div>
+        <MapSnapshot sat={cfg.sat} zoom={zona ? 16 : 12} fc={{ type: 'FeatureCollection', features: zona
+          ? (z.ring ? [{ type: 'Feature', properties: { k: 'zona' }, geometry: { type: 'Polygon', coordinates: [z.ring] } }] : [{ type: 'Feature', properties: { k: 'punto' }, geometry: { type: 'Point', coordinates: z.punto || z.centro } }])
+          : [{ type: 'Feature', properties: { k: 'punto' }, geometry: { type: 'Point', coordinates: [m.lon, m.lat] } }] }} alt={`Imagen satelital de ${zona ? 'la zona' : m.name}`} />
+        {!paid && <div className="doc-trial">Versión de prueba · Radar Solar</div>}
         {f.intro && <section className="doc-sec"><Markdown text={f.intro} /></section>}
 
         {f.tipo === 'comercial' && !zona && fin && (<>
@@ -192,4 +197,3 @@ export default function Propuesta({ arg }) {
     </div>
   );
 }
-
