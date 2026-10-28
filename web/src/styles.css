@@ -575,3 +575,42 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
 .doc .doc-kicker { color: var(--dt2, #2F6AE6); }
 .doc .doc-title h1, .doc .doc-sec h2 { color: var(--dt1, #231D5D); }
 .doc-foot .sello { color: #5A5F7A; font-weight: 600; }
+
+/* ---------- Diseño solar v2 ---------- */
+.dz-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg); }
+.dz-tabs button { border: 0; background: none; color: var(--muted); padding: 8px 4px; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.dz-tabs button.on { background: var(--blue-btn); color: #fff; }
+.dz-g3 { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.dz-techo { border: 1px solid var(--line-2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.dz-techo.on { border-color: var(--hot); background: rgba(255, 122, 0, 0.06); }
+.dz-nombre { min-height: 34px; font-weight: 600; max-width: 170px; }
+.dz-meses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dz-meses .input { min-height: 34px; padding: 4px 8px; }
+.dz-semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dz-semana label { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dz-semana input[type=range] { writing-mode: vertical-lr; direction: rtl; height: 90px; width: 24px; }
+.dz-horas { display: flex; align-items: flex-end; gap: 2px; height: 50px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; }
+.dz-horas i { flex: 1; background: var(--sky); border-radius: 2px 2px 0 0; min-height: 1px; }
+.dz-regla { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.err-txt { color: var(--bad); }
+.dz-mini td, .dz-mini th { padding: 6px 8px; }
+.dz-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dz-charts > div { display: flex; flex-direction: column; gap: 4px; }
+.chart-dark { color: var(--ink-2); }
+@media (max-width: 900px) { .dz-charts { grid-template-columns: 1fr; } }
+.r2-liq { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+.r2-liq div { display: flex; flex-direction: column; gap: 2px; }
+.r2-liq span { font-size: 10.5px; color: #5A5F7A; } .r2-liq b { font-family: var(--mono); font-size: 14px; color: var(--t1); }
+.r2-costs .tbl { font-size: 11.5px; color: #14122E; }
+.r2-costs .tbl td { border-bottom: 1px solid #E8ECF6; padding: 4px 6px; color: #14122E; }
+.r2-costs .tbl-wrap { border: 0; background: none; }
+.r2-kpis-fin { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; margin-top: 30px; }
+@media (max-width: 760px) { .r2-liq, .r2-kpis-fin { grid-template-columns: 1fr 1fr; } }
+
+.r2-kpis-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.r2-eqs.col { grid-template-columns: 1fr; gap: 8px; }
+.r2-eqs.col .r2-eq { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 10px 12px; }
+.r2-eqs.col .r2-eq svg { width: 56px; height: 40px; }
+.r2-eqs.col .r2-eq b { flex: 1 1 60%; }
+.r2-eqs.col .r2-eq span { flex: 1 1 100%; padding-left: 66px; }
+@media (max-width: 760px) { .r2-kpis-row { grid-template-columns: 1fr 1fr; } }
