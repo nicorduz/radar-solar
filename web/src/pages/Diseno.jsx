@@ -5,7 +5,9 @@ import { useApp } from '../App.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { Stat } from '../components/ui.jsx';
 import MapSnapshot, { satStyle, addShapes } from '../components/MapSnapshot.jsx';
-import { PANELES, BATERIAS } from '../components/equipos.js';
+import { PANELES, BATERIAS, MARCAS_PANEL, MARCAS_BATERIA, POTENCIAS_PANEL, medidaTipica, CAPACIDADES_BAT } from '../components/equipos.js';
+import ReporteSolar from '../components/ReporteSolar.jsx';
+import { useBranding } from '../branding.js';
 import { fillPanels, autoAngle, polyArea, balance, roi } from '../components/solarDesign.js';
 import { parseCoords, geocode } from '../components/mapTools.js';
 import { useLocal, readLocal, writeLocal, addProspect } from '../local.js';
@@ -20,7 +22,8 @@ const NUEVO = (capex) => ({
 
 // Pestaña Diseño: techo en imagen satelital, llenado de paneles, generación, baterías, retorno y reporte en PDF
 export default function Diseno() {
-  const { cfg, meta, paid, user } = useApp();
+  const { cfg, meta, paid, user, go } = useApp();
+  const marca = useBranding(user);
   const [d, setD] = useState(() => ({ ...NUEVO(meta.capex_kwp), ...readLocal('rs_diseno_actual', {}) }));
   const set = (k, v) => setD((x) => ({ ...x, [k]: v }));
   const [misPaneles, setMisPaneles] = useLocal('rs_paneles', []);
@@ -34,7 +37,6 @@ export default function Diseno() {
   const [nuevoPanel, setNuevoPanel] = useState(null);
   const [nuevaBat, setNuevaBat] = useState(null);
   const [reporte, setReporte] = useState(false);
-  const [por, setPor] = useState(() => readLocal('rs_propuesta_datos', {}).por || user.company || user.name || '');
   const [msg, setMsg] = useState(null);
   const el = useRef(null), mapRef = useRef(null), st = useRef({});
   st.current = { draw, d };
@@ -190,17 +192,19 @@ export default function Diseno() {
 
             <div className="card dz-sec">
               <h3>2 · Paneles</h3>
-              <label className="f">Panel<select className="select" value={d.panelId} onChange={(e) => set('panelId', e.target.value)}>{paneles.map((p) => <option key={p.id} value={p.id}>{p.marca} · {p.nombre} ({p.largo}×{p.ancho} mm)</option>)}</select></label>
+              <label className="f">Panel<select className="select" value={d.panelId} onChange={(e) => set('panelId', e.target.value)}>{[...new Set(paneles.map((p) => p.marca))].map((mk) => <optgroup key={mk} label={mk === 'Genérico' ? 'Genéricos' : mk}>{paneles.filter((p) => p.marca === mk).map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.largo}×{p.ancho} mm</option>)}</optgroup>)}</select></label>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn sm ghost" onClick={() => setNuevoPanel({ nombre: '', marca: '', w: 550, largo: 2279, ancho: 1134, garantia: 25 })}><Icon name="plus" size={14} />Crear panel</button>
+                <button className="btn sm ghost" onClick={() => setNuevoPanel({ nombre: '', marca: 'Genérico', otra: '', w: 550, largo: 2279, ancho: 1134, garantia: 25 })}><Icon name="plus" size={14} />Crear panel</button>
                 {misPaneles.some((p) => p.id === d.panelId) && <button className="btn sm ghost" onClick={() => { setMisPaneles(misPaneles.filter((p) => p.id !== d.panelId)); set('panelId', 'gen-550'); }}><Icon name="trash" size={14} />Borrar este panel</button>}
               </div>
               {nuevoPanel && (
-                <form className="dz-new" onSubmit={(e) => { e.preventDefault(); const id = 'mio-' + Date.now().toString(36); setMisPaneles([...misPaneles, { ...nuevoPanel, id, w: +nuevoPanel.w, largo: +nuevoPanel.largo, ancho: +nuevoPanel.ancho }]); set('panelId', id); setNuevoPanel(null); }}>
+                <form className="dz-new" onSubmit={(e) => { e.preventDefault(); const id = 'mio-' + Date.now().toString(36); const marca = nuevoPanel.marca === 'Otra' ? (nuevoPanel.otra.trim() || 'Otra marca') : nuevoPanel.marca; setMisPaneles([...misPaneles, { id, marca, nombre: nuevoPanel.nombre.trim() || `${marca === 'Genérico' ? 'Panel' : marca} ${nuevoPanel.w} W`, w: +nuevoPanel.w, largo: +nuevoPanel.largo, ancho: +nuevoPanel.ancho, garantia: +nuevoPanel.garantia }]); set('panelId', id); setNuevoPanel(null); }}>
                   <div className="grid dz-g">
-                    <label className="f">Marca<input className="input" required value={nuevoPanel.marca} onChange={(e) => setNuevoPanel({ ...nuevoPanel, marca: e.target.value })} /></label>
-                    <label className="f">Modelo<input className="input" required value={nuevoPanel.nombre} onChange={(e) => setNuevoPanel({ ...nuevoPanel, nombre: e.target.value })} /></label>
-                    <label className="f">Potencia (W)<input className="input mono" type="number" min="50" required value={nuevoPanel.w} onChange={(e) => setNuevoPanel({ ...nuevoPanel, w: e.target.value })} /></label>
+                    <label className="f">Marca<select className="select" value={nuevoPanel.marca} onChange={(e) => setNuevoPanel({ ...nuevoPanel, marca: e.target.value })}>{[...MARCAS_PANEL, 'Otra'].map((m) => <option key={m}>{m}</option>)}</select></label>
+                    {nuevoPanel.marca === 'Otra' && <label className="f">¿Cuál marca?<input className="input" required value={nuevoPanel.otra} onChange={(e) => setNuevoPanel({ ...nuevoPanel, otra: e.target.value })} /></label>}
+                    <label className="f">Potencia (W)<select className="select" value={POTENCIAS_PANEL.includes(+nuevoPanel.w) ? nuevoPanel.w : 'otra'} onChange={(e) => { const w = e.target.value === 'otra' ? nuevoPanel.w : +e.target.value; const [largo, ancho] = medidaTipica(w); setNuevoPanel({ ...nuevoPanel, w, largo, ancho }); }}>{POTENCIAS_PANEL.map((w) => <option key={w} value={w}>{w} W</option>)}<option value="otra">Otra…</option></select></label>
+                    {!POTENCIAS_PANEL.includes(+nuevoPanel.w) && <label className="f">Potencia exacta (W)<input className="input mono" type="number" min="50" required value={nuevoPanel.w} onChange={(e) => setNuevoPanel({ ...nuevoPanel, w: e.target.value })} /></label>}
+                    <label className="f">Modelo (opcional)<input className="input" value={nuevoPanel.nombre} placeholder={`${nuevoPanel.marca === 'Otra' ? nuevoPanel.otra || 'Marca' : nuevoPanel.marca === 'Genérico' ? 'Panel' : nuevoPanel.marca} ${nuevoPanel.w} W`} onChange={(e) => setNuevoPanel({ ...nuevoPanel, nombre: e.target.value })} /></label>
                     <label className="f">Garantía (años)<input className="input mono" type="number" min="1" value={nuevoPanel.garantia} onChange={(e) => setNuevoPanel({ ...nuevoPanel, garantia: e.target.value })} /></label>
                     <label className="f">Largo (mm)<input className="input mono" type="number" min="300" required value={nuevoPanel.largo} onChange={(e) => setNuevoPanel({ ...nuevoPanel, largo: e.target.value })} /></label>
                     <label className="f">Ancho (mm)<input className="input mono" type="number" min="300" required value={nuevoPanel.ancho} onChange={(e) => setNuevoPanel({ ...nuevoPanel, ancho: e.target.value })} /></label>
@@ -236,14 +240,16 @@ export default function Diseno() {
 
             <div className="card dz-sec">
               <h3>4 · Baterías (opcional)</h3>
-              <label className="f">Batería<select className="select" value={d.batId} onChange={(e) => set('batId', e.target.value)}><option value="">Sin batería</option>{baterias.map((b) => <option key={b.id} value={b.id}>{b.marca} · {b.nombre} ({fmt(b.kwh, 1)} kWh)</option>)}</select></label>
-              <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setNuevaBat({ marca: '', nombre: '', kwh: 10, dod: 90, kw: 5 })}><Icon name="plus" size={14} />Crear batería</button>
+              <label className="f">Batería<select className="select" value={d.batId} onChange={(e) => set('batId', e.target.value)}><option value="">Sin batería</option>{[...new Set(baterias.map((b) => b.marca))].map((mk) => <optgroup key={mk} label={mk === 'Genérico' ? 'Genéricas' : mk}>{baterias.filter((b) => b.marca === mk).map((b) => <option key={b.id} value={b.id}>{b.nombre} · {fmt(b.kwh, 1)} kWh</option>)}</optgroup>)}</select></label>
+              <div className="row" style={{ gap: 6 }}>{misBaterias.some((b) => b.id === d.batId) && <button className="btn sm ghost" onClick={() => { setMisBaterias(misBaterias.filter((b) => b.id !== d.batId)); set('batId', ''); }}><Icon name="trash" size={14} />Borrar esta batería</button>}<button className="btn sm ghost" onClick={() => setNuevaBat({ marca: 'Genérico', otra: '', nombre: '', kwh: 10, dod: 90, kw: 5 })}><Icon name="plus" size={14} />Crear batería</button></div>
               {nuevaBat && (
-                <form className="dz-new" onSubmit={(e) => { e.preventDefault(); const id = 'mia-' + Date.now().toString(36); setMisBaterias([...misBaterias, { ...nuevaBat, id, kwh: +nuevaBat.kwh, dod: +nuevaBat.dod / 100, kw: +nuevaBat.kw }]); set('batId', id); setNuevaBat(null); }}>
+                <form className="dz-new" onSubmit={(e) => { e.preventDefault(); const id = 'mia-' + Date.now().toString(36); const marca = nuevaBat.marca === 'Otra' ? (nuevaBat.otra.trim() || 'Otra marca') : nuevaBat.marca; setMisBaterias([...misBaterias, { id, marca, nombre: nuevaBat.nombre.trim() || `${marca === 'Genérico' ? 'Litio' : marca} ${nuevaBat.kwh} kWh`, kwh: +nuevaBat.kwh, dod: +nuevaBat.dod / 100, kw: +nuevaBat.kwh / 2 }]); set('batId', id); setNuevaBat(null); }}>
                   <div className="grid dz-g">
-                    <label className="f">Marca<input className="input" required value={nuevaBat.marca} onChange={(e) => setNuevaBat({ ...nuevaBat, marca: e.target.value })} /></label>
-                    <label className="f">Modelo<input className="input" required value={nuevaBat.nombre} onChange={(e) => setNuevaBat({ ...nuevaBat, nombre: e.target.value })} /></label>
-                    <label className="f">Capacidad (kWh)<input className="input mono" type="number" min="0.5" step="0.1" required value={nuevaBat.kwh} onChange={(e) => setNuevaBat({ ...nuevaBat, kwh: e.target.value })} /></label>
+                    <label className="f">Marca<select className="select" value={nuevaBat.marca} onChange={(e) => setNuevaBat({ ...nuevaBat, marca: e.target.value })}>{[...MARCAS_BATERIA, 'Otra'].map((m) => <option key={m}>{m}</option>)}</select></label>
+                    {nuevaBat.marca === 'Otra' && <label className="f">¿Cuál marca?<input className="input" required value={nuevaBat.otra} onChange={(e) => setNuevaBat({ ...nuevaBat, otra: e.target.value })} /></label>}
+                    <label className="f">Capacidad<select className="select" value={CAPACIDADES_BAT.includes(+nuevaBat.kwh) ? nuevaBat.kwh : 'otra'} onChange={(e) => setNuevaBat({ ...nuevaBat, kwh: e.target.value === 'otra' ? '' : +e.target.value })}>{CAPACIDADES_BAT.map((k) => <option key={k} value={k}>{fmt(k, 2)} kWh</option>)}<option value="otra">Otra…</option></select></label>
+                    {!CAPACIDADES_BAT.includes(+nuevaBat.kwh) && <label className="f">Capacidad exacta (kWh)<input className="input mono" type="number" min="0.5" step="0.1" required value={nuevaBat.kwh} onChange={(e) => setNuevaBat({ ...nuevaBat, kwh: e.target.value })} /></label>}
+                    <label className="f">Modelo (opcional)<input className="input" value={nuevaBat.nombre} placeholder={`${nuevaBat.marca === 'Otra' ? nuevaBat.otra || 'Marca' : nuevaBat.marca === 'Genérico' ? 'Litio' : nuevaBat.marca} ${nuevaBat.kwh || ''} kWh`} onChange={(e) => setNuevaBat({ ...nuevaBat, nombre: e.target.value })} /></label>
                     <label className="f">Descarga útil (%)<input className="input mono" type="number" min="50" max="100" value={nuevaBat.dod} onChange={(e) => setNuevaBat({ ...nuevaBat, dod: e.target.value })} /></label>
                   </div>
                   <div className="row"><button className="btn sm primary">Guardar batería</button><button type="button" className="btn sm ghost" onClick={() => setNuevaBat(null)}>Cancelar</button></div>
@@ -277,12 +283,12 @@ export default function Diseno() {
           <div className="card no-print prop-controls">
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <button className="btn sm ghost" onClick={() => setReporte(false)}><Icon name="back" size={14} />Volver al diseño</button>
-              <label className="f" style={{ flex: '1 1 260px', maxWidth: 360 }}>Preparado por<input className="input" value={por} onChange={(e) => { setPor(e.target.value); writeLocal('rs_propuesta_datos', { ...readLocal('rs_propuesta_datos', {}), por: e.target.value }); }} /></label>
+              <span className="small">{marca.empresa ? <>Con la marca de <b>{marca.empresa}</b></> : 'Aún no has configurado tu marca.'} <button className="link-btn" style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => go('marca')}>Editar mi marca</button></span>
               <button className="btn primary" onClick={() => window.print()}><Icon name="pdf" size={16} />Descargar PDF</button>
             </div>
             <span className="small muted">En la ventana de impresión elige "Guardar como PDF" y activa "Gráficos de fondo".</span>
           </div>
-          <Reporte {...{ d, por, paid, cfg, fc: fcReporte, n, panel, kwp, genAnual, compensa, gen, consumo, sinBat, conBat, bat, batKwh, respaldoH, inversor, costoPV, costoBat, solar, tarifa }} />
+          <ReporteSolar {...{ d, marca, paid, cfg, fc: fcReporte, n, panel, kwp, genAnual, compensa, gen, consumo, sinBat, conBat, bat, batKwh, respaldoH, inversor, costoPV, costoBat, solar, tarifa }} />
         </>
       )}
     </div>
@@ -333,105 +339,3 @@ function BarsMes({ consumo, gen, print }) {
     </figure>
   );
 }
-
-// Lo que pagaría sin hacer nada (acumulado 25 años)
-function CurvaNada({ serie }) {
-  const W = 600, H = 200, max = serie[serie.length - 1].sinHacer;
-  const pts = serie.map((s, i) => [40 + (i / (serie.length - 1)) * (W - 50), H - (s.sinHacer / max) * (H - 20)]);
-  return (
-    <figure className="chart chart-print">
-      <svg viewBox={`0 0 ${W} ${H + 22}`} width="100%" role="img" aria-label="Costo acumulado de no hacer nada">
-        <defs><linearGradient id="gnada" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FF7A00" stopOpacity="0.55" /><stop offset="1" stopColor="#FF7A00" stopOpacity="0.05" /></linearGradient></defs>
-        <polygon points={`40,${H} ${pts.map((p) => p.join(',')).join(' ')} ${W - 10},${H}`} fill="url(#gnada)" />
-        <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke="#FF7A00" strokeWidth="2.5" />
-        {[1, 5, 10, 15, 20, 25].map((y) => <text key={y} x={40 + ((y - 1) / 24) * (W - 50)} y={H + 16} textAnchor="middle" fontSize="11" fill="#5A5F7A">Año {y}</text>)}
-      </svg>
-    </figure>
-  );
-}
-
-function Reporte({ d, por, paid, cfg, fc, n, panel, kwp, genAnual, compensa, gen, consumo, sinBat, conBat, bat, batKwh, respaldoH, inversor, costoPV, costoBat, solar, tarifa }) {
-  const best = conBat && conBat.r.neto > sinBat.r.neto ? conBat : sinBat;
-  const r = best.r;
-  const costo = costoPV + (best === conBat ? costoBat : 0);
-  const hoy = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
-  const Pie = () => <>{!paid && <div className="rp-water" aria-hidden="true">VERSIÓN DE PRUEBA</div>}<div className="rp-foot"><span>{por ? `Preparado por ${por}` : ''}</span><span>Radar Solar · Powered by Talera</span></div></>;
-  return (
-    <article className="doc rp">
-      <section className="rp-page rp-cover">
-        <div className="rp-cover-l">
-          <img src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" className="rp-logo" />
-          <span className="rp-kicker">Energía solar{bat ? ' y almacenamiento' : ''}</span>
-          <h1>Propuesta</h1>
-          <p>Análisis personalizado para<br /><b>{d.cliente || 'nuestro cliente'}</b></p>
-          <p className="rp-small">{d.direccion}{solar?.muni ? `${d.direccion ? ' · ' : ''}${solar.muni.name}, ${solar.muni.dpto}` : ''}</p>
-          <p className="rp-small">{hoy}{por ? ` · ${por}` : ''}</p>
-        </div>
-        {!paid && <div className="rp-water" aria-hidden="true">VERSIÓN DE PRUEBA</div>}
-        <div className="rp-cover-r"><MapSnapshot sat={cfg.sat} fc={fc} width={900} height={900} className="rp-img" alt="Techo del cliente con los paneles propuestos" /></div>
-      </section>
-
-      <section className="rp-page">
-        <h2 className="rp-h">Resumen</h2>
-        <div className="rp-kpis">
-          <div><span>Capacidad del sistema</span><b>{fmt(kwp, 2)} kWp</b></div>
-          <div><span>Generación anual</span><b>{fmt(genAnual)} kWh</b></div>
-          <div><span>Cubre de su consumo</span><b>{fmt(compensa)} %</b></div>
-          <div><span>Ahorro el primer año</span><b>{money(r.ahorro1)}</b></div>
-          <div><span>Inversión</span><b>{money(costo)}</b></div>
-          <div><span>Retorno de la inversión</span><b>{r.payback != null ? `${fmt(r.payback, 1)} años` : '> 25 años'}</b></div>
-          <div><span>Ahorro neto en 25 años</span><b>{money(r.neto)}</b></div>
-          <div><span>Paneles</span><b>{fmt(n)} × {panel.w} W</b></div>
-        </div>
-        <h2 className="rp-h">El costo de no hacer nada</h2>
-        <p>Si sigue igual, en 25 años pagará cerca de <b>{money(r.sinHacer)}</b> en energía (con un aumento de tarifa de {d.incr} % al año).</p>
-        <CurvaNada serie={r.serie} />
-        <Pie />
-      </section>
-
-      <section className="rp-page">
-        <h2 className="rp-h">Su energía, mes a mes</h2>
-        <p>Consumo actual frente a la generación solar del primer año.</p>
-        <BarsMes consumo={consumo} gen={gen} print />
-        <h2 className="rp-h">Su factura</h2>
-        <div className="rp-bill">
-          <div><span>Hoy</span><b>{money(r.facturaAntes / 12)}</b><i style={{ height: 120 }} className="rp-bar gris" /></div>
-          <div><span>Con energía solar</span><b>{money(Math.max(0, r.facturaDespues / 12))}</b><i style={{ height: Math.max(4, (Math.max(0, r.facturaDespues) / Math.max(1, r.facturaAntes)) * 120) }} className="rp-bar naranja" /></div>
-          <p>Ahorro de <b>{money(r.ahorro1 / 12)}</b> al mes en promedio el primer año, con una tarifa de {fmt(tarifa)} $/kWh.</p>
-        </div>
-        {conBat && (
-          <table className="doc-tbl"><thead><tr><th></th><th>Solo paneles</th><th>Con batería</th></tr></thead><tbody>
-            <tr><td>Inversión</td><td>{money(costoPV)}</td><td>{money(costoPV + costoBat)}</td></tr>
-            <tr><td>Ahorro el primer año</td><td>{money(sinBat.r.ahorro1)}</td><td>{money(conBat.r.ahorro1)}</td></tr>
-            <tr><td>Retorno</td><td>{sinBat.r.payback != null ? `${fmt(sinBat.r.payback, 1)} años` : '> 25'}</td><td>{conBat.r.payback != null ? `${fmt(conBat.r.payback, 1)} años` : '> 25'}</td></tr>
-            <tr><td>Respaldo en un corte</td><td>—</td><td>{fmt(respaldoH, 1)} h con {fmt(+d.cargaCritica, 1)} kW</td></tr>
-          </tbody></table>
-        )}
-        <Pie />
-      </section>
-
-      <section className="rp-page">
-        <h2 className="rp-h">Sistema propuesto · {fmt(kwp, 2)} kWp</h2>
-        <div className="rp-equipos">
-          <div className="rp-eq"><PanelArt /><div><b>Módulos solares</b><span>{fmt(n)} × {panel.marca} {panel.nombre}</span><span>{panel.w} W · {panel.largo}×{panel.ancho} mm{panel.garantia ? ` · garantía ${panel.garantia} años` : ''}</span><span>Inclinación {d.tilt}° · orientación {AZ.find((a) => a[0] === d.azimuth)?.[1]}</span></div></div>
-          <div className="rp-eq"><InvArt /><div><b>Inversor</b><span>Capacidad sugerida de {fmt(inversor, 1)} kW AC</span><span>Relación DC/AC de 1,15</span></div></div>
-          {bat && <div className="rp-eq"><BatArt /><div><b>Almacenamiento</b><span>{d.batN > 1 ? `${d.batN} × ` : ''}{bat.marca} {bat.nombre}</span><span>{fmt(batKwh, 1)} kWh en total · respaldo de {fmt(respaldoH, 1)} h</span></div></div>}
-        </div>
-        <h2 className="rp-h">Próximos pasos</h2>
-        <ol className="rp-steps">
-          <li><b>Visita técnica.</b> Revisamos el techo, la estructura y el tablero eléctrico.</li>
-          <li><b>Diseño de ingeniería.</b> Ajustamos el diseño final y confirmamos el presupuesto.</li>
-          <li><b>Trámites.</b> Solicitud de conexión al operador de red como autogenerador.</li>
-          <li><b>Instalación.</b> Montaje de paneles, inversor{bat ? ', baterías' : ''} y protecciones.</li>
-          <li><b>Puesta en marcha.</b> Medidor bidireccional y monitoreo de su producción.</li>
-        </ol>
-        <p className="doc-note">Estimación de referencia con radiación satelital del sitio, {d.tilt}° de inclinación y pérdidas típicas. No reemplaza la visita técnica ni la factibilidad de conexión del operador de red. Precios sujetos a confirmación.</p>
-        <Pie />
-      </section>
-    </article>
-  );
-}
-
-const PanelArt = () => <svg viewBox="0 0 80 60" width="80" height="60" aria-hidden="true"><rect x="4" y="6" width="72" height="44" rx="3" fill="#0B2A6B" />{[0, 1, 2, 3, 4, 5].map((i) => <line key={i} x1={4 + i * 12} y1="6" x2={4 + i * 12} y2="50" stroke="#A8C5FF" strokeWidth="0.8" />)}{[0, 1, 2, 3].map((i) => <line key={'h' + i} x1="4" y1={6 + i * 11} x2="76" y2={6 + i * 11} stroke="#A8C5FF" strokeWidth="0.8" />)}<rect x="36" y="50" width="8" height="8" fill="#5A5F7A" /></svg>;
-const InvArt = () => <svg viewBox="0 0 80 60" width="80" height="60" aria-hidden="true"><rect x="18" y="4" width="44" height="52" rx="5" fill="#E6EBF7" stroke="#8A93B8" /><rect x="26" y="12" width="28" height="12" rx="2" fill="#231D5D" /><circle cx="40" cy="38" r="6" fill="#FF7A00" /></svg>;
-const BatArt = () => <svg viewBox="0 0 80 60" width="80" height="60" aria-hidden="true"><rect x="16" y="6" width="48" height="50" rx="6" fill="#E6EBF7" stroke="#8A93B8" /><rect x="22" y="14" width="36" height="34" rx="3" fill="#5FD3A0" /><path d="M42 18l-8 13h6l-3 11 9-14h-6z" fill="#FFFFFF" /></svg>;
