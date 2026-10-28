@@ -17,6 +17,7 @@ export default function Tour({ paid, go }) {
     ['list', 'La ficha de cada municipio', 'Toca un municipio para ver por qué tiene ese puntaje, sus tarifas, cortes, clientes, red eléctrica y el retorno de un sistema solar. Desde ahí generas una propuesta en PDF o la compartes por WhatsApp.', 'ranking'],
     ['factory', 'Clientes y competencia', 'Hoteles, empresas grandes e industrias, instaladores y licitaciones públicas, con contacto de empresa. Toca "+ Prospecto" para guardar los que te interesan.', paid ? 'industrias' : 'clientes'],
     ['star', 'Mis prospectos', 'Sigue tus zonas para ver las novedades (licitaciones, obras y proyectos) y lleva el estado de cada cliente potencial hasta cerrar la venta.', 'prospectos'],
+    ['sun', 'Diseño solar', 'Busca la dirección de tu cliente, dibuja su techo sobre la imagen satelital y la app llena los paneles, calcula la generación, compara con y sin baterías y arma la propuesta en PDF.', 'diseno'],
     ['calc', 'Calculadora y asistente', 'Calcula retorno, cuota del crédito y beneficios tributarios, y pregúntale al asistente con IA por cualquier zona.', 'calculadora'],
   ];
   if (!open) return null;
