@@ -7,6 +7,7 @@ import Markdown from '../components/Markdown.jsx';
 import { readLocal, writeLocal } from '../local.js';
 import { model } from './Calculadora.jsx';
 import MapSnapshot from '../components/MapSnapshot.jsx';
+import { useBranding, inkOn, readableOnWhite, SELLO } from '../branding.js';
 
 const TIPOS = {
   comercial: ['Propuesta comercial para un cliente', 'Propuesta de energía solar'],
@@ -17,14 +18,14 @@ const HOGAR_PERSONAS = 3.1; // personas por hogar (supuesto de referencia)
 
 // Propuestas e informes listos para descargar en PDF (desde el diálogo de impresión del navegador)
 export default function Propuesta({ arg }) {
-  const { user, paid, profile, prof, scoreParams, meta, cfg } = useApp();
+  const { user, paid, profile, prof, scoreParams, meta, cfg, go } = useApp();
+  const marca = useBranding(user);
   const zona = arg === 'zona';
   const [m, setM] = useState(null);
   const [err, setErr] = useState(null);
-  const saved = readLocal('rs_propuesta_datos', {});
   const [f, setF] = useState({
     tipo: zona ? 'zona' : profile === 'instalador' || profile === 'respaldo' ? 'comercial' : 'zona',
-    para: '', por: saved.por || user.company || user.name || '', contacto: saved.contacto || '', cliente: 'hogar', kwp: 6, intro: '', notas: '',
+    para: '', cliente: 'hogar', kwp: 6, intro: '', notas: '',
   });
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const [busy, setBusy] = useState(false);
@@ -36,7 +37,6 @@ export default function Propuesta({ arg }) {
     if (!code) return;
     api(`/municipio/${code}` + qs(scoreParams)).then(setM).catch(setErr);
   }, [code]);
-  useEffect(() => { writeLocal('rs_propuesta_datos', { por: f.por, contacto: f.contacto }); }, [f.por, f.contacto]);
 
   const fin = useMemo(() => {
     if (!m) return null;
@@ -71,8 +71,7 @@ export default function Propuesta({ arg }) {
         <div className="grid g3">
           {!zona && <label className="f">Tipo de documento<select className="select" value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>{Object.entries(TIPOS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select></label>}
           <label className="f">Preparado para<input className="input" value={f.para} placeholder={f.tipo === 'alcaldia' ? `Alcaldía de ${m.name}` : 'Nombre del cliente'} onChange={(e) => set('para', e.target.value)} /></label>
-          <label className="f">Preparado por (tu empresa)<input className="input" value={f.por} onChange={(e) => set('por', e.target.value)} /></label>
-          <label className="f">Tu contacto (teléfono o correo)<input className="input" value={f.contacto} onChange={(e) => set('contacto', e.target.value)} /></label>
+          <div className="f">Tu marca<span className="small">{marca.empresa ? <>Se usa la marca de <b>{marca.empresa}</b>.</> : 'Aún no has configurado tu marca.'} <button type="button" className="link-btn" style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => go('marca')}>Editar mi marca</button></span></div>
           {f.tipo === 'comercial' && <>
             <label className="f">Tipo de cliente<select className="select" value={f.cliente} onChange={(e) => set('cliente', e.target.value)}><option value="hogar">Hogar</option><option value="empresa">Empresa o negocio</option></select></label>
             <label className="f">Tamaño del sistema (kWp)<input className="input mono" type="number" min="1" value={f.kwp} onChange={(e) => set('kwp', e.target.value)} /></label>
@@ -86,10 +85,10 @@ export default function Propuesta({ arg }) {
         <label className="f">Notas o condiciones (opcional)<textarea className="input" rows={2} value={f.notas} onChange={(e) => set('notas', e.target.value)} placeholder="Garantías, tiempos de instalación, forma de pago…" /></label>
       </div>
 
-      <article className="doc">
-        <header className="doc-head">
-          <img src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" />
-          <div className="doc-meta"><span>{hoy}</span>{f.por && <span>Preparado por <b>{f.por}</b></span>}{f.contacto && <span>{f.contacto}</span>}</div>
+      <article className="doc" style={{ '--d1': marca.color1, '--d2': marca.color2, '--dt1': readableOnWhite(marca.color1), '--dt2': readableOnWhite(marca.color2) }}>
+        <header className="doc-head" style={{ background: marca.color1, color: inkOn(marca.color1) }}>
+          {marca.logo ? <img className="doc-brand-logo" src={marca.logo} alt={marca.empresa || 'Logo'} /> : marca.empresa ? <b className="doc-brand-txt">{marca.empresa}</b> : <img src="/radar-solar-logo.png" alt="Radar Solar" />}
+          <div className="doc-meta" style={{ color: inkOn(marca.color1) }}><span>{hoy}</span>{(marca.asesor || marca.empresa) && <span>Preparado por <b>{marca.asesor || marca.empresa}</b>{marca.asesor && marca.empresa ? ` · ${marca.empresa}` : ''}</span>}{[marca.telefono, marca.correo].filter(Boolean).length > 0 && <span>{[marca.telefono, marca.correo].filter(Boolean).join(' · ')}</span>}</div>
         </header>
         <div className="doc-title">
           <span className="doc-kicker">{zona ? 'Informe de zona' : TIPOS[f.tipo][0]}</span>
@@ -188,10 +187,11 @@ export default function Propuesta({ arg }) {
           <section className="doc-sec"><h2>Red eléctrica cercana al centro de la zona</h2><ul>{z.subsCerca.map((x) => <li key={x.n}>Subestación {x.n} ({x.kv}) a {fmt(x.km, 1)} km</li>)}{z.linea && <li>Línea de transmisión más cercana: {z.linea.kv} a {fmt(z.linea.km, 1)} km</li>}<li>{fmt(z.solar10)} plantas solares a menos de 10 km</li><li>Radiación de referencia ({z.ref.name}): {fmt(z.ref.ghi, 2)} kWh/m²/día · tarifa comercial {fmt(z.ref.tarifa_com ?? z.ref.tarifa)} $/kWh</li></ul><p className="doc-note">No incluye pendiente del terreno, uso del suelo, áreas protegidas ni capacidad disponible del transformador: se deben verificar con estudios y con el operador de red.</p></section>
         </>)}
 
-        {f.notas && <section className="doc-sec"><h2>Condiciones</h2><p style={{ whiteSpace: 'pre-wrap' }}>{f.notas}</p></section>}
+        {(f.notas || marca.condiciones) && <section className="doc-sec"><h2>Condiciones</h2><p style={{ whiteSpace: 'pre-wrap' }}>{[f.notas, marca.condiciones].filter(Boolean).join('\n')}</p></section>}
+        {(marca.empresa || marca.asesor) && <section className="doc-sec doc-contact"><h2>Contacto</h2><p><b>{marca.asesor || marca.empresa}</b>{marca.cargo ? `, ${marca.cargo}` : ''}{marca.asesor && marca.empresa ? ` · ${marca.empresa}` : ''}<br />{[marca.telefono, marca.whatsapp && `WhatsApp ${marca.whatsapp}`, marca.correo, marca.web].filter(Boolean).join(' · ')}{marca.nit ? <><br />NIT {marca.nit}</> : null}</p></section>}
         <footer className="doc-foot">
           <span>Estimaciones de referencia basadas en información pública. No reemplazan un estudio técnico ni la factibilidad de conexión del operador de red.{f.tipo === 'comercial' && !zona ? ` Supuestos: costo de ${cop(meta.capex_kwp)} por kWp más IVA sobre equipos, rendimiento de 78 %, aumento de tarifa de 4 % anual.` : ''}</span>
-          <span>Generado con Radar Solar · Powered by Talera · talera.co</span>
+          <span className="sello"><img src="/icon.svg" alt="" />{SELLO}</span>
         </footer>
       </article>
     </div>
