@@ -46,7 +46,7 @@ export default function Industrias({ code }) {
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
-            <table className="tbl"><thead><tr><th>#</th><th>Empresa</th><th className="hs">Sector</th><th>Sede</th><th className="num">Ingresos</th><th>Contacto</th>{paid && <th></th>}</tr></thead>
+            <table className="tbl"><thead><tr><th>#</th><th>Empresa</th><th className="hs">Sector</th><th>Sede</th><th className="num">Ingresos</th><th>Contacto</th><th></th></tr></thead>
               <tbody>{data.rows.map((e) => (
                 <tr key={e.nit + e.n}>
                   <td className="mono muted">{e.rank}</td>
@@ -55,7 +55,7 @@ export default function Industrias({ code }) {
                   <td className="small">{e.code ? <a href={`#/m/${e.code}`}>{e.mun}</a> : e.mun}<br /><span className="muted">{e.dpto}{e.tarifa_com ? ` · ${fmt(e.tarifa_com)} $/kWh` : ''}</span></td>
                   <td className="num small">{fmt(e.ing)} mil M</td>
                   <td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} /></td>
-                  {paid && <td><ProspectButton p={{ tipo: 'industria', nit: e.nit, nombre: e.n, code: e.code, mun: e.mun, tel: e.tel, mail: e.mail, detalle: e.sector }} /></td>}
+                  <td><ProspectButton p={{ tipo: 'industria', nit: e.nit, nombre: e.n, code: e.code, mun: e.mun, tel: e.tel, mail: e.mail, detalle: e.sector }} /></td>
                 </tr>))}</tbody>
             </table>
             {data.locked && <LockedRows cols={6} n={8} text={`${fmt(data.total)} empresas grandes con sector, ingresos, municipio y contacto en el plan completo.`} />}
