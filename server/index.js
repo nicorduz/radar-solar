@@ -312,7 +312,63 @@ app.get('/api/solar', requireUser, wrap(async (req, res) => {
     solarCache.set(key, solar);
     if (solarCache.size > 500) solarCache.delete(solarCache.keys().next().value);
   }
-  res.json({ ...solar, angle, aspect, muni });
+  const b = (store.meta.bolsa || []).slice(-12);
+  const bolsa = b.length ? Math.round(b.reduce((x, y) => x + y.v, 0) / b.length) : null;
+  res.json({ ...solar, angle, aspect, muni, bolsa, lat, lon });
+}));
+
+// Generación hora a hora de 1 kWp en un sitio (8.760 valores, hora local de Colombia) para simular
+// autoconsumo, excedentes y baterías. Forma horaria de PVGIS (años 2013-2015) ajustada a su promedio mensual.
+const horarioCache = new Map();
+app.get('/api/solar/horario', requireUser, wrap(async (req, res) => {
+  const lat = +req.query.lat, lon = +req.query.lon;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -5 || lat > 14 || lon < -82 || lon > -66) return res.status(400).json({ error: 'Coordenadas fuera de Colombia' });
+  const angle = Math.max(0, Math.min(60, Math.round(+req.query.angle || 0))), aspect = Math.max(-180, Math.min(180, Math.round(+req.query.aspect || 0)));
+  const key = [lat.toFixed(2), lon.toFixed(2), angle, aspect].join('|');
+  if (horarioCache.has(key)) return res.json(horarioCache.get(key));
+  const dias = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let out;
+  try {
+    const base = `https://re.jrc.ec.europa.eu/api/v5_2`;
+    const [serie, clima] = await Promise.all([
+      fetch(`${base}/seriescalc?lat=${lat}&lon=${lon}&pvcalculation=1&peakpower=1&loss=14&angle=${angle}&aspect=${aspect}&startyear=2013&endyear=2015&outputformat=json`, { signal: AbortSignal.timeout(40000) }).then((r) => r.json()),
+      fetch(`${base}/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=14&angle=${angle}&aspect=${aspect}&outputformat=json`, { signal: AbortSignal.timeout(30000) }).then((r) => r.json()),
+    ]);
+    const rows = serie.outputs?.hourly; const mon = clima.outputs?.monthly?.fixed;
+    if (!rows?.length || !mon?.length) throw new Error('sin datos');
+    // Promedio por hora del año (sin 29 de febrero) y paso de hora UTC a hora de Colombia (UTC-5)
+    const acc = new Float64Array(8760), cnt = new Uint8Array(8760);
+    for (const r of rows) {
+      const t = r.time; const mo = +t.slice(4, 6), dd = +t.slice(6, 8), hh = +t.slice(9, 11);
+      if (mo === 2 && dd === 29) continue;
+      const doy = dias.slice(0, mo - 1).reduce((a, b) => a + b, 0) + dd - 1;
+      const i = (doy * 24 + hh - 5 + 8760) % 8760;
+      acc[i] += r.P || 0; cnt[i]++;
+    }
+    const h = Array.from(acc, (v, i) => (cnt[i] ? v / cnt[i] : 0));
+    let k = 0;
+    for (let m = 0; m < 12; m++) { // ajusta cada mes al promedio de largo plazo
+      const n = dias[m] * 24, tot = h.slice(k, k + n).reduce((a, b) => a + b, 0) / 1000;
+      const f = tot ? mon[m].E_m / tot : 1;
+      for (let i = k; i < k + n; i++) h[i] = Math.round(h[i] * f);
+      k += n;
+    }
+    out = { metodo: 'pvgis', h, mensual: mon.map((x) => +x.E_m.toFixed(1)), anual: Math.round(mon.reduce((a, x) => a + x.E_m, 0)), angle, aspect };
+  } catch {
+    // Respaldo: curva solar sintética escalada con la radiación del municipio más cercano
+    let near = null, bd = Infinity;
+    for (const m of store.municipios) { if (m.lat == null) continue; const d = kmBetween({ lat, lon }, m); if (d < bd) { bd = d; near = m; } }
+    const ghi = near?.ghi || 4.5;
+    const shape = Array.from({ length: 24 }, (_, hh) => Math.max(0, Math.sin((Math.PI * (hh + 0.5 - 6)) / 12)));
+    const ss = shape.reduce((a, b) => a + b, 0);
+    const h = [];
+    for (let d = 0; d < 365; d++) for (let hh = 0; hh < 24; hh++) h.push(Math.round((shape[hh] / ss) * ghi * 0.78 * 1000));
+    const mensual = dias.map((n) => +(ghi * 0.78 * n).toFixed(1));
+    out = { metodo: 'estimado', h, mensual, anual: Math.round(mensual.reduce((a, b) => a + b, 0)), angle, aspect };
+  }
+  horarioCache.set(key, out);
+  if (horarioCache.size > 200) horarioCache.delete(horarioCache.keys().next().value);
+  res.json(out);
 }));
 
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
