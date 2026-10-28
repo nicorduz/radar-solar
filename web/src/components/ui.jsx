@@ -4,6 +4,7 @@ import { useApp } from '../App.jsx';
 import { Icon } from './Icon.jsx';
 import { fmt, PROFILE_ICONS } from '../api.js';
 import { PLAN_PRECIO } from '../pages/Plan.jsx';
+import { useLocal, PROSPECTS, FOLLOWS, addProspect, hasProspect, isFollowing, toggleFollow } from '../local.js';
 
 export function Spinner() { return <div className="row" style={{ justifyContent: 'center', padding: 30 }}><div className="spinner" /></div>; }
 
@@ -129,7 +130,7 @@ export function Spark({ data, height = 70, unit = '', title }) {
 }
 
 export function PrivacyNote() {
-  return <p className="small muted" style={{ margin: 0 }}>Solo se muestran datos de contacto de personas jurídicas (NIT de empresa), tal como aparecen en registros públicos (SECOP II, Registro Nacional de Turismo). Úsalos para contacto comercial respetuoso; las personas pueden pedir no ser contactadas (Ley 1581 de 2012).</p>;
+  return <p className="small muted" style={{ margin: 0 }}>Solo se muestran datos de contacto de personas jurídicas (NIT de empresa), tal como aparecen en registros públicos. Úsalos para contacto comercial respetuoso; las personas pueden pedir no ser contactadas (Ley 1581 de 2012).</p>;
 }
 
 // Teléfono (con WhatsApp si es celular), correo y web
@@ -159,3 +160,31 @@ export function Section({ icon, title, hint, open = false, children }) {
     </details>
   );
 }
+
+// Nota de origen de los datos: solo la ven los administradores
+export function Fuente({ children, style }) {
+  const { meta } = useApp();
+  if (!meta?.admin) return null;
+  return <p className="small muted fuente" style={{ margin: 0, ...style }}><span className="tag">Solo admin</span> {children}</p>;
+}
+
+// Botón para guardar una empresa, hotel o licitación como prospecto
+export function ProspectButton({ p, small = true }) {
+  const [list] = useLocal(PROSPECTS, []);
+  const saved = hasProspect(list, p);
+  return (
+    <button className={`btn ${small ? 'sm' : ''} ${saved ? 'ghost' : ''}`} disabled={saved} onClick={(e) => { e.stopPropagation(); addProspect(p); }} title={saved ? 'Ya está en Mis prospectos' : 'Agregar a Mis prospectos'}>
+      <Icon name={saved ? 'check' : 'plus'} size={14} />{saved ? 'En prospectos' : 'Prospecto'}
+    </button>
+  );
+}
+
+// Seguir un municipio para ver sus novedades
+export function FollowButton({ m }) {
+  const [list] = useLocal(FOLLOWS, []);
+  const on = isFollowing(list, m.code);
+  return <button className={`btn sm ${on ? 'primary' : ''}`} onClick={() => toggleFollow(m)} aria-pressed={on}><Icon name="star" size={15} />{on ? 'Siguiendo' : 'Seguir zona'}</button>;
+}
+
+// Enlace para compartir un texto por WhatsApp
+export const waShare = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
