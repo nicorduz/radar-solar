@@ -6,6 +6,7 @@ import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { ORS, DEPT_DEFAULT_OR, MUNI_OR_OVERRIDE, CIIU_CATS, matchOrKey } from './catalogs.js';
 import { parseUpme } from './upme.js';
+import { buildCI } from './ci.js';
 import { parseSuiPrecios } from './sui_precios.js';
 import { dptoIndex, applySuiPrecios, applyAgpeXm, applyDna, precioBolsa, applyTurismo, clientesTuristicos, applyRed, applyZni } from './extra.js';
 
@@ -392,6 +393,10 @@ export async function build(rawDir, outDir) {
   fs.writeFileSync(path.join(outDir, 'empresas.json'), JSON.stringify(empresas));
   fs.writeFileSync(path.join(outDir, 'proyectos_base.json'), JSON.stringify(proyectos));
   fs.writeFileSync(path.join(outDir, 'clientes.json'), JSON.stringify(clientes));
+  // Empresas grandes (clientes comerciales e industriales)
+  const ci = buildCI(rawDir, [...munis.values()]);
+  fs.writeFileSync(path.join(outDir, 'ci.json'), JSON.stringify(ci));
+  log.push(`empresas grandes C&I: ${ci.empresas.length}`);
   fs.writeFileSync(path.join(outDir, 'red.json'), JSON.stringify({ ...red, zni, upme }));
   if (fs.existsSync(path.join(rawDir, 'red_mt_gridfinder.json'))) fs.copyFileSync(path.join(rawDir, 'red_mt_gridfinder.json'), path.join(outDir, 'red_mt.json'));
   fs.writeFileSync(path.join(outDir, 'meta.json'), JSON.stringify(meta, null, 1));
