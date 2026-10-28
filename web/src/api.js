@@ -46,11 +46,12 @@ export const METRICS = {
   inst_n: { label: 'Instaladores registrados', short: 'Instaladores', get: (d) => d.inst_n, f: (v) => fmt(v), unit: 'empresas', log: true },
   agpe_est: { label: 'Autogeneradores estimados', short: 'AGPE est.', get: (d) => d.agpe_est, f: (v) => fmt(v), unit: 'sistemas', log: true },
   sub_km: { label: 'Distancia a subestación (km)', short: 'Subest. km', get: (d) => d.sub_km, f: (v) => (v != null && v < 0.5 ? 'en el mpio.' : fmt(v, 1)), unit: 'km', invert: true },
-  upme_mw: { label: 'MW registrados en la UPME', short: 'MW UPME', get: (d) => d.upme_mw, f: (v) => fmt(v), unit: 'MW', log: true },
+  upme_mw: { label: 'MW en proyectos registrados', short: 'MW proyectos', get: (d) => d.upme_mw, f: (v) => fmt(v), unit: 'MW', log: true },
+  dna_dias: { label: 'Días con cortes al año', short: 'Días corte', get: (d) => d.dna_dias, f: (v) => fmt(v), unit: 'días' },
   solar30_mw: { label: 'MW solares a 30 km', short: 'MW solar 30 km', get: (d) => d.solar30_mw, f: (v) => fmt(v), unit: 'MW', log: true },
 };
 
-export const PROFILE_ICONS = { instalador: 'home', proveedor: 'box', desarrollador: 'bolt' };
+export const PROFILE_ICONS = { instalador: 'home', proveedor: 'box', desarrollador: 'bolt', servicios: 'wrench', respaldo: 'battery' };
 
 export const csvDownload = (name, head, rows) => {
   const blob = new Blob(['﻿' + [head, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
