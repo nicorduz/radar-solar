@@ -53,6 +53,9 @@ try { db.exec("ALTER TABLE users ADD COLUMN profile TEXT DEFAULT 'todos'"); } ca
 try { db.exec('ALTER TABLE users ADD COLUMN terms_at TEXT'); } catch { /* ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN terms_version TEXT'); } catch { /* ya existe */ }
 
+// Marca de cada usuario (logo, colores y datos de contacto para sus propuestas)
+db.exec('CREATE TABLE IF NOT EXISTS branding (user_id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT DEFAULT (datetime(\'now\')))');
+
 export const getSetting = (k, def) => {
   const r = db.prepare('SELECT value FROM settings WHERE key=?').get(k);
   return r ? JSON.parse(r.value) : def;
