@@ -54,6 +54,7 @@ export default function Plan() {
     ['building', 'Instaladores, mayoristas y competencia', `${fmt(t.empresas)} empresas del sector con municipio, teléfono, correo y contratos solares ganados.`],
     ['doc', 'Licitaciones públicas solares', `${fmt(t.secop)} procesos de contratación pública: quién compra, por cuánto y quién ganó.`],
     ['star', 'Mis prospectos y novedades', 'Sigue tus zonas, mira las licitaciones, obras y proyectos nuevos y lleva el estado de cada cliente potencial.'],
+    ['sun', 'Diseño solar sobre imagen satelital', 'Dibuja el techo del cliente, llena los paneles, compara con y sin baterías y entrega una propuesta en PDF con imágenes y retorno de la inversión.'],
     ['pdf', 'Propuestas e informes en PDF', 'Propuestas comerciales para tus clientes, informes de zona y para alcaldías, con tu empresa como autora.'],
     ['calc', 'Calculadora financiera', 'Retorno, cuota del crédito, valor presente, TIR y beneficios tributarios de la Ley 1715.'],
     ['layers', 'Red eléctrica y proyectos', `Líneas de transmisión, ${fmt(t.subs)} subestaciones, ${fmt(t.plantas)} plantas de generación y proyectos de generación registrados. Evalúa sitios en el mapa.`],
