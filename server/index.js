@@ -1,3 +1,4 @@
+
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
@@ -224,6 +225,7 @@ const bumpQuota = (req, day) => db.prepare('INSERT INTO ai_usage(user_id,day,n) 
 app.get('/api/ai/status', requireUser, (req, res) => res.json({ ...aiInfo(), quota: aiQuota(req) }));
 
 const fmt = (n) => (n == null ? 's/d' : Number(n).toLocaleString('es-CO', { maximumFractionDigits: 1 }));
+const money = (n) => (n == null ? 's/d' : n >= 1e9 ? `$${(n / 1e9).toLocaleString('es-CO', { maximumFractionDigits: 1 })} mil millones` : n >= 1e6 ? `$${(n / 1e6).toLocaleString('es-CO', { maximumFractionDigits: 1 })} millones` : `$${Math.round(n).toLocaleString('es-CO')}`);
 function muniBrief(m, r, full) {
   const p = payback(m);
   const lines = [
@@ -254,27 +256,70 @@ function buildContext(req, question, code) {
   const { profile, weights, segment } = parseQuery({ profile: req.body?.profile, segment: req.body?.segment }, req.user, paid);
   const sc = scored(profile, weights, segment);
   const parts = [`Perfil del usuario: ${PROFILES[profile].label}. ${PROFILES[profile].desc}`,
-    `Fuentes y cortes: DANE ELIC ${store.meta.elic_corte}; SNR licencias ${store.meta.snr_corte}; tarifas SUI ${store.meta.sui_periodo || '2023'}; autogeneradores XM ${store.meta.agpe_xm_fecha}; demanda no atendida XM ${store.meta.dna_periodo}; turismo RNT; red y plantas XM Paratec; SECOP II ${store.meta.generado?.slice(0, 10)}.`];
-  parts.push(`Índice de oportunidad (${PROFILES[profile].label}${PROFILES[profile].segments ? ', segmento ' + SEGMENTS[segment].label : ''}). ${paid ? 'Top 10' : 'Solo el primer puesto (usuario de prueba)'}:`);
-  for (const r of sc.rows.slice(0, paid ? 10 : 1)) { const m = store.byCode.get(r.code); parts.push(`#${r.rank} ${m.name} (${m.dpto}) puntaje ${r.score}; tarifa ${fmt(m.tarifa)}; vivienda 12m ${fmt(m.viv12 || 0)}; radiación ${fmt(m.ghi)}; turismo ${fmt(m.turismo_idx)}; cortes ${fmt(m.dna_1k)} kWh/1000 hab; instaladores ${m.inst_n || 0}; subestación a ${fmt(m.sub_km)} km`); }
-  if (!paid) parts.push('Departamentos más atractivos: ' + dptoScores(sc).sort((a, b) => b.score - a.score).slice(0, 5).map((d) => `${d.dpto} (${d.score})`).join(', '));
-  if (paid) {
-    const q = norm(question);
-    const mentioned = store.municipios.filter((m) => m.name.length > 3 && new RegExp(`\\b${escapeRe(norm(m.name))}\\b`).test(q)).slice(0, 4);
-    if (code && store.byCode.has(code) && !mentioned.some((m) => m.code === code)) mentioned.unshift(store.byCode.get(code));
-    for (const m of mentioned) parts.push('\nDATOS DE ' + muniBrief(m, sc.byCode.get(m.code), true));
-    const chunks = searchChunks(question, { municipio: code });
-    if (chunks.length) parts.push('\nFRAGMENTOS DE DOCUMENTOS CARGADOS:\n' + chunks.map((c) => `[${c.title}] ${c.text}`).join('\n---\n'));
+    `Cortes de datos: DANE ELIC ${store.meta.elic_corte}; SNR ${store.meta.snr_corte}; tarifas SUI ${store.meta.sui_periodo || '2023'}; autogeneradores XM ${store.meta.agpe_xm_fecha}; demanda no atendida XM ${store.meta.dna_periodo}; registro UPME ${store.meta.upme_corte || 's/d'}; SECOP II ${store.meta.generado?.slice(0, 10)}.`];
+  parts.push(`Índice de oportunidad (${PROFILES[profile].label}${PROFILES[profile].segments ? ', segmento ' + SEGMENTS[segment].label : ''}). ${paid ? 'Top 10 nacional' : 'Solo el primer puesto (usuario de prueba)'}:`);
+  for (const r of sc.rows.slice(0, paid ? 10 : 1)) { const m = store.byCode.get(r.code); parts.push(`#${r.rank} ${m.name} (${m.dpto}) puntaje ${r.score}; tarifa ${fmt(m.tarifa)} $/kWh; vivienda 12m ${fmt(m.viv12 || 0)}; radiación ${fmt(m.ghi)}; turismo ${fmt(m.turismo_idx)}; cortes ${fmt(m.dna_1k)} kWh/1000 hab; instaladores ${m.inst_n || 0}; subestación a ${fmt(m.sub_km)} km`); }
+  if (!paid) { parts.push('Departamentos más atractivos: ' + dptoScores(sc).sort((a, b) => b.score - a.score).slice(0, 5).map((d) => `${d.dpto} (${d.score})`).join(', ')); return parts.join('\n'); }
+
+  const q = norm(question);
+  const has = (re) => re.test(q);
+  // Municipios y departamentos mencionados en la pregunta
+  const mentioned = store.municipios.filter((m) => m.name.length > 3 && new RegExp(`\\b${escapeRe(norm(m.name))}\\b`).test(q)).slice(0, 4);
+  if (code && store.byCode.has(code) && !mentioned.some((m) => m.code === code)) mentioned.unshift(store.byCode.get(code));
+  const dptos = [...new Set(store.municipios.map((m) => m.dpto))].filter((d) => new RegExp(`\\b${escapeRe(norm(d).replace(/ d\.?c\.?$/, ''))}\\b`).test(q)).slice(0, 2);
+  for (const m of mentioned) parts.push('\nDATOS DE ' + muniBrief(m, sc.byCode.get(m.code), true));
+
+  const inArea = (codeX) => {
+    if (!codeX) return false;
+    if (mentioned.length && mentioned.some((m) => m.code === codeX)) return true;
+    const mm = store.byCode.get(codeX);
+    return dptos.length ? dptos.includes(mm?.dpto) : !mentioned.length;
+  };
+  const areaTxt = mentioned.length ? mentioned.map((m) => m.name).join(', ') : dptos.length ? dptos.join(', ') : 'todo el país';
+
+  for (const d of dptos) {
+    const rows = sc.rows.filter((r) => store.byCode.get(r.code)?.dpto === d).slice(0, 10);
+    parts.push(`\nMEJORES MUNICIPIOS DE ${d.toUpperCase()} (puesto nacional y puntaje):\n` + rows.map((r) => { const m = store.byCode.get(r.code); return `- ${m.name}: #${r.rank}, puntaje ${r.score}, tarifa ${fmt(m.tarifa)}, vivienda 12m ${fmt(m.viv12 || 0)}, instaladores ${m.inst_n || 0}, cortes ${fmt(m.dna_1k)}`; }).join('\n'));
   }
+  // Empresas, instaladores y contratos solares
+  if (has(/instalador|empresa|contratist|proveedor|competen|mayorist|distribu|contrato|gan/)) {
+    const emp = store.empresas.filter((e) => inArea(e.code) && (e.sol_n || e.cat === 'Instaladores eléctricos' || e.cat === 'Contratistas solares (SECOP)' || e.cat === 'Proveedores mayoristas de equipo'))
+      .sort((a, b) => (b.sol_n || 0) - (a.sol_n || 0) || (b.tel || b.mail ? 1 : 0) - (a.tel || a.mail ? 1 : 0)).slice(0, 15);
+    parts.push(`\nEMPRESAS EN ${areaTxt.toUpperCase()} (Registro Mercantil + SECOP II; contratos solares = procesos SECOP con "solar" o "fotovoltaico" adjudicados). Total que cumplen el filtro: ${store.empresas.filter((e) => inArea(e.code) && e.sol_n).length} con contratos solares.\n` +
+      (emp.length ? emp.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.cat}, ${store.byCode.get(e.code)?.name || e.cam}; contratos solares: ${e.sol_n || 0}${e.sol_valor ? ` por ${money(e.sol_valor)}` : ''}${e.sol_ultimo ? `, último ${e.sol_ultimo}` : ''}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n') : '(sin empresas con ubicación en esa zona)'));
+  }
+  // Licitaciones
+  if (has(/licitac|secop|contrato|proceso|entidad|public/)) {
+    const sec = store.secop.filter((x) => inArea(x.code) || (dptos.length && dptos.some((d) => norm(x.dpto) === norm(d)))).slice(0, 12);
+    if (sec.length) parts.push(`\nLICITACIONES SOLARES SECOP II EN ${areaTxt.toUpperCase()} (más recientes):\n` + sec.map((x) => `- ${x.fecha}: ${x.nombre?.slice(0, 120)} · ${x.entidad} · ${money(x.precio)} · ${x.estado}${x.proveedor ? ` · adjudicado a ${x.proveedor}` : ''}`).join('\n'));
+  }
+  // Clientes turísticos
+  if (has(/hotel|turis|alojamiento|cliente|vivienda turistica|parque/)) {
+    const cl = store.clientes.filter((c) => inArea(c.code)).slice(0, 12);
+    if (cl.length) parts.push(`\nHOTELES Y ALOJAMIENTOS EN ${areaTxt.toUpperCase()} (Registro Nacional de Turismo, mayor número de habitaciones):\n` + cl.map((c) => `- ${c.n}, ${store.byCode.get(c.code)?.name}: ${c.hab} habitaciones${c.tel ? `; tel ${c.tel}` : ''}${c.mail ? `; ${c.mail}` : ''}`).join('\n'));
+  }
+  // Proyectos UPME y plantas
+  if (has(/upme|proyecto|planta|granja|parque solar|mw|desarroll|invers/)) {
+    const up = (store.red.upme || []).filter((p) => inArea(p.code) || !mentioned.length && !dptos.length).slice(0, 12);
+    if (up.length) parts.push(`\nPROYECTOS REGISTRADOS EN LA UPME (${areaTxt}):\n` + up.map((p) => `- ${p.n}: ${fmt(p.mw)} MW, ${p.tipo}, ${p.fase}, ${p.mun} (${p.dpto}), operación prevista ${p.operacion?.slice(0, 7) || 's/d'}`).join('\n'));
+  }
+  const chunks = searchChunks(question, { municipio: code });
+  if (chunks.length) parts.push('\nFRAGMENTOS DE DOCUMENTOS CARGADOS:\n' + chunks.map((c) => `[${c.title}] ${c.text}`).join('\n---\n'));
   return parts.join('\n');
 }
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const SYSTEM = `Eres el analista comercial de ${config.appName}, una herramienta de inteligencia de mercado solar en Colombia para instaladores, proveedores de equipos y desarrolladores o inversionistas.
-Respondes en español, de forma breve, concreta y práctica, adaptando la respuesta al perfil del usuario indicado en el contexto.
-Usa SOLO los datos del CONTEXTO para cifras sobre municipios, tarifas y mercado. Si un dato no está, dilo y sugiere dónde conseguirlo (SUI, DANE, operador de red, curaduría). No inventes cifras ni nombres de proyectos.
-Indica la fuente y el corte de cada cifra importante. Puedes dar recomendaciones comerciales generales (argumentos de venta, segmentos, tamaño de sistema) dejando claro que son sugerencias.
-Formato: párrafos cortos; usa listas solo si comparas varias zonas.`;
+const SYSTEM = `Eres el analista comercial de ${config.appName}, plataforma de inteligencia de mercado solar en Colombia para instaladores, proveedores de equipos y desarrolladores o inversionistas.
+Respondes en español, claro y práctico, adaptado al perfil del usuario del CONTEXTO.
+
+Reglas:
+- Usa SOLO los datos del CONTEXTO para cifras, empresas, municipios y proyectos. Si algo no está en el CONTEXTO, dilo en una frase y sugiere la sección de la app donde buscarlo. No inventes cifras, nombres, filtros ni fuentes.
+- Cuando el CONTEXTO trae una lista (empresas, licitaciones, hoteles, proyectos), úsala: resume y destaca los más relevantes.
+- Qué es cada fuente (no la describas de otra forma): DANE ELIC = licencias de construcción de vivienda y otros usos; SNR = actos de curadurías urbanas; SUI = tarifas y consumo de energía de Superservicios; XM = autogeneradores, cortes (demanda no atendida), precio de bolsa y mapa de red; UPME = registro de proyectos de generación; RNT = Registro Nacional de Turismo; SECOP II = licitaciones y contratos públicos; Registro Mercantil = empresas.
+- Secciones de la app: Mapa, Ranking, Ficha del municipio, Hoteles y turismo, Instaladores y empresas, Mercado y red, Licitaciones.
+- Puedes dar recomendaciones comerciales generales, aclarando que son sugerencias.
+
+Formato (Markdown): empieza con la respuesta directa en 1 o 2 frases. Luego usa títulos cortos con ###, listas con viñetas y **negritas** para cifras clave. Usa una tabla solo para comparar 3 o más elementos con varias columnas. Termina, si aplica, con "Siguiente paso" en una línea. Máximo 250 palabras salvo que pidan más.`;
 
 app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
   const quota = aiQuota(req);
