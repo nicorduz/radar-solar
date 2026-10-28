@@ -1,567 +1,167 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
-import { MapboxOverlay } from '@deck.gl/mapbox';
-import { ColumnLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
-import { api, qs, fmt, METRICS } from '../api.js';
+import React, { useEffect, useMemo, useState } from 'react';
+import { api, fmt, money, cop, csvDownload } from '../api.js';
 import { useApp } from '../App.jsx';
-import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
-import { writeLocal } from '../local.js';
+import { Stat } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
-import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
-import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
 
-const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-// Rampa azul Talera → naranja Talera (bajo → alto)
-const RAMP = [[52, 72, 159], [52, 120, 246], [190, 205, 235], [255, 160, 70], [255, 122, 0]];
-function colorAt(t) {
-  const x = Math.max(0, Math.min(1, t)) * (RAMP.length - 1);
-  const i = Math.min(RAMP.length - 2, Math.floor(x)), f = x - i;
-  return RAMP[i].map((c, k) => Math.round(c + (RAMP[i + 1][k] - c) * f));
+// Calculadora financiera de un sistema solar: retorno, financiación y beneficios tributarios
+// (Ley 1715 de 2014 modificada por la Ley 2099 de 2021, reglamentada por el Decreto 895 de 2022).
+const IVA_EQUIPOS = 0.19 * 0.7; // IVA de 19 % sobre la parte de equipos, supuesta en 70 % del costo
+
+export function model(p) {
+  const empresa = p.tipo === 'empresa';
+  const t = empresa ? p.renta / 100 : 0;
+  const capex = p.kwp * p.capexKwp * (p.ivaExcluido ? 1 : 1 + IVA_EQUIPOS);
+  const loan = capex * (p.financiado / 100);
+  const n = Math.max(1, Math.round(p.plazo));
+  const rm = Math.pow(1 + p.tasa / 100, 1 / 12) - 1;
+  const cuotaMes = loan ? (rm ? (loan * rm) / (1 - Math.pow(1 + rm, -12 * n)) : loan / (12 * n)) : 0;
+  const deducTotal = empresa && p.deduccion ? capex * 0.5 : 0;
+  const deducAnios = Math.max(1, Math.min(15, Math.round(p.deducAnios)));
+  const topeDeduc = empresa && p.rentaLiquida ? p.rentaLiquida * 0.5 : Infinity; // no puede superar 50 % de la renta líquida
+  const depAnios = p.depAcelerada ? 3 : 10;
+  let saldo = loan, deducPend = deducTotal, acum = -(capex - loan);
+  const rows = [{ y: 0, gen: 0, ahorro: 0, om: 0, deuda: 0, impuestos: 0, flujo: acum, acum }];
+  for (let y = 1; y <= p.vida; y++) {
+    const gen = p.ghi * 365 * p.kwp * (p.pr / 100) * Math.pow(1 - p.degr / 100, y - 1);
+    const tar = p.tarifa * Math.pow(1 + p.incr / 100, y - 1);
+    const ahorro = gen * (p.autoconsumo / 100) * tar + gen * (1 - p.autoconsumo / 100) * p.exportPrecio * Math.pow(1 + p.incr / 100, y - 1);
+    const om = capex * (p.om / 100) * Math.pow(1 + p.incr / 100, y - 1);
+    let deuda = 0, interes = 0;
+    if (y <= n && loan) {
+      for (let k = 0; k < 12; k++) { const i = saldo * rm; interes += i; saldo -= cuotaMes - i; }
+      deuda = cuotaMes * 12;
+    }
+    let imp = 0;
+    if (empresa) {
+      const dep = y <= depAnios ? capex / depAnios : 0;
+      const deduc = deducPend > 1 && y <= 15 ? Math.min(deducPend, deducTotal / deducAnios, topeDeduc) : 0; // lo que no cabe por el tope pasa al año siguiente
+      deducPend -= deduc;
+      // El ahorro sube la utilidad (paga renta); depreciación, intereses y la deducción especial la bajan
+      imp = -(ahorro - om) * t + (dep + interes + deduc) * t;
+    }
+    const flujo = ahorro - om - deuda + imp;
+    acum += flujo;
+    rows.push({ y, gen, tar, ahorro, om, deuda, impuestos: imp, flujo, acum });
+  }
+  const flows = rows.map((r) => r.flujo);
+  const vpn = flows.reduce((a, f, i) => a + f / Math.pow(1 + p.descuento / 100, i), 0);
+  const npv = (r) => flows.reduce((a, f, i) => a + f / Math.pow(1 + r, i), 0);
+  let tir = null;
+  if (flows[0] < 0 && npv(0) > 0) { let lo = 0, hi = 5; for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; if (npv(mid) > 0) lo = mid; else hi = mid; } tir = lo * 100; }
+  let payback = null;
+  for (let i = 1; i < rows.length; i++) if (rows[i].acum >= 0 && rows[i - 1].acum < 0) { payback = i - 1 + (-rows[i - 1].acum / rows[i].flujo); break; }
+  const beneficios = rows.reduce((a, r) => a + Math.max(0, r.impuestos + (r.ahorro - r.om) * t), 0);
+  return { capex, loan, cuotaMes, rows, vpn, tir, payback, beneficios, deducTotal, ahorroMes1: rows[1] ? rows[1].ahorro / 12 : 0, ahorroTotal: rows.reduce((a, r) => a + r.ahorro, 0) };
 }
-const kvOf = (s) => Math.max(0, ...(String(s || '').match(/\d+(\.\d+)?/g) || ['0']).map(Number));
-const KV_COLOR = (kv) => (kv >= 500 ? [226, 103, 91] : kv >= 220 ? [242, 195, 138] : [120, 190, 220]);
-// Altura en metros de la columna (3D) según el valor normalizado t (0 a 1)
-const elevOf = (t) => 2500 + Math.pow(t, 1.4) * 70000;
-// Los íconos se dibujan siempre encima (sin recortarse contra el plano del mapa en 3D)
-const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false };
 
-const LAYERS = {
-  solar: { label: 'Plantas solares', img: ICON_SOLAR, paid: true },
-  upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true },
-  subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
-  lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
-  mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
-  zni: { label: 'Zonas no interconectadas', img: ICON_ZNI, paid: true },
-};
-const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'], servicios: ['solar'], respaldo: ['zni'] };
-// Distancia aproximada (km) de un punto a un segmento de línea, en coordenadas locales
-function segDist(p, a, b) {
-  const k = Math.cos((p[1] * Math.PI) / 180) * 111.32, kl = 110.57;
-  const ax = (a[0] - p[0]) * k, ay = (a[1] - p[1]) * kl, bx = (b[0] - p[0]) * k, by = (b[1] - p[1]) * kl;
-  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
-  const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
-  return Math.hypot(ax + t * dx, ay + t * dy);
-}
-// Herramientas de dibujo del mapa
-const TOOLS = [
-  ['circle', 'circle', 'Círculo', 'Clic en el centro y otro clic en el borde.'],
-  ['polygon', 'polygon', 'Polígono', 'Clic en cada vértice. Doble clic o "Terminar" para cerrar.'],
-  ['rect', 'rect', 'Rectángulo', 'Clic en una esquina y otro clic en la esquina opuesta.'],
-  ['point', 'pin', 'Punto', 'Clic donde quieras el punto.'],
-  ['text', 'text', 'Texto', 'Escribe el texto y haz clic en el mapa.'],
-  ['measure', 'ruler', 'Medir', 'Clic en cada punto del recorrido. Doble clic o "Terminar" para finalizar.'],
-];
-const loadShapes = () => { try { return JSON.parse(localStorage.getItem('rs_shapes') || '[]'); } catch { return []; } };
-const saveShapes = (s) => { try { localStorage.setItem('rs_shapes', JSON.stringify(s)); } catch { /* sin almacenamiento */ } };
-const uid = () => Math.random().toString(36).slice(2, 9);
-const TXT = { fontFamily: 'Inter, system-ui, sans-serif', characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
-
-const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
-const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
-
-export default function MapPage() {
-  const { paid, profile, prof, scoreParams, go } = useApp();
-  const el = useRef(null);
-  const mapRef = useRef(null);
-  const overlayRef = useRef(null);
-  const [data, setData] = useState(null);
-  const [show, setShow] = useState('score'); // 'nada' | 'score' | métrica
-  const [is3d, setIs3d] = useState(true);
-  const [menu, setMenu] = useState(null); // 'show' | 'layers' | null
-  const [collapsed, setCollapsed] = useState(true);
-  const [lockMsg, setLockMsg] = useState(null);
-  const [red, setRed] = useState(null);
-  const [mt, setMt] = useState(null);
-  const [on, setOn] = useState(() => new Set(DEFAULT_LAYERS[profile] || []));
-  // Dibujo y medición
-  const [tool, setTool] = useState(null);
-  const [draft, setDraft] = useState(null);
-  const [cursor, setCursor] = useState(null);
-  const [shapes, setShapes] = useState(loadShapes);
-  const [sel, setSel] = useState(null);
-  const [textVal, setTextVal] = useState('');
-  // Búsqueda y lista acotada a la vista
-  const [q, setQ] = useState('');
-  const [results, setResults] = useState(null);
-  const [searching, setSearching] = useState(false);
-  const [pin, setPin] = useState(null);
-  const [bounds, setBounds] = useState(null);
-  const [onlyVisible, setOnlyVisible] = useState(true);
-  const st = useRef({});
-  st.current = { tool, draft, textVal };
-  const handler = useRef(() => {});
-
-  useEffect(() => {
-    const map = new maplibregl.Map({
-      container: el.current, style: STYLE, center: window.innerWidth < 860 ? [-74.2, 4.6] : [-73.9, 5.3], zoom: window.innerWidth < 860 ? 4.6 : 5.6,
-      pitch: 45, bearing: -10, maxPitch: 70, attributionControl: { compact: true }, maxBounds: [[-92, -14], [-52, 18]],
-    });
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
-    map.on('load', () => {
-      for (const l of map.getStyle().layers) {
-        if (l.type === 'symbol' && map.getLayoutProperty(l.id, 'text-field')) {
-          try { map.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', 'name:es'], ['get', 'name_es'], ['get', 'name']]); } catch { /* capa sin nombre */ }
-        }
-      }
-    });
-    if (window.innerWidth >= 860) map.setPadding({ right: 380, top: 40, left: 0, bottom: 0 });
-    const b = () => { const x = map.getBounds(); setBounds([x.getWest(), x.getSouth(), x.getEast(), x.getNorth()]); };
-    map.on('load', b); map.on('moveend', b);
-    let raf = 0;
-    map.on('click', (e) => handler.current('click', [e.lngLat.lng, e.lngLat.lat]));
-    map.on('dblclick', (e) => handler.current('dblclick', [e.lngLat.lng, e.lngLat.lat], e));
-    map.on('mousemove', (e) => { if (!st.current.draft) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setCursor([e.lngLat.lng, e.lngLat.lat])); });
-    const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
-    map.addControl(overlay);
-    mapRef.current = map; overlayRef.current = overlay;
-    return () => map.remove();
-  }, []);
-
-  // Al cambiar de perfil: puntaje y capas recomendadas
-  useEffect(() => { setShow('score'); setOn(new Set(DEFAULT_LAYERS[profile] || [])); }, [profile]);
-
-  useEffect(() => {
-    setData(null);
-    api('/map' + qs(scoreParams)).then(setData).catch(() => setData({ items: [] }));
-  }, [JSON.stringify(scoreParams)]);
-
-  useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
-  useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
-
-  // ---- Dibujo: clics sobre el mapa ----
-  const addShape = (shape) => { const n = [...shapes, { id: uid(), ...shape }]; setShapes(n); saveShapes(n); setSel(n[n.length - 1].id); };
-  const finish = () => {
-    if (!draft) { setTool(null); return; }
-    const pts = draft.pts.filter((p, i, a) => i === 0 || distance(p, a[i - 1]) > 1);
-    if (draft.type === 'polygon' && pts.length >= 3) addShape({ type: 'polygon', pts });
-    if (draft.type === 'measure' && pts.length >= 2) addShape({ type: 'measure', pts });
-    setDraft(null); setCursor(null); setTool(null);
-  };
-  const cancel = () => { setDraft(null); setCursor(null); setTool(null); };
-  handler.current = (ev, p, e) => {
-    const { tool: t, draft: d } = st.current;
-    if (!t) return;
-    if (ev === 'dblclick') { e?.preventDefault?.(); if (t === 'polygon' || t === 'measure') finish(); return; }
-    if (t === 'point') { addShape({ type: 'point', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
-    if (t === 'text') { if (!st.current.textVal.trim()) return; addShape({ type: 'text', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
-    if (t === 'circle') { if (!d) { setDraft({ type: 'circle', center: p }); setCursor(p); } else { addShape({ type: 'circle', center: d.center, r: Math.max(10, distance(d.center, p)) }); setDraft(null); setTool(null); } return; }
-    if (t === 'rect') { if (!d) { setDraft({ type: 'rect', pts: [p] }); setCursor(p); } else { addShape({ type: 'rect', pts: [d.pts[0], p] }); setDraft(null); setTool(null); } return; }
-    if (t === 'polygon' || t === 'measure') { setDraft(d ? { ...d, pts: [...d.pts, p] } : { type: t, pts: [p] }); setCursor(p); }
-  };
-  const pickTool = (t) => {
-    if (tool === t) { cancel(); return; }
-    setDraft(null); setCursor(null); setTool(t); setSel(null);
-  };
-  useEffect(() => {
-    const map = mapRef.current; if (!map) return;
-    if (tool) { map.doubleClickZoom.disable(); map.getCanvas().style.cursor = 'crosshair'; }
-    else { map.doubleClickZoom.enable(); map.getCanvas().style.cursor = ''; }
-  }, [tool]);
-  useEffect(() => {
-    const k = (e) => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter' && st.current.draft) finish(); };
-    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+export default function Calculadora({ code }) {
+  const { meta, paid, profile } = useApp();
+  const [munis, setMunis] = useState([]);
+  const [m, setM] = useState(null);
+  const [sel, setSel] = useState('');
+  const [p, setP] = useState({
+    tipo: profile === 'desarrollador' || profile === 'proveedor' ? 'empresa' : 'hogar', kwp: 6, capexKwp: meta.capex_kwp || 3800000, tarifa: 900, ghi: 4.5, pr: 78,
+    autoconsumo: 100, exportPrecio: 300, incr: 4, degr: 0.5, om: 1, vida: 25, financiado: 0, tasa: 18, plazo: 5, descuento: 12,
+    renta: 35, deduccion: true, deducAnios: 5, rentaLiquida: '', depAcelerada: true, ivaExcluido: false,
   });
-  const removeShape = (id) => { const n = shapes.filter((x) => x.id !== id); setShapes(n); saveShapes(n); setSel(null); };
-  const clearShapes = () => { setShapes([]); saveShapes([]); setSel(null); cancel(); };
+  const set = (k, v) => setP((x) => ({ ...x, [k]: v }));
+  const [tabla, setTabla] = useState(false);
 
-  // Vista previa de lo que se está dibujando
-  const preview = useMemo(() => {
-    if (!draft || !cursor) return null;
-    if (draft.type === 'circle') { const r = distance(draft.center, cursor); return { ring: circleRing(draft.center, r), label: `Radio ${fmtDist(r)}`, at: cursor }; }
-    if (draft.type === 'rect') return { ring: rectRing([draft.pts[0], cursor]), label: measureOf({ type: 'rect', pts: [draft.pts[0], cursor] }), at: cursor };
-    if (draft.type === 'polygon') { const pts = [...draft.pts, cursor]; return pts.length >= 3 ? { ring: [...pts, pts[0]], label: measureOf({ type: 'polygon', pts }), at: cursor } : { path: pts, label: '', at: cursor }; }
-    if (draft.type === 'measure') { const pts = [...draft.pts, cursor]; return { path: pts, label: fmtDist(pathLength(pts)), at: cursor }; }
-    return null;
-  }, [draft, cursor]);
+  useEffect(() => { api('/ranking?limit=1200').then((r) => setMunis(r.rows.map((x) => ({ code: x.code, name: x.name, dpto: x.dpto })))).catch(() => {}); }, []);
+  const load = (c) => api(`/municipio/${c}`).then((x) => {
+    setM(x);
+    setP((o) => ({ ...o, ghi: +(x.ghi || o.ghi).toFixed(2), tarifa: Math.round((o.tipo === 'empresa' ? x.tarifa_com ?? x.tarifa : x.tarifa ?? x.tarifa_ult) || o.tarifa), exportPrecio: Math.round(((o.tipo === 'empresa' ? x.tarifa_com ?? x.tarifa : x.tarifa) || o.tarifa) * 0.4) }));
+  }).catch(() => {});
+  useEffect(() => { if (code) load(code); }, [code]);
+  const setTipo = (tipo) => setP((o) => ({ ...o, tipo, ivaExcluido: tipo === 'empresa', ...(m ? { tarifa: Math.round((tipo === 'empresa' ? m.tarifa_com ?? m.tarifa : m.tarifa ?? m.tarifa_ult) || o.tarifa) } : {}) }));
 
-  // ---- Búsqueda: municipio, dirección o coordenadas ----
-  const flyToPos = (pos, zoom, label) => { mapRef.current?.flyTo({ center: pos, zoom, pitch: is3d ? 45 : 0, speed: 1.6 }); setPin({ pos, label }); setResults(null); };
-  const localMatches = (txt) => {
-    if (!data || data.mode !== 'municipio' || txt.length < 2) return [];
-    const n = normTxt(txt);
-    return data.items.filter((d) => normTxt(d.name).includes(n)).sort((a, b) => normTxt(a.name).indexOf(n) - normTxt(b.name).indexOf(n)).slice(0, 5)
-      .map((d) => ({ label: d.name, sub: `${d.dpto} · municipio`, pos: [d.lon, d.lat], zoom: 11, code: d.code }));
-  };
-  const runSearch = async (e) => {
-    e?.preventDefault();
-    const txt = q.trim(); if (!txt) return;
-    const c = parseCoords(txt);
-    if (c) { flyToPos(c, 15, `${c[1].toFixed(5)}, ${c[0].toFixed(5)}`); return; }
-    const local = localMatches(txt);
-    setResults(local); setSearching(true);
-    try { const geo = await geocode(txt); setResults([...local, ...geo]); }
-    catch { setResults(local); }
-    finally { setSearching(false); }
-  };
+  const r = useMemo(() => model({ ...p, rentaLiquida: +p.rentaLiquida || 0 }), [p]);
+  // En prueba funciona con los datos que escriba el usuario y el municipio desbloqueado
 
-  // Figura seleccionada: qué hay adentro
-  const selShape = shapes.find((x) => x.id === sel);
-  const selInfo = useMemo(() => {
-    if (!selShape) return null;
-    const ring = ringOf(selShape);
-    const info = { medida: measureOf(selShape) };
-    if (ring && data?.mode === 'municipio') {
-      const ms = data.items.filter((d) => d.lat != null && inside([d.lon, d.lat], ring));
-      info.munis = ms.length; info.pop = ms.reduce((a, d) => a + (d.pop || 0), 0);
-      info.top = [...ms].sort((a, b) => a.rank - b.rank).slice(0, 5);
-      if (!ms.length) {
-        // Zona pequeña: indica en qué municipio queda (el más cercano a su centro)
-        const c = selShape.type === 'circle' ? selShape.center : centroid(ring);
-        let best = null, bd = Infinity;
-        for (const d of data.items) { if (d.lat == null) continue; const dd = distance(c, [d.lon, d.lat]); if (dd < bd) { bd = dd; best = d; } }
-        info.dentro = best;
-      }
-      const pl = (red?.plantas || []).filter((p) => p.tipo === 'solar' && inside([p.lon, p.lat], ring));
-      info.solar = pl.length; info.solarMw = pl.reduce((a, p) => a + (p.mw || 0), 0);
-      info.subs = (red?.subs || []).filter((p) => inside([p.lon, p.lat], ring)).length;
-      info.upme = (red?.upme || []).filter((p) => p.lat && inside([p.lon, p.lat], ring)).length;
-    }
-    // Evaluación del sitio: red eléctrica más cercana al centro de la figura o al punto
-    const c = selShape.type === 'circle' ? selShape.center : ring ? centroid(ring) : selShape.type === 'point' ? selShape.pts[0] : null;
-    if (c && red && data?.mode === 'municipio') {
-      info.centro = c;
-      info.subsCerca = (red.subs || []).map((x) => ({ ...x, km: distance(c, [x.lon, x.lat]) / 1000 })).sort((a, b) => a.km - b.km).slice(0, 3);
-      let bl = null;
-      for (const l of red.lineas || []) for (let i = 1; i < (l.c?.length || 0); i++) { const d = segDist(c, l.c[i - 1], l.c[i]); if (!bl || d < bl.km) bl = { n: l.n, kv: l.kv, km: d }; }
-      info.linea = bl;
-      info.solar10 = (red.plantas || []).filter((p) => p.tipo === 'solar' && distance(c, [p.lon, p.lat]) <= 10000).length;
-      if (!info.dentro && !info.munis) {
-        let best = null, bd = Infinity;
-        for (const d of data.items) { if (d.lat == null) continue; const dd = distance(c, [d.lon, d.lat]); if (dd < bd) { bd = dd; best = d; } }
-        info.dentro = best;
-      }
-      info.ref = info.dentro || info.top?.[0] || null;
-    }
-    return info;
-  }, [selShape, data, red]);
-
-  // Vista plana o 3D
-  const set3d = (v) => { setIs3d(v); mapRef.current?.easeTo({ pitch: v ? 45 : 0, bearing: v ? -10 : 0, duration: 700 }); };
-  const choose = (k) => { setShow(k); setMenu(null); if (k === 'nada') set3d(false); };
-  const toggle = (k) => {
-    if (LAYERS[k].paid && !paid) { setLockMsg({ layer: LAYERS[k].label }); return; }
-    const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n);
-  };
-
-  const dpto = data?.mode === 'dpto';
-  const metricKeys = prof.metrics.filter((k) => METRICS[k]);
-  const showKey = dpto && show !== 'nada' ? 'score' : show;
-  const M = METRICS[showKey] || METRICS.score;
-  const iconMode = showKey !== 'score' && showKey !== 'nada' && METRIC_ICON[showKey];
-
-  const scaled = useMemo(() => {
-    if (!data || showKey === 'nada') return [];
-    const tr = (v) => (M.log ? Math.log1p(Math.max(0, v)) : v);
-    const vals = data.items.map((d) => M.get(d)).filter((v) => v != null).map(tr);
-    const lo = Math.min(...vals), hi = Math.max(...vals);
-    const rows = data.items.map((d) => {
-      const v = M.get(d);
-      let t = v == null ? null : (tr(v) - lo) / (hi - lo || 1);
-      if (M.invert && t != null) t = 1 - t;
-      return { ...d, t };
-    }).filter((d) => d.t != null);
-    // Todos los municipios; los de menor valor se dibujan primero para que los altos queden encima
-    return rows.sort((a, b) => a.t - b.t);
-  }, [data, showKey]);
-
-  useEffect(() => {
-    if (!overlayRef.current || !data) return;
-    const trig = [showKey, JSON.stringify(scoreParams)];
-    const layers = [
-      // Colombia resaltada: los países vecinos quedan oscurecidos
-      new SolidPolygonLayer({ id: 'mask', data: [COLOMBIA_MASK], getPolygon: (d) => d.geometry.coordinates, getFillColor: [16, 14, 42, 150], pickable: false }),
-      new SolidPolygonLayer({ id: 'colombia', data: [{ p: COLOMBIA }], getPolygon: (d) => d.p, getFillColor: [52, 120, 246, 18], pickable: false }),
-      new PathLayer({ id: 'contorno', data: [{ path: [...COLOMBIA, COLOMBIA[0]] }], getPath: (d) => d.path, getColor: [168, 197, 255, 200], widthUnits: 'pixels', getWidth: 1.6 }),
-    ];
-    if (on.has('mt') && mt?.length) {
-      layers.push(new PathLayer({ id: 'mt', data: mt, getPath: (d) => d.c, getColor: (d) => (d.s === 'o' ? [79, 178, 134, 170] : [79, 178, 134, 90]), widthUnits: 'pixels', getWidth: 1 }));
-    }
-    if (on.has('lineas') && red?.lineas?.length) {
-      layers.push(new PathLayer({
-        id: 'lineas', data: red.lineas, getPath: (d) => d.c, getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 190],
-        widthUnits: 'pixels', getWidth: (d) => (kvOf(d.kv) >= 500 ? 2.4 : kvOf(d.kv) >= 220 ? 1.8 : 1.2), pickable: true,
-      }));
-    }
-    const onMuni = ({ object }) => { if (!object || st.current.tool) return; if (dpto) setLockMsg(object); else go('m', object.code); };
-    if (showKey === 'score' && is3d) {
-      layers.push(new ColumnLayer({
-        id: 'muni-3d', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 14000 : 3500, extruded: true, pickable: true,
-        elevationScale: dpto ? 700 : 220, getPosition: (d) => [d.lon, d.lat],
-        getElevation: (d) => (dpto ? 15 + Math.pow(d.t, 1.3) * 120 : 2 + Math.pow(d.t, 2.4) * 200),
-        getFillColor: (d) => [...colorAt(d.t), 225], material: { ambient: 0.55, diffuse: 0.6, shininess: 24 },
-        updateTriggers: { getElevation: trig, getFillColor: trig }, onClick: onMuni,
-      }));
-    } else if (showKey === 'score') {
-      layers.push(new ScatterplotLayer({
-        id: 'muni-2d', data: scaled, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => (dpto ? 10 + d.t * 16 : 2 + d.t * 7),
-        getFillColor: (d) => [...colorAt(d.t), 210], stroked: true, getLineColor: [16, 14, 42], lineWidthUnits: 'pixels', getLineWidth: 0.5,
-        pickable: true, updateTriggers: { getRadius: trig, getFillColor: trig }, onClick: onMuni,
-      }));
-    } else if (iconMode) {
-      // 3D: columna delgada con la altura del valor y el ícono en la punta. Plano: solo el ícono.
-      if (is3d) {
-        layers.push(new ColumnLayer({
-          id: `muni-col-${showKey}`, data: scaled, diskResolution: 8, radius: 1600, extruded: true, pickable: true,
-          getPosition: (d) => [d.lon, d.lat], getElevation: (d) => elevOf(d.t), elevationScale: 1,
-          getFillColor: (d) => [...colorAt(d.t), 200], material: { ambient: 0.6, diffuse: 0.5 },
-          updateTriggers: { getElevation: trig, getFillColor: trig }, onClick: onMuni,
-        }));
-      }
-      layers.push(new IconLayer({
-        id: `muni-ic-${showKey}-${is3d ? '3d' : '2d'}`, data: scaled, getPosition: (d) => [d.lon, d.lat, is3d ? elevOf(d.t) : 0],
-        getIcon: () => maskIcon(METRIC_ICON[showKey]), sizeUnits: 'pixels', getSize: (d) => (is3d ? 10 + d.t * 14 : 7 + d.t * 14),
-        getColor: (d) => [...colorAt(d.t), 245], parameters: ON_TOP,
-        pickable: true, updateTriggers: { getSize: trig, getColor: trig, getIcon: trig, getPosition: trig }, onClick: onMuni,
-      }));
-    }
-    if (on.has('subs') && red?.subs?.length) {
-      layers.push(new IconLayer({ id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
-    }
-    if (on.has('upme') && red?.upme?.length) {
-      layers.push(new IconLayer({ id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
-    }
-    if (on.has('solar') && red?.plantas?.length) {
-      layers.push(new IconLayer({
-        id: 'solar', data: red.plantas.filter((p) => p.tipo === 'solar'), getPosition: (d) => [d.lon, d.lat],
-        getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), parameters: ON_TOP, pickable: true,
-      }));
-    }
-    if (on.has('zni') && red?.zni?.length) {
-      layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
-    }
-    // Dibujos del usuario, vista previa y resultado de búsqueda
-    const polys = shapes.filter((x) => ringOf(x)).map((x) => ({ ...x, ring: ringOf(x) }));
-    if (preview?.ring) polys.push({ id: 'preview', ring: preview.ring, preview: true });
-    if (polys.length) {
-      layers.push(new PolygonLayer({
-        id: 'draw-poly', data: polys, getPolygon: (d) => d.ring, filled: true, stroked: true,
-        getFillColor: (d) => (d.preview ? [52, 120, 246, 30] : d.id === sel ? [255, 122, 0, 45] : [52, 120, 246, 45]),
-        getLineColor: (d) => (d.id === sel ? [255, 160, 70, 255] : [168, 197, 255, 235]), lineWidthUnits: 'pixels', getLineWidth: (d) => (d.id === sel ? 3 : 2),
-        pickable: !tool, parameters: ON_TOP, onClick: ({ object }) => { if (object && !object.preview) setSel(object.id); }, updateTriggers: { getFillColor: [sel], getLineColor: [sel], getLineWidth: [sel] },
-      }));
-    }
-    const paths = shapes.filter((x) => x.type === 'measure').map((x) => ({ ...x, path: x.pts }));
-    if (preview?.path) paths.push({ id: 'preview', path: preview.path, preview: true });
-    if (paths.length) {
-      layers.push(new PathLayer({ id: 'draw-path', data: paths, getPath: (d) => d.path, getColor: (d) => (d.id === sel ? [255, 160, 70, 255] : [255, 122, 0, 235]), widthUnits: 'pixels', getWidth: 3, pickable: !tool, onClick: ({ object }) => { if (object && !object.preview) setSel(object.id); }, parameters: ON_TOP, updateTriggers: { getColor: [sel] } }));
-    }
-    const verts = [...paths.flatMap((d) => d.path), ...(draft?.pts || []), ...(draft?.center ? [draft.center] : [])];
-    const points = shapes.filter((x) => x.type === 'point');
-    if (verts.length || points.length || pin) {
-      layers.push(new ScatterplotLayer({ id: 'draw-verts', data: verts, getPosition: (d) => d, radiusUnits: 'pixels', getRadius: 3.5, getFillColor: [255, 255, 255, 255], parameters: ON_TOP }));
-      layers.push(new ScatterplotLayer({
-        id: 'draw-points', data: [...points, ...(pin ? [{ id: 'pin', pts: [pin.pos], pin: true }] : [])], getPosition: (d) => d.pts[0], radiusUnits: 'pixels',
-        getRadius: (d) => (d.pin ? 9 : 7), getFillColor: (d) => (d.pin ? [52, 120, 246, 255] : [255, 122, 0, 255]), stroked: true, getLineColor: [255, 255, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2,
-        pickable: !tool, onClick: ({ object }) => { if (object && !object.pin) setSel(object.id); }, parameters: ON_TOP,
-      }));
-    }
-    const labels = [
-      ...shapes.filter((x) => x.type === 'text').map((x) => ({ pos: x.pts[0], text: x.text, size: 15 })),
-      ...points.filter((x) => x.text).map((x) => ({ pos: x.pts[0], text: x.text, size: 12, dy: -16 })),
-      ...shapes.filter((x) => x.type !== 'text' && x.type !== 'point').map((x) => ({ pos: x.type === 'measure' ? x.pts[x.pts.length - 1] : x.type === 'circle' ? x.center : centroid(ringOf(x)), text: measureOf(x), size: 12, dy: x.type === 'measure' ? -16 : 0 })),
-      ...(preview?.label ? [{ pos: preview.at, text: preview.label, size: 12, dy: -18 }] : []),
-      ...(pin?.label ? [{ pos: pin.pos, text: pin.label, size: 12, dy: -20 }] : []),
-    ];
-    if (labels.length) layers.push(new TextLayer({ id: 'draw-text', data: labels, getPosition: (d) => d.pos, getText: (d) => d.text, getSize: (d) => d.size, getPixelOffset: (d) => [0, d.dy || 0], ...TXT }));
-
-    overlayRef.current.setProps({
-      layers,
-      getTooltip: ({ object: d, layer }) => {
-        if (tool) return null;
-        if (!d || !layer) return null;
-        let html;
-        if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
-        else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
-        else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
-        else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
-        else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día<br/><span style="color:#B3BCDA">Dato de ${d.ultimo}</span>`;
-        else if (!layer.id.startsWith('muni-')) return null;
-        else if (dpto) html = `<b>${d.dpto}</b><br/>Puntaje departamental ${d.score}<br/><span style="color:#B3BCDA">${d.municipios} municipios · detalle en plan completo</span>`;
-        else html = `<b>${d.name}</b> · ${d.dpto}<br/>${showKey === 'score' ? `#${d.rank} · puntaje ${d.score}` : `${M.label}: <b>${M.f(M.get(d))}</b>`}<br/><span style="color:#B3BCDA">Clic para ver la ficha</span>`;
-        return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
-      },
-    });
-  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool]);
-
-  const visibles = useMemo(() => {
-    if (data?.mode !== 'municipio') return [];
-    const all = [...data.items].sort((a, b) => a.rank - b.rank);
-    if (!onlyVisible || !bounds) return all;
-    const [w, s, e, n] = bounds;
-    return all.filter((d) => d.lon >= w && d.lon <= e && d.lat >= s && d.lat <= n);
-  }, [data, bounds, onlyVisible]);
-  const top = visibles.slice(0, 30);
-  const fly = (d) => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: 9, pitch: is3d ? 50 : 0, speed: 1.4 });
-  const sub = (d) => metricKeys.filter((k) => k !== 'score').slice(0, 2).map((k) => `${METRICS[k].short} ${METRICS[k].f(METRICS[k].get(d))}`).join(' · ');
-  const showLabel = show === 'nada' ? 'Nada' : (METRICS[show]?.short || 'Puntaje');
-  const MenuIcon = ({ k }) => (k === 'nada' ? <Icon name="map" size={18} /> : k === 'score' ? <Icon name="chart" size={18} /> : <img src={METRIC_ICON[k]} alt="" width="18" height="18" />);
+  const N = (k, label, props = {}) => (
+    <label className="f">{label}<input className="input mono" type="number" value={p[k]} onChange={(e) => set(k, e.target.value === '' ? '' : +e.target.value)} {...props} /></label>
+  );
+  const maxAbs = Math.max(1, ...r.rows.map((x) => Math.abs(x.acum)));
+  const csv = () => csvDownload('flujo-de-caja.csv', ['anio', 'generacion_kwh', 'ahorro', 'operacion_mantenimiento', 'pago_credito', 'efecto_impuestos', 'flujo', 'acumulado'], r.rows.map((x) => [x.y, Math.round(x.gen), Math.round(x.ahorro), Math.round(x.om), Math.round(x.deuda), Math.round(x.impuestos), Math.round(x.flujo), Math.round(x.acum)]));
 
   return (
-    <div className="mapwrap" onClick={(e) => { if (menu && !e.target.closest('.dd')) setMenu(null); }}>
-      <div ref={el} style={{ position: 'absolute', inset: 0 }} />
-      <div className="map-top">
-        <form className="dd map-search glass" onSubmit={runSearch}>
-          <Icon name="search" size={16} />
-          <input value={q} onChange={(e) => { setQ(e.target.value); setResults(e.target.value.trim().length >= 2 ? localMatches(e.target.value.trim()) : null); }} placeholder="Dirección, lugar, municipio o lat, lon" aria-label="Buscar en el mapa" />
-          {q && <button type="button" className="icon-btn" onClick={() => { setQ(''); setResults(null); setPin(null); }} aria-label="Limpiar búsqueda"><Icon name="x" size={14} /></button>}
-          {(results || searching) && (
-            <div className="glass dd-menu" role="listbox">
-              {results?.map((r, i) => (
-                <button key={i} type="button" onClick={() => { flyToPos(r.pos, r.zoom, r.label); }}><Icon name={r.code ? 'map' : 'pin'} size={16} /><span><b>{r.label}</b><br /><span className="small muted">{r.sub}</span></span></button>
-              ))}
-              {searching && <span className="small muted" style={{ padding: '8px 10px' }}>Buscando direcciones…</span>}
-              {!searching && results && !results.length && <span className="small muted" style={{ padding: '8px 10px' }}>Sin resultados. Pulsa Enter para buscar direcciones.</span>}
-              {!searching && results?.length > 0 && <span className="small muted" style={{ padding: '6px 10px' }}>Enter: buscar también direcciones y lugares</span>}
-            </div>
-          )}
-        </form>
-        <div className="dd">
-          <button className={`btn sm glass ${menu === 'show' ? 'on' : ''}`} onClick={() => setMenu(menu === 'show' ? null : 'show')} aria-expanded={menu === 'show'}>
-            <MenuIcon k={show} />Mostrar: <b>{showLabel}</b><span className="caret">▾</span>
-          </button>
-          {menu === 'show' && (
-            <div className="glass dd-menu" role="menu">
-              <button className={show === 'nada' ? 'on' : ''} onClick={() => choose('nada')}><MenuIcon k="nada" /><span><b>Nada</b><br /><span className="small muted">Solo el mapa de Colombia</span></span></button>
-              <button className={show === 'score' ? 'on' : ''} onClick={() => choose('score')}><MenuIcon k="score" /><span><b>Puntaje de oportunidad</b><br /><span className="small muted">Columnas en 3D o puntos en plano</span></span></button>
-              {paid && metricKeys.filter((k) => k !== 'score').map((k) => (
-                <button key={k} className={show === k ? 'on' : ''} onClick={() => choose(k)}><MenuIcon k={k} /><span><b>{METRICS[k].label}</b><br /><span className="small muted">{is3d ? 'Ícono y columna por municipio' : 'Ícono por municipio'}</span></span></button>
-              ))}
-              {!paid && <span className="small muted" style={{ padding: '6px 10px' }}>Tarifas, radiación, cortes y más en el plan completo.</span>}
-            </div>
-          )}
+    <div className="page" style={{ maxWidth: 1100 }}>
+      <div className="page-head">
+        <div><h1>Calculadora financiera</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Retorno, financiación y beneficios tributarios de un sistema solar. Elige un municipio para usar su tarifa y su radiación.{!paid ? ' En la versión de prueba puedes escribir tus propios valores.' : ''}</p></div>
+        <div className="row" style={{ gap: 6 }}>
+          <input className="input" list="calc-munis" style={{ maxWidth: 260 }} placeholder={m ? `${m.name} · ${m.dpto}` : 'Municipio'} value={sel} onChange={(e) => { setSel(e.target.value); const x = munis.find((y) => `${y.name} · ${y.dpto}` === e.target.value); if (x) { load(x.code); setSel(''); } }} aria-label="Municipio" />
+          <datalist id="calc-munis">{munis.map((x) => <option key={x.code} value={`${x.name} · ${x.dpto}`} />)}</datalist>
+          {m && <a className="btn sm" href={`#/propuesta/${m.code}`}><Icon name="pdf" size={14} />Propuesta PDF</a>}
         </div>
-        <div className="dd">
-          <button className={`btn sm glass ${menu === 'layers' ? 'on' : ''}`} onClick={() => setMenu(menu === 'layers' ? null : 'layers')} aria-expanded={menu === 'layers'}>
-            <Icon name="layers" size={16} />Red y plantas{on.size ? ` (${on.size})` : ''}<span className="caret">▾</span>
-          </button>
-          {menu === 'layers' && (
-            <div className="glass dd-menu layers" role="menu">
-              {Object.entries(LAYERS).map(([k, l]) => (
-                <label key={k} className={l.paid && !paid ? 'dis' : ''}>
-                  <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
-                  {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
-                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}</span>
-                </label>
-              ))}
-              {on.has('mt') && <span className="small muted">Media tensión: modelo estimado. No es la red oficial del operador.</span>}
-              {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
-            </div>
-          )}
-        </div>
-        <div className="glass seg" role="group" aria-label="Vista">
-          <button className={!is3d ? 'on' : ''} onClick={() => set3d(false)}>Plano</button>
-          <button className={is3d ? 'on' : ''} onClick={() => set3d(true)}>3D</button>
-        </div>
-        <div className="glass" style={{ padding: 6 }}><WeightsControl compact /></div>
       </div>
 
-      <div className="draw-bar glass" role="toolbar" aria-label="Dibujar y medir">
-        {TOOLS.map(([k, ic, label]) => (
-          <button key={k} className={tool === k ? 'on' : ''} onClick={() => pickTool(k)} title={label} aria-label={label} aria-pressed={tool === k}><Icon name={ic} size={18} /></button>
-        ))}
-        {shapes.length > 0 && <button onClick={clearShapes} title="Borrar todos los dibujos" aria-label="Borrar todos los dibujos"><Icon name="trash" size={18} /></button>}
-      </div>
-      {tool && (
-        <div className="draw-hint glass">
-          <b>{TOOLS.find((t) => t[0] === tool)[2]}</b>
-          <span className="small muted">{TOOLS.find((t) => t[0] === tool)[3]}</span>
-          {(tool === 'text' || tool === 'point') && <input className="input" value={textVal} onChange={(e) => setTextVal(e.target.value)} placeholder={tool === 'text' ? 'Escribe el texto' : 'Etiqueta (opcional)'} autoFocus style={{ minHeight: 34 }} />}
-          <div className="row" style={{ gap: 6 }}>
-            {(tool === 'polygon' || tool === 'measure') && <button className="btn sm primary" onClick={finish} disabled={!draft || draft.pts.length < (tool === 'polygon' ? 3 : 2)}><Icon name="check" size={14} />Terminar</button>}
-            <button className="btn sm" onClick={cancel}>Cancelar</button>
+      <div className="calc">
+        <div className="card calc-in">
+          <div className="seg">{[['hogar', 'Hogar'], ['empresa', 'Empresa o negocio']].map(([k, l]) => <button key={k} className={p.tipo === k ? 'on' : ''} onClick={() => setTipo(k)}>{l}</button>)}</div>
+          <h3>Sistema</h3>
+          <div className="grid g2">
+            {N('kwp', 'Potencia (kWp)', { min: 1, step: 1 })}
+            {N('capexKwp', 'Costo por kWp (COP)', { min: 0, step: 100000 })}
+            {N('tarifa', 'Tarifa ($/kWh)', { min: 0 })}
+            {N('ghi', 'Radiación (kWh/m²/día)', { min: 0, step: 0.1 })}
+            {N('autoconsumo', 'Autoconsumo (%)', { min: 0, max: 100 })}
+            {N('exportPrecio', 'Valor de excedentes ($/kWh)', { min: 0 })}
           </div>
-        </div>
-      )}
-      {selShape && !tool && (
-        <div className="draw-info glass">
-          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-            <b>{{ circle: 'Círculo', polygon: 'Polígono', rect: 'Rectángulo', point: 'Punto', text: 'Texto', measure: 'Medición' }[selShape.type]}</b>
-            <span className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
-              <button className="icon-btn" onClick={() => removeShape(selShape.id)} title="Eliminar"><Icon name="trash" size={15} /></button>
-              <button className="icon-btn" onClick={() => setSel(null)} title="Cerrar"><Icon name="x" size={15} /></button>
-            </span>
+          <details><summary className="small">Supuestos técnicos</summary>
+            <div className="grid g2" style={{ marginTop: 8 }}>
+              {N('pr', 'Rendimiento del sistema (%)', { min: 50, max: 95 })}
+              {N('degr', 'Pérdida anual de paneles (%)', { min: 0, max: 2, step: 0.1 })}
+              {N('incr', 'Aumento anual de tarifa (%)', { min: 0, max: 20, step: 0.5 })}
+              {N('om', 'Mantenimiento anual (% del costo)', { min: 0, max: 5, step: 0.1 })}
+              {N('vida', 'Vida útil (años)', { min: 10, max: 30 })}
+              {N('descuento', 'Tasa de descuento (%)', { min: 0, max: 40 })}
+            </div>
+          </details>
+          <h3>Financiación</h3>
+          <div className="grid g3">
+            {N('financiado', 'Financiado (%)', { min: 0, max: 100, step: 5 })}
+            {N('tasa', 'Tasa efectiva anual (%)', { min: 0, max: 60, step: 0.5 })}
+            {N('plazo', 'Plazo (años)', { min: 1, max: 15 })}
           </div>
-          {selShape.text && <span className="small">{selShape.text}</span>}
-          {selInfo?.medida && <span className="small mono">{selInfo.medida}</span>}
-          {selInfo?.munis != null && (<>
-            {selInfo.dentro
-              ? <button className="draw-top-one" onClick={() => go('m', selInfo.dentro.code)}><span className="small">Queda en <b>{selInfo.dentro.name}</b> ({selInfo.dentro.dpto})</span><ScoreBadge score={selInfo.dentro.score} tier={selInfo.dentro.tier} /></button>
-              : <span className="small">{fmt(selInfo.munis)} municipios · {fmt(selInfo.pop)} habitantes</span>}
-            <span className="small muted">{selInfo.solar} plantas solares ({fmt(selInfo.solarMw)} MW) · {selInfo.subs} subestaciones · {selInfo.upme} proyectos registrados</span>
-            {selInfo.top.length > 0 && <div className="draw-top">{selInfo.top.map((d) => <button key={d.code} onClick={() => go('m', d.code)}><span>{d.name}</span><ScoreBadge score={d.score} tier={d.tier} /></button>)}</div>}
+          {p.tipo === 'empresa' && (<>
+            <h3>Beneficios tributarios</h3>
+            <div className="grid g2">
+              {N('renta', 'Tarifa de renta (%)', { min: 0, max: 50 })}
+              <label className="f">Renta líquida anual (opcional, COP)<input className="input mono" type="number" min="0" value={p.rentaLiquida} placeholder="Sin tope" onChange={(e) => set('rentaLiquida', e.target.value)} /></label>
+            </div>
+            <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={p.deduccion} onChange={(e) => set('deduccion', e.target.checked)} />Deducir de la renta el 50 % de la inversión en</label>
+            {p.deduccion && <div className="row" style={{ gap: 6 }}><input className="input mono" type="number" min="1" max="15" style={{ width: 80 }} value={p.deducAnios} onChange={(e) => set('deducAnios', +e.target.value)} aria-label="Años para deducir" /><span className="small muted">años (máximo 15)</span></div>}
+            <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={p.depAcelerada} onChange={(e) => set('depAcelerada', e.target.checked)} />Depreciación acelerada (33,33 % anual, en 3 años)</label>
           </>)}
-          {selInfo?.subsCerca?.length > 0 && (
-            <div className="site-eval">
-              <b className="small">Red eléctrica cercana</b>
-              {selInfo.subsCerca.map((x) => <span key={x.n} className="small">{x.n} · {x.kv} · <span className="mono">{fmt(x.km, 1)} km</span></span>)}
-              {selInfo.linea && <span className="small muted">Línea de transmisión más cercana: {selInfo.linea.kv} a <span className="mono">{fmt(selInfo.linea.km, 1)} km</span></span>}
-              {selInfo.ref && <span className="small muted">Radiación {fmt(selInfo.ref.ghi, 2)} kWh/m²/día · tarifa comercial {fmt(selInfo.ref.tarifa_com ?? selInfo.ref.tarifa)} $/kWh · {selInfo.solar10} plantas solares a 10 km</span>}
-              <span className="small muted">No incluye pendiente, uso del suelo, áreas protegidas ni capacidad del transformador: verifícalo antes de comprometerte.</span>
-            </div>
-          )}
-          {selInfo?.ref && paid && (
-            <div className="row" style={{ gap: 6 }}>
-              <button className="btn sm primary" onClick={() => { writeLocal('rs_zona_informe', { tipo: selShape.type, ring: ringOf(selShape) || null, punto: selShape.type === 'point' ? selShape.pts[0] : null, medida: selInfo.medida, texto: selShape.text || '', munis: selInfo.munis || 0, pop: selInfo.pop || 0, top: (selInfo.top || []).map((d) => ({ code: d.code, name: d.name, dpto: d.dpto, score: d.score, tier: d.tier, pop: d.pop, tarifa: d.tarifa, ghi: d.ghi })), solar: selInfo.solar || 0, solarMw: selInfo.solarMw || 0, subs: selInfo.subs || 0, upme: selInfo.upme || 0, subsCerca: selInfo.subsCerca.map((x) => ({ n: x.n, kv: x.kv, op: x.op, km: x.km })), linea: selInfo.linea, solar10: selInfo.solar10, ref: { code: selInfo.ref.code, name: selInfo.ref.name, dpto: selInfo.ref.dpto, ghi: selInfo.ref.ghi, tarifa: selInfo.ref.tarifa, tarifa_com: selInfo.ref.tarifa_com, score: selInfo.ref.score, tier: selInfo.ref.tier }, centro: selInfo.centro, fecha: new Date().toISOString().slice(0, 10) }); go('propuesta', 'zona'); }}><Icon name="pdf" size={14} />Informe PDF de esta zona</button>
-              <button className="btn sm" onClick={() => go('m', selInfo.ref.code)}>Ficha de {selInfo.ref.name}</button>
-            </div>
-          )}
+          <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={p.ivaExcluido} onChange={(e) => set('ivaExcluido', e.target.checked)} />Equipos excluidos de IVA (requiere certificación)</label>
         </div>
-      )}
 
-      {showKey !== 'nada' && (
-        <div className="legend glass">
-          <span className="row" style={{ gap: 6 }}>{iconMode && <img src={METRIC_ICON[showKey]} alt="" width="16" height="16" />}{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
-          <div className="ramp" />
-          <span className="muted">{dpto ? 'Puntaje por departamento' : iconMode ? `${is3d ? 'Altura, tamaño' : 'Tamaño'} y color = valor · todos los municipios` : `${is3d ? 'Altura' : 'Tamaño'} y color = puntaje · ${prof.short}`}</span>
-        </div>
-      )}
-
-      <div className={`map-panel glass ${collapsed ? 'collapsed' : ''}`}>
-        <button className="row" onClick={() => setCollapsed(!collapsed)} style={{ padding: '14px 16px', border: 0, background: 'none', justifyContent: 'space-between', cursor: 'pointer', width: '100%' }} aria-expanded={!collapsed}>
-          <h2>{paid ? `Mejores zonas · ${prof.short}` : 'Vista previa'}</h2>
-          <span className="small muted">{data ? (paid ? `${fmt(visibles.length)} ${onlyVisible ? 'en la vista' : 'municipios'}` : 'plan de prueba') : 'cargando…'}</span>
-        </button>
-        {data?.mode === 'municipio' && (
-          <div className="seg panel-scope" role="group" aria-label="Qué municipios mostrar">
-            <button className={onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(true)}>Lo que ves en el mapa</button>
-            <button className={!onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(false)}>Todo el país</button>
+        <div className="calc-out">
+          <div className="grid g2">
+            <div className="card"><Stat label="Inversión" value={money(r.capex)} sub={r.loan ? `${money(r.capex - r.loan)} de cuota inicial` : `${cop(p.kwp ? r.capex / p.kwp : 0)} por kWp`} /></div>
+            <div className="card"><Stat label="Retorno de la inversión" value={r.payback != null ? `${fmt(r.payback, 1)} años` : 'Más de la vida útil'} sub={r.tir != null ? `TIR ${fmt(r.tir, 1)} %` : 'TIR no calculable'} /></div>
+            <div className="card"><Stat label="Ahorro el primer año" value={money(r.rows[1]?.ahorro)} sub={`${money(r.ahorroMes1)} al mes · ${fmt(r.rows[1]?.gen)} kWh`} /></div>
+            <div className="card"><Stat label={`Valor presente neto (${p.descuento} %)`} value={money(r.vpn)} sub={`Ahorro total ${p.vida} años: ${money(r.ahorroTotal)}`} /></div>
+            {r.loan > 0 && <div className="card"><Stat label="Cuota mensual del crédito" value={money(r.cuotaMes)} sub={r.cuotaMes <= r.ahorroMes1 ? `Menor que el ahorro mensual: el sistema se paga solo` : `${money(r.cuotaMes - r.ahorroMes1)} más que el ahorro mensual`} /></div>}
+            {p.tipo === 'empresa' && <div className="card"><Stat label="Beneficios tributarios" value={money(r.beneficios)} sub={r.deducTotal ? `Incluye deducción de ${money(r.deducTotal)}` : 'Depreciación e intereses'} /></div>}
           </div>
-        )}
-        <div className="list">
-          {data?.mode === 'municipio' && !top.length && <p className="small muted" style={{ padding: '4px 16px' }}>No hay municipios en esta parte del mapa. Aléjate o elige "Todo el país".</p>}
-          {data?.mode === 'municipio' && top.map((d) => (
-            <button key={d.code} className="map-item" onClick={() => { fly(d); }} onDoubleClick={() => go('m', d.code)}>
-              <span className="mono muted">{d.rank}</span>
-              <span><b>{d.name}</b><br /><span className="small muted">{d.dpto} · {sub(d)}</span></span>
-              <span className="row" style={{ gap: 6 }}><ScoreBadge score={d.score} tier={d.tier} /><a className="small" href={`#/m/${d.code}`} onClick={(e) => e.stopPropagation()}>Ver</a></span>
-            </button>
-          ))}
-          {dpto && (
-            <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="card" style={{ background: 'var(--panel-2)' }}>
-                <h3>Municipio #1 del país · {prof.short}</h3>
-                <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                  <span><b style={{ fontSize: 17 }}>{data.top.name}</b><br /><span className="small muted">{data.top.dpto} · {data.top.or}</span></span>
-                  <ScoreBadge score={data.top.score} tier={data.top.tier} />
-                </div>
-                <button className="btn sm" style={{ marginTop: 10 }} onClick={() => go('m', data.top.code)}>Ver ficha completa</button>
-              </div>
-              <div className="locked" style={{ minHeight: 230 }}>
-                <div className="blur">{[...Array(6)].map((_, i) => <div key={i} className="map-item"><span>{i + 2}</span><span>Municipio oculto<br />Departamento</span><span className="score t-tibio">7{i}</span></div>)}</div>
-                <div className="lock-cta"><ContactCTA text="El mapa por municipio, el ranking completo, las capas de red y los clientes potenciales están en el plan completo." /></div>
-              </div>
-            </div>
-          )}
+          <div className="card">
+            <div className="row" style={{ justifyContent: 'space-between' }}><h3>Flujo de caja acumulado</h3><span className="row" style={{ gap: 6 }}><button className="btn sm ghost" onClick={() => setTabla(!tabla)}>{tabla ? 'Ocultar tabla' : 'Ver tabla'}</button><button className="btn sm" onClick={csv}>CSV</button></span></div>
+            <svg viewBox={`0 0 ${r.rows.length * 20} 160`} width="100%" height="170" role="img" aria-label="Flujo de caja acumulado por año" preserveAspectRatio="none">
+              <line x1="0" x2={r.rows.length * 20} y1="80" y2="80" stroke="var(--line)" />
+              {r.rows.map((x, i) => { const h = (Math.abs(x.acum) / maxAbs) * 76; return <rect key={i} x={i * 20 + 3} width="14" y={x.acum >= 0 ? 80 - h : 80} height={Math.max(1, h)} rx="2" fill={x.acum >= 0 ? 'var(--ok)' : 'var(--hot)'}><title>{`Año ${x.y}: ${money(x.acum)}`}</title></rect>; })}
+            </svg>
+            <div className="row small muted" style={{ justifyContent: 'space-between' }}><span>Año 0</span><span>Año {p.vida}</span></div>
+            {tabla && (
+              <div className="tbl-wrap" style={{ marginTop: 8 }}><table className="tbl"><thead><tr><th>Año</th><th className="num">kWh</th><th className="num">Ahorro</th><th className="num">Mant.</th><th className="num">Crédito</th>{p.tipo === 'empresa' && <th className="num">Impuestos</th>}<th className="num">Flujo</th><th className="num">Acumulado</th></tr></thead>
+                <tbody>{r.rows.map((x) => <tr key={x.y}><td className="mono">{x.y}</td><td className="num">{fmt(x.gen)}</td><td className="num">{money(x.ahorro)}</td><td className="num">{money(x.om)}</td><td className="num">{money(x.deuda)}</td>{p.tipo === 'empresa' && <td className="num">{money(x.impuestos)}</td>}<td className="num">{money(x.flujo)}</td><td className="num">{money(x.acum)}</td></tr>)}</tbody></table></div>
+            )}
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>Beneficios de la Ley 1715 de 2014, modificada por la Ley 2099 de 2021 y reglamentada por el Decreto 895 de 2022: deducción en renta de hasta el 50 % de la inversión, en un plazo máximo de 15 años y sin superar el 50 % de la renta líquida del año; depreciación acelerada de hasta 33,33 % anual; exclusión de IVA y exención de aranceles para equipos certificados. Requieren la certificación del proyecto. Las personas naturales tienen límites adicionales. Verifica tu caso con tu contador antes de ofrecerlos.</p>
+          <p className="small muted" style={{ margin: 0 }}>Es una estimación de referencia. El valor real de los excedentes depende del contrato con el comercializador. Sin IVA excluido se suma 19 % sobre la parte de equipos (supuesta en 70 % del costo). Sin depreciación acelerada se deprecia en 10 años.</p>
         </div>
       </div>
-
-      {lockMsg && (
-        <div className="modal-bg" onClick={() => setLockMsg(null)}>
-          <div onClick={(e) => e.stopPropagation()}>
-            <ContactCTA text={lockMsg.layer ? `La capa "${lockMsg.layer}" está en el plan completo.` : `${lockMsg.dpto} tiene ${lockMsg.municipios} municipios evaluados. Desbloquea el detalle por municipio, tarifas y proyectos.`} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
