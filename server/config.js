@@ -39,5 +39,8 @@ export const config = {
     dailyPaid: +(e.AI_DAILY_PAID || 150),
   },
   capexKwp: +(e.CAPEX_COP_KWP || 3800000),
+  // Teselas satelitales del módulo de diseño (por defecto Esri World Imagery; se puede cambiar por otro proveedor)
+  satTiles: e.SATELLITE_TILES_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  satAttribution: e.SATELLITE_ATTRIBUTION || 'Imágenes © Esri, Maxar, Earthstar Geographics',
   secureCookies: e.SECURE_COOKIES ? e.SECURE_COOKIES === '1' : e.NODE_ENV === 'production',
 };
