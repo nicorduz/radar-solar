@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import { ColumnLayer, IconLayer, PathLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
+import { ColumnLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
 import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
 import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
 
 const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -32,6 +33,20 @@ const LAYERS = {
   zni: { label: 'Zonas no interconectadas (IPSE)', img: ICON_ZNI, paid: true },
 };
 const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'] };
+// Herramientas de dibujo del mapa
+const TOOLS = [
+  ['circle', 'circle', 'Círculo', 'Clic en el centro y otro clic en el borde.'],
+  ['polygon', 'polygon', 'Polígono', 'Clic en cada vértice. Doble clic o "Terminar" para cerrar.'],
+  ['rect', 'rect', 'Rectángulo', 'Clic en una esquina y otro clic en la esquina opuesta.'],
+  ['point', 'pin', 'Punto', 'Clic donde quieras el punto.'],
+  ['text', 'text', 'Texto', 'Escribe el texto y haz clic en el mapa.'],
+  ['measure', 'ruler', 'Medir', 'Clic en cada punto del recorrido. Doble clic o "Terminar" para finalizar.'],
+];
+const loadShapes = () => { try { return JSON.parse(localStorage.getItem('rs_shapes') || '[]'); } catch { return []; } };
+const saveShapes = (s) => { try { localStorage.setItem('rs_shapes', JSON.stringify(s)); } catch { /* sin almacenamiento */ } };
+const uid = () => Math.random().toString(36).slice(2, 9);
+const TXT = { fontFamily: 'Inter, system-ui, sans-serif', characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
+
 const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
 
@@ -49,6 +64,23 @@ export default function MapPage() {
   const [red, setRed] = useState(null);
   const [mt, setMt] = useState(null);
   const [on, setOn] = useState(() => new Set(DEFAULT_LAYERS[profile] || []));
+  // Dibujo y medición
+  const [tool, setTool] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [cursor, setCursor] = useState(null);
+  const [shapes, setShapes] = useState(loadShapes);
+  const [sel, setSel] = useState(null);
+  const [textVal, setTextVal] = useState('');
+  // Búsqueda y lista acotada a la vista
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [pin, setPin] = useState(null);
+  const [bounds, setBounds] = useState(null);
+  const [onlyVisible, setOnlyVisible] = useState(true);
+  const st = useRef({});
+  st.current = { tool, draft, textVal };
+  const handler = useRef(() => {});
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -64,6 +96,12 @@ export default function MapPage() {
       }
     });
     if (window.innerWidth >= 860) map.setPadding({ right: 380, top: 40, left: 0, bottom: 0 });
+    const b = () => { const x = map.getBounds(); setBounds([x.getWest(), x.getSouth(), x.getEast(), x.getNorth()]); };
+    map.on('load', b); map.on('moveend', b);
+    let raf = 0;
+    map.on('click', (e) => handler.current('click', [e.lngLat.lng, e.lngLat.lat]));
+    map.on('dblclick', (e) => handler.current('dblclick', [e.lngLat.lng, e.lngLat.lat], e));
+    map.on('mousemove', (e) => { if (!st.current.draft) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setCursor([e.lngLat.lng, e.lngLat.lat])); });
     const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
     map.addControl(overlay);
     mapRef.current = map; overlayRef.current = overlay;
@@ -80,6 +118,97 @@ export default function MapPage() {
 
   useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
+
+  // ---- Dibujo: clics sobre el mapa ----
+  const addShape = (shape) => { const n = [...shapes, { id: uid(), ...shape }]; setShapes(n); saveShapes(n); setSel(n[n.length - 1].id); };
+  const finish = () => {
+    if (!draft) { setTool(null); return; }
+    const pts = draft.pts.filter((p, i, a) => i === 0 || distance(p, a[i - 1]) > 1);
+    if (draft.type === 'polygon' && pts.length >= 3) addShape({ type: 'polygon', pts });
+    if (draft.type === 'measure' && pts.length >= 2) addShape({ type: 'measure', pts });
+    setDraft(null); setCursor(null); setTool(null);
+  };
+  const cancel = () => { setDraft(null); setCursor(null); setTool(null); };
+  handler.current = (ev, p, e) => {
+    const { tool: t, draft: d } = st.current;
+    if (!t) return;
+    if (ev === 'dblclick') { e?.preventDefault?.(); if (t === 'polygon' || t === 'measure') finish(); return; }
+    if (t === 'point') { addShape({ type: 'point', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
+    if (t === 'text') { if (!st.current.textVal.trim()) return; addShape({ type: 'text', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
+    if (t === 'circle') { if (!d) { setDraft({ type: 'circle', center: p }); setCursor(p); } else { addShape({ type: 'circle', center: d.center, r: Math.max(10, distance(d.center, p)) }); setDraft(null); setTool(null); } return; }
+    if (t === 'rect') { if (!d) { setDraft({ type: 'rect', pts: [p] }); setCursor(p); } else { addShape({ type: 'rect', pts: [d.pts[0], p] }); setDraft(null); setTool(null); } return; }
+    if (t === 'polygon' || t === 'measure') { setDraft(d ? { ...d, pts: [...d.pts, p] } : { type: t, pts: [p] }); setCursor(p); }
+  };
+  const pickTool = (t) => {
+    if (tool === t) { cancel(); return; }
+    setDraft(null); setCursor(null); setTool(t); setSel(null);
+  };
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    if (tool) { map.doubleClickZoom.disable(); map.getCanvas().style.cursor = 'crosshair'; }
+    else { map.doubleClickZoom.enable(); map.getCanvas().style.cursor = ''; }
+  }, [tool]);
+  useEffect(() => {
+    const k = (e) => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter' && st.current.draft) finish(); };
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+  });
+  const removeShape = (id) => { const n = shapes.filter((x) => x.id !== id); setShapes(n); saveShapes(n); setSel(null); };
+  const clearShapes = () => { setShapes([]); saveShapes([]); setSel(null); cancel(); };
+
+  // Vista previa de lo que se está dibujando
+  const preview = useMemo(() => {
+    if (!draft || !cursor) return null;
+    if (draft.type === 'circle') { const r = distance(draft.center, cursor); return { ring: circleRing(draft.center, r), label: `Radio ${fmtDist(r)}`, at: cursor }; }
+    if (draft.type === 'rect') return { ring: rectRing([draft.pts[0], cursor]), label: measureOf({ type: 'rect', pts: [draft.pts[0], cursor] }), at: cursor };
+    if (draft.type === 'polygon') { const pts = [...draft.pts, cursor]; return pts.length >= 3 ? { ring: [...pts, pts[0]], label: measureOf({ type: 'polygon', pts }), at: cursor } : { path: pts, label: '', at: cursor }; }
+    if (draft.type === 'measure') { const pts = [...draft.pts, cursor]; return { path: pts, label: fmtDist(pathLength(pts)), at: cursor }; }
+    return null;
+  }, [draft, cursor]);
+
+  // ---- Búsqueda: municipio, dirección o coordenadas ----
+  const flyToPos = (pos, zoom, label) => { mapRef.current?.flyTo({ center: pos, zoom, pitch: is3d ? 45 : 0, speed: 1.6 }); setPin({ pos, label }); setResults(null); };
+  const localMatches = (txt) => {
+    if (!data || data.mode !== 'municipio' || txt.length < 2) return [];
+    const n = normTxt(txt);
+    return data.items.filter((d) => normTxt(d.name).includes(n)).sort((a, b) => normTxt(a.name).indexOf(n) - normTxt(b.name).indexOf(n)).slice(0, 5)
+      .map((d) => ({ label: d.name, sub: `${d.dpto} · municipio`, pos: [d.lon, d.lat], zoom: 11, code: d.code }));
+  };
+  const runSearch = async (e) => {
+    e?.preventDefault();
+    const txt = q.trim(); if (!txt) return;
+    const c = parseCoords(txt);
+    if (c) { flyToPos(c, 15, `${c[1].toFixed(5)}, ${c[0].toFixed(5)}`); return; }
+    const local = localMatches(txt);
+    setResults(local); setSearching(true);
+    try { const geo = await geocode(txt); setResults([...local, ...geo]); }
+    catch { setResults(local); }
+    finally { setSearching(false); }
+  };
+
+  // Figura seleccionada: qué hay adentro
+  const selShape = shapes.find((x) => x.id === sel);
+  const selInfo = useMemo(() => {
+    if (!selShape) return null;
+    const ring = ringOf(selShape);
+    const info = { medida: measureOf(selShape) };
+    if (ring && data?.mode === 'municipio') {
+      const ms = data.items.filter((d) => d.lat != null && inside([d.lon, d.lat], ring));
+      info.munis = ms.length; info.pop = ms.reduce((a, d) => a + (d.pop || 0), 0);
+      info.top = [...ms].sort((a, b) => a.rank - b.rank).slice(0, 5);
+      if (!ms.length) {
+        // Zona pequeña: indica en qué municipio queda (el más cercano a su centro)
+        const c = selShape.type === 'circle' ? selShape.center : centroid(ring);
+        let best = null, bd = Infinity;
+        for (const d of data.items) { if (d.lat == null) continue; const dd = distance(c, [d.lon, d.lat]); if (dd < bd) { bd = dd; best = d; } }
+        info.dentro = best;
+      }
+      const pl = (red?.plantas || []).filter((p) => p.tipo === 'solar' && inside([p.lon, p.lat], ring));
+      info.solar = pl.length; info.solarMw = pl.reduce((a, p) => a + (p.mw || 0), 0);
+      info.subs = (red?.subs || []).filter((p) => inside([p.lon, p.lat], ring)).length;
+      info.upme = (red?.upme || []).filter((p) => p.lat && inside([p.lon, p.lat], ring)).length;
+    }
+    return info;
+  }, [selShape, data, red]);
 
   // Vista plana o 3D
   const set3d = (v) => { setIs3d(v); mapRef.current?.easeTo({ pitch: v ? 45 : 0, bearing: v ? -10 : 0, duration: 700 }); };
@@ -128,7 +257,7 @@ export default function MapPage() {
         widthUnits: 'pixels', getWidth: (d) => (kvOf(d.kv) >= 500 ? 2.4 : kvOf(d.kv) >= 220 ? 1.8 : 1.2), pickable: true,
       }));
     }
-    const onMuni = ({ object }) => { if (!object) return; if (dpto) setLockMsg(object); else go('m', object.code); };
+    const onMuni = ({ object }) => { if (!object || st.current.tool) return; if (dpto) setLockMsg(object); else go('m', object.code); };
     if (showKey === 'score' && is3d) {
       layers.push(new ColumnLayer({
         id: 'muni-3d', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 14000 : 3500, extruded: true, pickable: true,
@@ -175,9 +304,45 @@ export default function MapPage() {
     if (on.has('zni') && red?.zni?.length) {
       layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
     }
+    // Dibujos del usuario, vista previa y resultado de búsqueda
+    const polys = shapes.filter((x) => ringOf(x)).map((x) => ({ ...x, ring: ringOf(x) }));
+    if (preview?.ring) polys.push({ id: 'preview', ring: preview.ring, preview: true });
+    if (polys.length) {
+      layers.push(new PolygonLayer({
+        id: 'draw-poly', data: polys, getPolygon: (d) => d.ring, filled: true, stroked: true,
+        getFillColor: (d) => (d.preview ? [52, 120, 246, 30] : d.id === sel ? [255, 122, 0, 45] : [52, 120, 246, 45]),
+        getLineColor: (d) => (d.id === sel ? [255, 160, 70, 255] : [168, 197, 255, 235]), lineWidthUnits: 'pixels', getLineWidth: (d) => (d.id === sel ? 3 : 2),
+        pickable: !tool, parameters: ON_TOP, onClick: ({ object }) => { if (object && !object.preview) setSel(object.id); }, updateTriggers: { getFillColor: [sel], getLineColor: [sel], getLineWidth: [sel] },
+      }));
+    }
+    const paths = shapes.filter((x) => x.type === 'measure').map((x) => ({ ...x, path: x.pts }));
+    if (preview?.path) paths.push({ id: 'preview', path: preview.path, preview: true });
+    if (paths.length) {
+      layers.push(new PathLayer({ id: 'draw-path', data: paths, getPath: (d) => d.path, getColor: (d) => (d.id === sel ? [255, 160, 70, 255] : [255, 122, 0, 235]), widthUnits: 'pixels', getWidth: 3, pickable: !tool, onClick: ({ object }) => { if (object && !object.preview) setSel(object.id); }, parameters: ON_TOP, updateTriggers: { getColor: [sel] } }));
+    }
+    const verts = [...paths.flatMap((d) => d.path), ...(draft?.pts || []), ...(draft?.center ? [draft.center] : [])];
+    const points = shapes.filter((x) => x.type === 'point');
+    if (verts.length || points.length || pin) {
+      layers.push(new ScatterplotLayer({ id: 'draw-verts', data: verts, getPosition: (d) => d, radiusUnits: 'pixels', getRadius: 3.5, getFillColor: [255, 255, 255, 255], parameters: ON_TOP }));
+      layers.push(new ScatterplotLayer({
+        id: 'draw-points', data: [...points, ...(pin ? [{ id: 'pin', pts: [pin.pos], pin: true }] : [])], getPosition: (d) => d.pts[0], radiusUnits: 'pixels',
+        getRadius: (d) => (d.pin ? 9 : 7), getFillColor: (d) => (d.pin ? [52, 120, 246, 255] : [255, 122, 0, 255]), stroked: true, getLineColor: [255, 255, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2,
+        pickable: !tool, onClick: ({ object }) => { if (object && !object.pin) setSel(object.id); }, parameters: ON_TOP,
+      }));
+    }
+    const labels = [
+      ...shapes.filter((x) => x.type === 'text').map((x) => ({ pos: x.pts[0], text: x.text, size: 15 })),
+      ...points.filter((x) => x.text).map((x) => ({ pos: x.pts[0], text: x.text, size: 12, dy: -16 })),
+      ...shapes.filter((x) => x.type !== 'text' && x.type !== 'point').map((x) => ({ pos: x.type === 'measure' ? x.pts[x.pts.length - 1] : x.type === 'circle' ? x.center : centroid(ringOf(x)), text: measureOf(x), size: 12, dy: x.type === 'measure' ? -16 : 0 })),
+      ...(preview?.label ? [{ pos: preview.at, text: preview.label, size: 12, dy: -18 }] : []),
+      ...(pin?.label ? [{ pos: pin.pos, text: pin.label, size: 12, dy: -20 }] : []),
+    ];
+    if (labels.length) layers.push(new TextLayer({ id: 'draw-text', data: labels, getPosition: (d) => d.pos, getText: (d) => d.text, getSize: (d) => d.size, getPixelOffset: (d) => [0, d.dy || 0], ...TXT }));
+
     overlayRef.current.setProps({
       layers,
       getTooltip: ({ object: d, layer }) => {
+        if (tool) return null;
         if (!d || !layer) return null;
         let html;
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
@@ -191,9 +356,16 @@ export default function MapPage() {
         return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
       },
     });
-  }, [scaled, data, showKey, is3d, go, on, red, mt]);
+  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool]);
 
-  const top = useMemo(() => (data?.mode === 'municipio' ? data.items.slice(0, 25) : []), [data]);
+  const visibles = useMemo(() => {
+    if (data?.mode !== 'municipio') return [];
+    const all = [...data.items].sort((a, b) => a.rank - b.rank);
+    if (!onlyVisible || !bounds) return all;
+    const [w, s, e, n] = bounds;
+    return all.filter((d) => d.lon >= w && d.lon <= e && d.lat >= s && d.lat <= n);
+  }, [data, bounds, onlyVisible]);
+  const top = visibles.slice(0, 30);
   const fly = (d) => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: 9, pitch: is3d ? 50 : 0, speed: 1.4 });
   const sub = (d) => metricKeys.filter((k) => k !== 'score').slice(0, 2).map((k) => `${METRICS[k].short} ${METRICS[k].f(METRICS[k].get(d))}`).join(' · ');
   const showLabel = show === 'nada' ? 'Nada' : (METRICS[show]?.short || 'Puntaje');
@@ -203,6 +375,21 @@ export default function MapPage() {
     <div className="mapwrap" onClick={(e) => { if (menu && !e.target.closest('.dd')) setMenu(null); }}>
       <div ref={el} style={{ position: 'absolute', inset: 0 }} />
       <div className="map-top">
+        <form className="dd map-search glass" onSubmit={runSearch}>
+          <Icon name="search" size={16} />
+          <input value={q} onChange={(e) => { setQ(e.target.value); setResults(e.target.value.trim().length >= 2 ? localMatches(e.target.value.trim()) : null); }} placeholder="Dirección, lugar, municipio o lat, lon" aria-label="Buscar en el mapa" />
+          {q && <button type="button" className="icon-btn" onClick={() => { setQ(''); setResults(null); setPin(null); }} aria-label="Limpiar búsqueda"><Icon name="x" size={14} /></button>}
+          {(results || searching) && (
+            <div className="glass dd-menu" role="listbox">
+              {results?.map((r, i) => (
+                <button key={i} type="button" onClick={() => { flyToPos(r.pos, r.zoom, r.label); }}><Icon name={r.code ? 'map' : 'pin'} size={16} /><span><b>{r.label}</b><br /><span className="small muted">{r.sub}</span></span></button>
+              ))}
+              {searching && <span className="small muted" style={{ padding: '8px 10px' }}>Buscando direcciones…</span>}
+              {!searching && results && !results.length && <span className="small muted" style={{ padding: '8px 10px' }}>Sin resultados. Pulsa Enter para buscar direcciones.</span>}
+              {!searching && results?.length > 0 && <span className="small muted" style={{ padding: '6px 10px' }}>Enter: buscar también direcciones (OpenStreetMap)</span>}
+            </div>
+          )}
+        </form>
         <div className="dd">
           <button className={`btn sm glass ${menu === 'show' ? 'on' : ''}`} onClick={() => setMenu(menu === 'show' ? null : 'show')} aria-expanded={menu === 'show'}>
             <MenuIcon k={show} />Mostrar: <b>{showLabel}</b><span className="caret">▾</span>
@@ -243,6 +430,44 @@ export default function MapPage() {
         <div className="glass" style={{ padding: 6 }}><WeightsControl compact /></div>
       </div>
 
+      <div className="draw-bar glass" role="toolbar" aria-label="Dibujar y medir">
+        {TOOLS.map(([k, ic, label]) => (
+          <button key={k} className={tool === k ? 'on' : ''} onClick={() => pickTool(k)} title={label} aria-label={label} aria-pressed={tool === k}><Icon name={ic} size={18} /></button>
+        ))}
+        {shapes.length > 0 && <button onClick={clearShapes} title="Borrar todos los dibujos" aria-label="Borrar todos los dibujos"><Icon name="trash" size={18} /></button>}
+      </div>
+      {tool && (
+        <div className="draw-hint glass">
+          <b>{TOOLS.find((t) => t[0] === tool)[2]}</b>
+          <span className="small muted">{TOOLS.find((t) => t[0] === tool)[3]}</span>
+          {(tool === 'text' || tool === 'point') && <input className="input" value={textVal} onChange={(e) => setTextVal(e.target.value)} placeholder={tool === 'text' ? 'Escribe el texto' : 'Etiqueta (opcional)'} autoFocus style={{ minHeight: 34 }} />}
+          <div className="row" style={{ gap: 6 }}>
+            {(tool === 'polygon' || tool === 'measure') && <button className="btn sm primary" onClick={finish} disabled={!draft || draft.pts.length < (tool === 'polygon' ? 3 : 2)}><Icon name="check" size={14} />Terminar</button>}
+            <button className="btn sm" onClick={cancel}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      {selShape && !tool && (
+        <div className="draw-info glass">
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+            <b>{{ circle: 'Círculo', polygon: 'Polígono', rect: 'Rectángulo', point: 'Punto', text: 'Texto', measure: 'Medición' }[selShape.type]}</b>
+            <span className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+              <button className="icon-btn" onClick={() => removeShape(selShape.id)} title="Eliminar"><Icon name="trash" size={15} /></button>
+              <button className="icon-btn" onClick={() => setSel(null)} title="Cerrar"><Icon name="x" size={15} /></button>
+            </span>
+          </div>
+          {selShape.text && <span className="small">{selShape.text}</span>}
+          {selInfo?.medida && <span className="small mono">{selInfo.medida}</span>}
+          {selInfo?.munis != null && (<>
+            {selInfo.dentro
+              ? <button className="draw-top-one" onClick={() => go('m', selInfo.dentro.code)}><span className="small">Queda en <b>{selInfo.dentro.name}</b> ({selInfo.dentro.dpto})</span><ScoreBadge score={selInfo.dentro.score} tier={selInfo.dentro.tier} /></button>
+              : <span className="small">{fmt(selInfo.munis)} municipios · {fmt(selInfo.pop)} habitantes</span>}
+            <span className="small muted">{selInfo.solar} plantas solares ({fmt(selInfo.solarMw)} MW) · {selInfo.subs} subestaciones · {selInfo.upme} proyectos UPME</span>
+            {selInfo.top.length > 0 && <div className="draw-top">{selInfo.top.map((d) => <button key={d.code} onClick={() => go('m', d.code)}><span>{d.name}</span><ScoreBadge score={d.score} tier={d.tier} /></button>)}</div>}
+          </>)}
+        </div>
+      )}
+
       {showKey !== 'nada' && (
         <div className="legend glass">
           <span className="row" style={{ gap: 6 }}>{iconMode && <img src={METRIC_ICON[showKey]} alt="" width="16" height="16" />}{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
@@ -254,9 +479,16 @@ export default function MapPage() {
       <div className={`map-panel glass ${collapsed ? 'collapsed' : ''}`}>
         <button className="row" onClick={() => setCollapsed(!collapsed)} style={{ padding: '14px 16px', border: 0, background: 'none', justifyContent: 'space-between', cursor: 'pointer', width: '100%' }} aria-expanded={!collapsed}>
           <h2>{paid ? `Mejores zonas · ${prof.short}` : 'Vista previa'}</h2>
-          <span className="small muted">{data ? (paid ? `${data.items.length} municipios` : 'plan de prueba') : 'cargando…'}</span>
+          <span className="small muted">{data ? (paid ? `${fmt(visibles.length)} ${onlyVisible ? 'en la vista' : 'municipios'}` : 'plan de prueba') : 'cargando…'}</span>
         </button>
+        {data?.mode === 'municipio' && (
+          <div className="seg panel-scope" role="group" aria-label="Qué municipios mostrar">
+            <button className={onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(true)}>Lo que ves en el mapa</button>
+            <button className={!onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(false)}>Todo el país</button>
+          </div>
+        )}
         <div className="list">
+          {data?.mode === 'municipio' && !top.length && <p className="small muted" style={{ padding: '4px 16px' }}>No hay municipios en esta parte del mapa. Aléjate o elige "Todo el país".</p>}
           {data?.mode === 'municipio' && top.map((d) => (
             <button key={d.code} className="map-item" onClick={() => { fly(d); }} onDoubleClick={() => go('m', d.code)}>
               <span className="mono muted">{d.rank}</span>
