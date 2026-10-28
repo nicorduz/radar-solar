@@ -31,6 +31,7 @@ export default function Cuenta() {
       {Object.keys(meta.profiles).length > 1 && <div className="card mobile-only"><h3 style={{ marginBottom: 8 }}>Ver la app como</h3><ProfileSwitch /></div>}
       <div className="row" style={{ gap: 8 }}>
         {!paid && <button className="btn primary" onClick={() => go('plan')}><Icon name="spark" size={16} />Plan completo</button>}
+        <button className="btn" onClick={() => go('marca')}><Icon name="palette" size={16} />Mi marca</button>
         <button className="btn" onClick={() => go('prospectos')}><Icon name="star" size={16} />Mis prospectos</button>
         <button className="btn" onClick={() => go('industrias')}><Icon name="factory" size={16} />Empresas e industrias</button>
         <button className="btn" onClick={() => go('clientes')}><Icon name="hotel" size={16} />Hoteles y turismo</button>
