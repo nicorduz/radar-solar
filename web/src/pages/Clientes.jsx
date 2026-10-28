@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { api, qs, fmt, csvDownload } from '../api.js';
 import { useApp } from '../App.jsx';
-import { LockedRows, Spinner, Contact, PrivacyNote } from '../components/ui.jsx';
+import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton } from '../components/ui.jsx';
 
 const CATS = { '': 'Todos', ALOJAMIENTO: 'Hoteles y alojamientos', 'VIVIENDAS TURÍSTICAS': 'Viviendas turísticas', 'PARQUES TEMÁTICOS': 'Parques temáticos', 'CONCESIONARIOS DE SERVICIOS TURÍSTICOS EN PARQUE': 'Concesiones en parques' };
 
-// Hoteles, viviendas turísticas y parques del Registro Nacional de Turismo como clientes potenciales
+// Hoteles, viviendas turísticas y parques como clientes potenciales
 export default function Clientes({ code }) {
   const { paid, meta } = useApp();
   const [f, setF] = useState({ q: '', dpto: '', cat: '', minHab: '', code: code || '' });
@@ -24,7 +24,7 @@ export default function Clientes({ code }) {
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1>Hoteles, turismo y recreación</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Establecimientos activos del Registro Nacional de Turismo: consumen energía todo el día (aire acondicionado, piscinas, cocinas) y suelen estar en zonas cálidas con tarifa alta. Son clientes comerciales para sistemas de 10 a 500 kWp.</p></div>
+        <div><h1>Hoteles, turismo y recreación</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Establecimientos turísticos activos: consumen energía todo el día (aire acondicionado, piscinas, cocinas) y suelen estar en zonas cálidas con tarifa alta. Son clientes comerciales para sistemas de 10 a 500 kWp.</p></div>
       </div>
       <div className="row">
         {Object.entries(CATS).map(([k, l]) => <button key={k} className={`chip ${f.cat === k ? 'on' : ''}`} style={{ cursor: 'pointer', background: 'none' }} onClick={() => setF({ ...f, cat: k })}>{l}</button>)}
@@ -41,7 +41,7 @@ export default function Clientes({ code }) {
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
-            <table className="tbl"><thead><tr><th>Establecimiento</th><th>Municipio</th><th className="num">Habitaciones</th><th className="num hs">Tarifa $/kWh</th><th>Contacto</th></tr></thead>
+            <table className="tbl"><thead><tr><th>Establecimiento</th><th>Municipio</th><th className="num">Habitaciones</th><th className="num hs">Tarifa $/kWh</th><th>Contacto</th>{paid && <th></th>}</tr></thead>
               <tbody>{data.rows.map((c) => (
                 <tr key={c.id}>
                   <td className="name">{c.n}<br /><span className="small muted">{c.sub}{c.dir ? ` · ${c.dir}` : ''}</span></td>
@@ -49,12 +49,13 @@ export default function Clientes({ code }) {
                   <td className="num">{fmt(c.hab)}{c.camas ? <><br /><span className="small muted">{fmt(c.camas)} camas</span></> : null}</td>
                   <td className="num hs">{fmt(c.tarifa)}</td>
                   <td className="small">{c.pj ? <Contact tel={c.tel} mail={c.mail} /> : <span className="muted">Persona natural: sin contacto</span>}</td>
+                  {paid && <td><ProspectButton p={{ tipo: 'hotel', ref: c.id, nombre: c.n, code: c.code, mun: c.mun, tel: c.pj ? c.tel : null, mail: c.pj ? c.mail : null, detalle: `${c.sub} · ${c.hab} habitaciones` }} /></td>}
                 </tr>))}</tbody>
             </table>
             {data.locked && <LockedRows cols={5} n={8} text={`Hay ${fmt(data.total)} establecimientos con municipio, tamaño y contacto de empresa en el plan completo.`} />}
           </div>
           {paid && <div className="row"><button className="btn sm" disabled={!page} onClick={() => setPage(page - 1)}>Anterior</button><span className="small muted">{fmt(data.total)} establecimientos · página {page + 1}</span><button className="btn sm" disabled={(page + 1) * 50 >= data.total} onClick={() => setPage(page + 1)}>Siguiente</button></div>}
-          <p className="small muted">Fuente: MinCIT, Registro Nacional de Turismo (datos.gov.co thwd-ivmp), prestadores activos. Algunos registros traen habitaciones mal digitadas; se corrigen con el número de camas y de empleados.</p>
+          <Fuente>MinCIT, Registro Nacional de Turismo (datos.gov.co thwd-ivmp), prestadores activos. Algunos registros traen habitaciones mal digitadas; se corrigen con el número de camas y de empleados.</Fuente>
           <PrivacyNote />
         </>
       )}
