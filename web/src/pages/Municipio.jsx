@@ -105,7 +105,7 @@ export default function Municipio({ code }) {
     instaladores: { icon: 'building', title: 'Instaladores de la zona', hint: `${fmt(m.instaladores_n?.municipio || 0)} en el municipio · ${fmt(m.instaladores_n?.departamento || 0)} en ${m.dpto}`, body: (<>
       {m.instaladores?.length ? (
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Empresa</th><th className="num">Contratos solares</th><th>Contacto</th></tr></thead><tbody>
-          {m.instaladores.map((e) => <tr key={e.nit + e.n}><td className="name">{e.n}<br /><span className="small muted">{e.mun || '—'}{e.ambito === 'departamento' ? ' · otro municipio' : ''}</span></td><td className="num">{e.sol_n || '—'}</td><td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} />{paid && <ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: m.code, mun: e.mun, tel: e.tel, mail: e.mail, detalle: e.cat }} />}</td></tr>)}
+          {m.instaladores.map((e) => <tr key={e.nit + e.n}><td className="name">{e.n}<br /><span className="small muted">{e.mun || '—'}{e.ambito === 'departamento' ? ' · otro municipio' : ''}</span></td><td className="num">{e.sol_n || '—'}</td><td className="small"><Contact tel={e.tel} mail={e.mail} web={e.web} />{<ProspectButton p={{ tipo: 'empresa', nit: e.nit, nombre: e.n, code: m.code, mun: e.mun, tel: e.tel, mail: e.mail, detalle: e.cat }} />}</td></tr>)}
         </tbody></table></div>
       ) : <p className="muted small" style={{ margin: 0 }}>No hay instaladores ubicados en esta zona.</p>}
       {!paid && <ContactCTA text="La lista completa de instaladores con teléfono y correo está en el plan completo." />}
@@ -116,7 +116,7 @@ export default function Municipio({ code }) {
     clientes: { icon: 'hotel', title: 'Hoteles y turismo', hint: `${fmt(m.clientes_n || 0)} establecimientos · ${fmt(m.rnt_hab || 0)} habitaciones`, body: (<>
       {m.clientes?.length ? (
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Establecimiento</th><th className="num">Habitaciones</th><th>Contacto</th></tr></thead><tbody>
-          {m.clientes.map((c) => <tr key={c.id}><td className="name">{c.n}<br /><span className="small muted">{c.sub}</span></td><td className="num">{fmt(c.hab)}</td><td className="small"><Contact tel={c.tel} mail={c.mail} />{paid && <ProspectButton p={{ tipo: 'hotel', ref: c.id, nombre: c.n, code: m.code, mun: m.name, tel: c.tel, mail: c.mail, detalle: `${c.sub} · ${c.hab} habitaciones` }} />}</td></tr>)}
+          {m.clientes.map((c) => <tr key={c.id}><td className="name">{c.n}<br /><span className="small muted">{c.sub}</span></td><td className="num">{fmt(c.hab)}</td><td className="small"><Contact tel={c.tel} mail={c.mail} />{<ProspectButton p={{ tipo: 'hotel', ref: c.id, nombre: c.n, code: m.code, mun: m.name, tel: c.tel, mail: c.mail, detalle: `${c.sub} · ${c.hab} habitaciones` }} />}</td></tr>)}
         </tbody></table></div>
       ) : <p className="muted small" style={{ margin: 0 }}>No hay alojamientos turísticos activos registrados.</p>}
       {!paid && m.clientes_n > 1 && <ContactCTA text={`Hay ${fmt(m.clientes_n - 1)} establecimientos más con su contacto en el plan completo.`} />}
@@ -220,12 +220,13 @@ export default function Municipio({ code }) {
         </div>
         <div className="row"><span className="muted small">Puesto {m.rank} de {m.total_rank}</span><ScoreBadge score={m.score} tier={m.tier} /></div>
       </div>
-      {paid && (
+      {(
         <div className="row ficha-actions">
           <FollowButton m={m} />
           <button className="btn sm" onClick={() => go('propuesta', m.code)}><Icon name="pdf" size={15} />Propuesta o informe PDF</button>
           <button className="btn sm" onClick={() => go('calculadora', m.code)}><Icon name="calc" size={15} />Calculadora financiera</button>
-          <button className="btn sm" onClick={async () => { try { const r = await api(`/share/${m.code}`, { method: 'POST', body: { profile } }); setShare({ url: `${location.origin}/#/compartido/${r.token}`, expira: r.expira }); } catch (e) { setShare({ error: e.message }); } }}><Icon name="share" size={15} />Compartir ficha</button>
+          <button className="btn sm" onClick={() => go('diseno')}><Icon name="sun" size={15} />Diseñar un techo</button>
+          {paid && <button className="btn sm" onClick={async () => { try { const r = await api(`/share/${m.code}`, { method: 'POST', body: { profile } }); setShare({ url: `${location.origin}/#/compartido/${r.token}`, expira: r.expira }); } catch (e) { setShare({ error: e.message }); } }}><Icon name="share" size={15} />Compartir ficha</button>}
         </div>
       )}
       {share && (
