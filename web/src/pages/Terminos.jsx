@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const OWNER = 'Talera Colombia Consulting S.A.S.';
-export const TERMS_VERSION = '2026-10';
+export const TERMS_VERSION = '2026-11';
 
 // Términos de la licencia de uso. Se muestran en el ingreso y dentro de la plataforma.
 export function TerminosTexto({ appName = 'Radar Solar' }) {
@@ -20,17 +20,17 @@ export function TerminosTexto({ appName = 'Radar Solar' }) {
 
       <h2>4. Lo que no está permitido</h2>
       <ul>
-        <li>Copiar, reproducir, imprimir o capturar de forma sistemática la plataforma o sus bases de datos, total o parcialmente.</li>
+        <li>Copiar, reproducir, imprimir o capturar de forma sistemática la plataforma o sus bases de datos, total o parcialmente. Se exceptúan las propuestas, informes y enlaces de solo lectura que genera la propia plataforma, que el licenciatario puede entregar a sus clientes o aliados para su gestión comercial.</li>
         <li>Extraer información con programas automáticos (robots, scraping, consultas masivas a la API).</li>
         <li>Vender, sublicenciar, publicar, distribuir o entregar a terceros la información o los archivos descargados. Las descargas que ofrece la plataforma (por ejemplo, CSV) son solo para uso interno del licenciatario.</li>
-        <li>Compartir usuario y contraseña o permitir el acceso de personas distintas al titular de la cuenta.</li>
+        <li>Compartir usuario y contraseña o permitir el acceso de personas distintas al titular de la cuenta. Las licencias de equipo asignan un usuario a cada persona.</li>
         <li>Hacer ingeniería inversa, modificar o crear productos derivados o competidores a partir de la plataforma.</li>
         <li>Usar la marca o el logotipo de Talera sin autorización escrita.</li>
       </ul>
       <p>El incumplimiento permite a Talera suspender o cancelar la cuenta, sin perjuicio de las acciones legales que correspondan.</p>
 
       <h2>5. Fuentes de información</h2>
-      <p>La plataforma integra datos públicos de entidades como DANE, Superservicios (SUI), XM, UPME, IPSE, MinCIT, SNR, Confecámaras y Colombia Compra Eficiente (SECOP II), que conservan la titularidad sobre sus datos. Talera es titular de la compilación, organización, análisis e índices construidos con ellos.</p>
+      <p>La plataforma integra datos públicos de entidades del Estado colombiano y de fuentes abiertas, que conservan la titularidad sobre sus datos. Talera es titular de la compilación, organización, análisis e índices construidos con ellos.</p>
       <p>La información es de referencia y puede contener errores o rezagos de las fuentes. No reemplaza estudios técnicos, la factibilidad de conexión que expide el operador de red ni asesoría legal, financiera o técnica. Talera no responde por decisiones tomadas con base en ella.</p>
 
       <h2>6. Datos de contacto de empresas</h2>
