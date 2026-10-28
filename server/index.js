@@ -57,6 +57,24 @@ app.post('/api/login', loginThrottle, (req, res) => {
 });
 app.post('/api/logout', (req, res) => { destroySession(req, res); res.json({ ok: true }); });
 app.get('/api/me', (req, res) => res.json({ user: req.user ? publicUser(req.user) : null }));
+// Marca de la empresa del usuario (se usa en propuestas y reportes)
+app.get('/api/branding', requireUser, (req, res) => {
+  const r = db.prepare('SELECT data, updated_at FROM branding WHERE user_id=?').get(req.user.id);
+  res.json(r ? { ...JSON.parse(r.data), updated_at: r.updated_at } : null);
+});
+app.put('/api/branding', requireUser, (req, res) => {
+  const b = req.body || {};
+  const str = (v, n = 200) => (v == null ? '' : String(v).slice(0, n));
+  const color = (v, d) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : d);
+  const logo = typeof b.logo === 'string' && /^data:image\/(png|jpeg|webp|svg\+xml);base64,/.test(b.logo) && b.logo.length < 450000 ? b.logo : '';
+  const data = {
+    empresa: str(b.empresa, 120), nit: str(b.nit, 30), logo, color1: color(b.color1, '#231D5D'), color2: color(b.color2, '#FF7A00'),
+    asesor: str(b.asesor, 80), cargo: str(b.cargo, 80), telefono: str(b.telefono, 40), whatsapp: str(b.whatsapp, 40), correo: str(b.correo, 120),
+    web: str(b.web, 120), direccion: str(b.direccion, 160), ciudad: str(b.ciudad, 80), condiciones: str(b.condiciones, 1500), validez: Math.max(1, Math.min(365, +b.validez || 30)),
+  };
+  db.prepare("INSERT INTO branding(user_id,data,updated_at) VALUES(?,?,datetime('now')) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at").run(req.user.id, JSON.stringify(data));
+  res.json(data);
+});
 app.post('/api/me/password', requireUser, (req, res) => {
   const { current, next: nw } = req.body || {};
   if (!verifyPassword(String(current || ''), req.user.pass_hash)) return res.status(400).json({ error: 'La contraseña actual no coincide' });
