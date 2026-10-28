@@ -3,6 +3,7 @@ import { api, qs, fmt, money, cop } from '../api.js';
 import { useApp } from '../App.jsx';
 import { ScoreBadge, Stat, Bars, Spinner, ContactCTA, Spark, PrivacyNote, Contact, Section } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import Markdown from '../components/Markdown.jsx';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 // Orden de las secciones según quién mira la ficha; las dos primeras se muestran abiertas
@@ -91,7 +92,7 @@ export default function Municipio({ code }) {
 
     ia: { icon: 'spark', title: profile === 'proveedor' ? 'Estrategia comercial con IA' : profile === 'desarrollador' ? 'Resumen de inversión con IA' : 'Argumento de venta con IA', hint: profile === 'instalador' ? 'Diagnóstico, cliente ideal y mensaje de WhatsApp' : 'Diagnóstico y próximos pasos', body: (<>
       <div className="row"><button className="btn sm primary" onClick={getPitch} disabled={pitchBusy || !paid}>{pitchBusy ? 'Generando…' : 'Generar'}</button><button className="btn sm" onClick={() => go('asistente', m.code)}>Preguntar al asistente</button></div>
-      {pitch && <div className="msg assistant" style={{ maxWidth: 'none' }}>{pitch}</div>}
+      {pitch && <div className="msg assistant" style={{ maxWidth: 'none' }}><Markdown text={pitch} /></div>}
     </>) },
 
     instaladores: { icon: 'building', title: 'Instaladores de la zona', hint: `${fmt(m.instaladores_n?.municipio || 0)} en el municipio · ${fmt(m.instaladores_n?.departamento || 0)} en ${m.dpto}`, body: (<>
