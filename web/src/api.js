@@ -28,6 +28,7 @@ export const fmt = (n, d = 0) => (n == null || Number.isNaN(n) ? '—' : Number(
 export const cop = (n) => (n == null ? '—' : '$' + Math.round(n).toLocaleString('es-CO'));
 export const money = (n) => {
   if (n == null) return '—';
+  if (n < 0) return '-' + money(-n);
   if (n >= 1e9) return `$${(n / 1e9).toLocaleString('es-CO', { maximumFractionDigits: 1 })} mil M`;
   if (n >= 1e6) return `$${(n / 1e6).toLocaleString('es-CO', { maximumFractionDigits: 1 })} M`;
   return cop(n);
