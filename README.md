@@ -34,6 +34,16 @@ npm start
 
 Abre http://localhost:3000 e inicia sesión con el administrador que pusiste en `.env`. Desde *Administración → Usuarios* creas los demás.
 
+## Demo gratis: GitHub privado + Render Free
+
+Para mostrar la app al equipo y a los primeros clientes sin pagar hosting.
+
+1. Sube esta carpeta a un repositorio **privado** de GitHub (GitHub Desktop → Publish repository → "Keep this code private").
+2. En render.com: New → Web Service → conecta GitHub dando acceso solo a este repositorio → Language **Docker** → Instance type **Free**.
+3. Variables: `ADMIN_USER`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `CONTACT_WHATSAPP`, `PORT=3000` y `SEED_USERS` con los usuarios de la demo (formato `usuario:clave:rol:perfil:empresa;…`, rol `trial|paid|admin`, perfil `todos|instalador|proveedor|desarrollador|servicios|respaldo`; la empresa es opcional y agrupa a los usuarios de un equipo) y `SESSION_SECRET` con un texto largo inventado (mantiene válidos los enlaces compartidos aunque el servidor se reinicie).
+
+Límites del plan gratis: se duerme tras 15 minutos sin visitas (el primer ingreso tarda cerca de un minuto) y no tiene disco, así que lo que se cree desde el panel (usuarios, documentos, cargas) se borra al reiniciar. Por eso los usuarios de la demo van en `SEED_USERS`. Los datos del mapa vienen dentro de la app y no se pierden. Para producción, pasa a un plan pago con disco en `/data` (sección siguiente).
+
 ## Ponerla en internet con GitHub privado + Railway (recomendado)
 
 El código queda en un repositorio **privado** de GitHub (solo tú lo ves) y Railway publica la app desde ahí. Cada cambio que subas al repositorio se publica solo. Los usuarios de la app no ven el código: solo entran con el usuario y la contraseña que tú les creas.
