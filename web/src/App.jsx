@@ -21,6 +21,7 @@ import Calculadora from './pages/Calculadora.jsx';
 import Propuesta from './pages/Propuesta.jsx';
 import Compartido from './pages/Compartido.jsx';
 import Diseno from './pages/Diseno.jsx';
+import Marca from './pages/Marca.jsx';
 import Tour from './components/Tour.jsx';
 import { useLocal, FOLLOWS, SEEN } from './local.js';
 
@@ -145,6 +146,7 @@ export default function App() {
   else if (view === 'prospectos') page = <Prospectos />;
   else if (view === 'calculadora') page = <Calculadora code={arg} />;
   else if (view === 'diseno') page = <Diseno />;
+  else if (view === 'marca') page = <Marca />;
   else if (view === 'propuesta' && arg) page = <Propuesta key={arg} arg={arg} />;
   else page = <MapPage />;
 
@@ -162,6 +164,7 @@ export default function App() {
             </button>
           ))}
           <div className="spacer" />
+          <button className={`navbtn ${active === 'marca' ? 'on' : ''}`} onClick={() => go('marca')}><Icon name="palette" />Mi marca</button>
           {!paid && <button className="btn primary sm" style={{ margin: '0 4px 8px' }} onClick={() => go('plan')}>Plan completo · pago único</button>}
           <button className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} onClick={() => go('cuenta')}><Icon name="user" />{user.name || user.username}</button>
           <div className="legal-foot"><LegalLine go={go} /></div>
