@@ -5,6 +5,7 @@ import { ColumnLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, Soli
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
 import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
+import { writeLocal } from '../local.js';
 import { Icon } from '../components/Icon.jsx';
 import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
 import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
@@ -25,14 +26,22 @@ const elevOf = (t) => 2500 + Math.pow(t, 1.4) * 70000;
 const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false };
 
 const LAYERS = {
-  solar: { label: 'Plantas solares (XM)', img: ICON_SOLAR, paid: true },
-  upme: { label: 'Proyectos registrados en la UPME', img: ICON_UPME, paid: true },
+  solar: { label: 'Plantas solares', img: ICON_SOLAR, paid: true },
+  upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true },
   subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
   lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
   mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
-  zni: { label: 'Zonas no interconectadas (IPSE)', img: ICON_ZNI, paid: true },
+  zni: { label: 'Zonas no interconectadas', img: ICON_ZNI, paid: true },
 };
-const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'] };
+const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'], servicios: ['solar'], respaldo: ['zni'] };
+// Distancia aproximada (km) de un punto a un segmento de línea, en coordenadas locales
+function segDist(p, a, b) {
+  const k = Math.cos((p[1] * Math.PI) / 180) * 111.32, kl = 110.57;
+  const ax = (a[0] - p[0]) * k, ay = (a[1] - p[1]) * kl, bx = (b[0] - p[0]) * k, by = (b[1] - p[1]) * kl;
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+  return Math.hypot(ax + t * dx, ay + t * dy);
+}
 // Herramientas de dibujo del mapa
 const TOOLS = [
   ['circle', 'circle', 'Círculo', 'Clic en el centro y otro clic en el borde.'],
@@ -207,6 +216,22 @@ export default function MapPage() {
       info.subs = (red?.subs || []).filter((p) => inside([p.lon, p.lat], ring)).length;
       info.upme = (red?.upme || []).filter((p) => p.lat && inside([p.lon, p.lat], ring)).length;
     }
+    // Evaluación del sitio: red eléctrica más cercana al centro de la figura o al punto
+    const c = selShape.type === 'circle' ? selShape.center : ring ? centroid(ring) : selShape.type === 'point' ? selShape.pts[0] : null;
+    if (c && red && data?.mode === 'municipio') {
+      info.centro = c;
+      info.subsCerca = (red.subs || []).map((x) => ({ ...x, km: distance(c, [x.lon, x.lat]) / 1000 })).sort((a, b) => a.km - b.km).slice(0, 3);
+      let bl = null;
+      for (const l of red.lineas || []) for (let i = 1; i < (l.c?.length || 0); i++) { const d = segDist(c, l.c[i - 1], l.c[i]); if (!bl || d < bl.km) bl = { n: l.n, kv: l.kv, km: d }; }
+      info.linea = bl;
+      info.solar10 = (red.plantas || []).filter((p) => p.tipo === 'solar' && distance(c, [p.lon, p.lat]) <= 10000).length;
+      if (!info.dentro && !info.munis) {
+        let best = null, bd = Infinity;
+        for (const d of data.items) { if (d.lat == null) continue; const dd = distance(c, [d.lon, d.lat]); if (dd < bd) { bd = dd; best = d; } }
+        info.dentro = best;
+      }
+      info.ref = info.dentro || info.top?.[0] || null;
+    }
     return info;
   }, [selShape, data, red]);
 
@@ -348,8 +373,8 @@ export default function MapPage() {
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
-        else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'} · UPME</span>`;
-        else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día<br/><span style="color:#B3BCDA">IPSE, ${d.ultimo}</span>`;
+        else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
+        else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día<br/><span style="color:#B3BCDA">Dato de ${d.ultimo}</span>`;
         else if (!layer.id.startsWith('muni-')) return null;
         else if (dpto) html = `<b>${d.dpto}</b><br/>Puntaje departamental ${d.score}<br/><span style="color:#B3BCDA">${d.municipios} municipios · detalle en plan completo</span>`;
         else html = `<b>${d.name}</b> · ${d.dpto}<br/>${showKey === 'score' ? `#${d.rank} · puntaje ${d.score}` : `${M.label}: <b>${M.f(M.get(d))}</b>`}<br/><span style="color:#B3BCDA">Clic para ver la ficha</span>`;
@@ -386,7 +411,7 @@ export default function MapPage() {
               ))}
               {searching && <span className="small muted" style={{ padding: '8px 10px' }}>Buscando direcciones…</span>}
               {!searching && results && !results.length && <span className="small muted" style={{ padding: '8px 10px' }}>Sin resultados. Pulsa Enter para buscar direcciones.</span>}
-              {!searching && results?.length > 0 && <span className="small muted" style={{ padding: '6px 10px' }}>Enter: buscar también direcciones (OpenStreetMap)</span>}
+              {!searching && results?.length > 0 && <span className="small muted" style={{ padding: '6px 10px' }}>Enter: buscar también direcciones y lugares</span>}
             </div>
           )}
         </form>
@@ -418,7 +443,7 @@ export default function MapPage() {
                   <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}</span>
                 </label>
               ))}
-              {on.has('mt') && <span className="small muted">Media tensión: modelo gridfinder (2020). Es una estimación, no la red oficial.</span>}
+              {on.has('mt') && <span className="small muted">Media tensión: modelo estimado. No es la red oficial del operador.</span>}
               {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
             </div>
           )}
@@ -462,9 +487,24 @@ export default function MapPage() {
             {selInfo.dentro
               ? <button className="draw-top-one" onClick={() => go('m', selInfo.dentro.code)}><span className="small">Queda en <b>{selInfo.dentro.name}</b> ({selInfo.dentro.dpto})</span><ScoreBadge score={selInfo.dentro.score} tier={selInfo.dentro.tier} /></button>
               : <span className="small">{fmt(selInfo.munis)} municipios · {fmt(selInfo.pop)} habitantes</span>}
-            <span className="small muted">{selInfo.solar} plantas solares ({fmt(selInfo.solarMw)} MW) · {selInfo.subs} subestaciones · {selInfo.upme} proyectos UPME</span>
+            <span className="small muted">{selInfo.solar} plantas solares ({fmt(selInfo.solarMw)} MW) · {selInfo.subs} subestaciones · {selInfo.upme} proyectos registrados</span>
             {selInfo.top.length > 0 && <div className="draw-top">{selInfo.top.map((d) => <button key={d.code} onClick={() => go('m', d.code)}><span>{d.name}</span><ScoreBadge score={d.score} tier={d.tier} /></button>)}</div>}
           </>)}
+          {selInfo?.subsCerca?.length > 0 && (
+            <div className="site-eval">
+              <b className="small">Red eléctrica cercana</b>
+              {selInfo.subsCerca.map((x) => <span key={x.n} className="small">{x.n} · {x.kv} · <span className="mono">{fmt(x.km, 1)} km</span></span>)}
+              {selInfo.linea && <span className="small muted">Línea de transmisión más cercana: {selInfo.linea.kv} a <span className="mono">{fmt(selInfo.linea.km, 1)} km</span></span>}
+              {selInfo.ref && <span className="small muted">Radiación {fmt(selInfo.ref.ghi, 2)} kWh/m²/día · tarifa comercial {fmt(selInfo.ref.tarifa_com ?? selInfo.ref.tarifa)} $/kWh · {selInfo.solar10} plantas solares a 10 km</span>}
+              <span className="small muted">No incluye pendiente, uso del suelo, áreas protegidas ni capacidad del transformador: verifícalo antes de comprometerte.</span>
+            </div>
+          )}
+          {selInfo?.ref && paid && (
+            <div className="row" style={{ gap: 6 }}>
+              <button className="btn sm primary" onClick={() => { writeLocal('rs_zona_informe', { tipo: selShape.type, medida: selInfo.medida, texto: selShape.text || '', munis: selInfo.munis || 0, pop: selInfo.pop || 0, top: (selInfo.top || []).map((d) => ({ code: d.code, name: d.name, dpto: d.dpto, score: d.score, tier: d.tier, pop: d.pop, tarifa: d.tarifa, ghi: d.ghi })), solar: selInfo.solar || 0, solarMw: selInfo.solarMw || 0, subs: selInfo.subs || 0, upme: selInfo.upme || 0, subsCerca: selInfo.subsCerca.map((x) => ({ n: x.n, kv: x.kv, op: x.op, km: x.km })), linea: selInfo.linea, solar10: selInfo.solar10, ref: { code: selInfo.ref.code, name: selInfo.ref.name, dpto: selInfo.ref.dpto, ghi: selInfo.ref.ghi, tarifa: selInfo.ref.tarifa, tarifa_com: selInfo.ref.tarifa_com, score: selInfo.ref.score, tier: selInfo.ref.tier }, centro: selInfo.centro, fecha: new Date().toISOString().slice(0, 10) }); go('propuesta', 'zona'); }}><Icon name="pdf" size={14} />Informe PDF de esta zona</button>
+              <button className="btn sm" onClick={() => go('m', selInfo.ref.code)}>Ficha de {selInfo.ref.name}</button>
+            </div>
+          )}
         </div>
       )}
 
