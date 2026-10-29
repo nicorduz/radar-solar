@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ROOT, STORAGE, config } from './config.js';
 import { db, getSetting } from './db.js';
 
-export const store = { municipios: [], byCode: new Map(), secop: [], empresas: [], proyectosBase: [], clientes: [], ci: [], ciAnio: null, red: null, meta: {} };
+export const store = { municipios: [], byCode: new Map(), secop: [], empresas: [], proyectosBase: [], clientes: [], ci: [], ciAnio: null, red: null, meta: {}, colegios: [], colegiosAnio: null, salud: [], saludCorte: null, energia: {} };
 
 export function builtDir() {
   const s = path.join(STORAGE, 'built');
@@ -23,9 +23,47 @@ export function loadData() {
   store.red = r('red.json', { subs: [], plantas: [], lineas: [], zni: [] });
   store.redMtFile = fs.existsSync(path.join(dir, 'red_mt.json')) ? path.join(dir, 'red_mt.json') : null;
   store.meta = r('meta.json', {});
+  // Colegios, salud y datos de energía: si una reconstrucción dejó la base en el volumen sin estos archivos, se leen de los del repositorio
+  const r2 = (f, def) => { const own = path.join(dir, f), repo = path.join(ROOT, 'data', 'built', f); const p = fs.existsSync(own) ? own : fs.existsSync(repo) ? repo : null; return p ? JSON.parse(fs.readFileSync(p, 'utf8')) : def; };
+  const col = r2('colegios.json', { anio: null, rows: [] });
+  store.colegios = col.rows || []; store.colegiosAnio = col.anio;
+  const sal = r2('salud.json', { corte: null, rows: [] });
+  store.salud = sal.rows || []; store.saludCorte = sal.corte;
+  store.energia = r2('energia.json', {});
+  enrichMunicipios();
   store.dpto = aggregateDptos();
   cache.clear();
   console.log(`Datos cargados desde ${dir}: ${store.municipios.length} municipios`);
+}
+
+// Nombre del operador de red en la app → nombre en las tablas de calidad de la CREG
+export const OR_CREG = {
+  EPM: 'EPM', 'Afinia (Caribemar)': 'CARIBEMAR', EBSA: 'EBSA', 'Enel Colombia': 'ENEL', ESSA: 'ESSA', 'Air-e': 'AIR-E', Cedenar: 'CEDENAR',
+  'Celsia Tolima': 'CELSIA - MC TOLIMA', CEO: 'CEO', CENS: 'CENS', CHEC: 'CHEC', Electrohuila: 'ELECTROHUILA', 'Celsia Valle': 'CELSIA - MC VALLE',
+  Dispac: 'DISPAC', EMSA: 'EMSA', Enerca: 'ENERCA', 'Electrocaquetá': 'ELECTROCAQUETA', 'Energía del Putumayo': 'EE PUTUMAYO', EDEQ: 'EDEQ',
+  Enelar: 'ENELAR', 'Energía del Guaviare': 'ENERGUAVIARE', Emcali: 'EMCALI', 'Energía de Pereira': 'EEP - MC PEREIRA', 'Cetsa (Tuluá)': 'CETSA', Emcartago: 'EEP - MER CARTAGO',
+};
+export const calidadOR = (orName) => (store.energia.calidad?.ors || []).find((o) => o.or === OR_CREG[orName]) || null;
+const kmLL = (a, b) => { const R = 6371, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLon = ((b.lon - a.lon) * Math.PI) / 180; const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+// Capacidad de conexión UPME cerca de un punto (barras ubicadas a menos de km kilómetros)
+export function capacidadCerca(p, km = 40) {
+  if (!p?.lat) return [];
+  return (store.energia.capacidad?.barras || []).filter((b) => b.lat != null).map((b) => ({ ...b, km: Math.round(kmLL(p, b) * 10) / 10 })).filter((b) => b.km <= km).sort((a, b) => a.km - b.km);
+}
+// Agrega a cada municipio los conteos de colegios y salud, la calidad del servicio de su operador y la capacidad de conexión cercana
+function enrichMunicipios() {
+  const col = {}, sal = {};
+  for (const c of store.colegios) { const a = (col[c.code] ||= { n: 0, ofi: 0, priv: 0, mat: 0, rur: 0 }); a.n++; a.mat += c.mat || 0; c.sec === 'O' ? a.ofi++ : a.priv++; if (c.z === 'R') a.rur++; }
+  for (const s of store.salud) { const a = (sal[s.code] ||= { n: 0, pub: 0, hosp: 0 }); a.n++; if (s.nat === 'Pública') a.pub++; if (s.tipo === 'hospital') a.hosp++; }
+  for (const m of store.municipios) {
+    const c = col[m.code] || {}, s = sal[m.code] || {};
+    m.col_n = c.n || 0; m.col_ofi = c.ofi || 0; m.col_priv = c.priv || 0; m.col_mat = c.mat || 0; m.col_rur = c.rur || 0;
+    m.ips_n = s.n || 0; m.ips_pub = s.pub || 0; m.hosp_n = s.hosp || 0;
+    const q = calidadOR(m.or_name);
+    m.saidi = q?.saidi?.['2024'] ?? null; m.saifi = q?.saifi?.['2024'] ?? null;
+    const cap = capacidadCerca(m, 30);
+    m.cap_mw = cap.length ? Math.max(...cap.map((b) => b.p95_2026 ?? 0)) : null;
+  }
 }
 
 // ---------------- Perfiles y factores del índice ----------------
@@ -79,7 +117,7 @@ export const PROFILES = {
       saturacion: { label: 'Pocas plantas solares cerca', get: (m) => -(m.solar30_mw || 0) },
     },
     weights: { radiacion: 30, red: 20, tension: 10, tarifa_ci: 15, contingencias: 10, saturacion: 15 },
-    metrics: ['score', 'ghi', 'sub_km', 'solar30_mw', 'upme_mw', 'tarifa_com'],
+    metrics: ['score', 'ghi', 'sub_km', 'cap_mw', 'solar30_mw', 'upme_mw', 'tarifa_com'],
   },
   servicios: {
     label: 'Mantenimiento y servicios (O&M)', short: 'O&M', segments: false, gate: (m) => (m.agpe_est || 0) + (m.solar30_mw || 0) * 5,
@@ -100,14 +138,15 @@ export const PROFILES = {
     desc: 'Dónde se va más la luz y la energía es cara: hogares, hoteles y comercios que necesitan baterías o sistemas híbridos.',
     factors: {
       contingencias: { label: 'Cortes de energía', get: (m) => m.dna_1k },
+      saidi: { label: 'Horas sin luz al año (operador)', get: (m) => m.saidi },
       dias: { label: 'Días con cortes al año', get: (m) => m.dna_dias },
       tarifa: { label: 'Tarifa de energía', get: (m) => m.tarifa },
       turismo: { label: 'Hoteles y turismo', get: (m) => m.turismo_idx },
       comercio: { label: 'Comercio y obra no residencial', get: (m) => L(m.nores12_m2) },
       aislado: { label: 'Localidades sin red', get: (m) => m.zni_n || 0 },
     },
-    weights: { contingencias: 35, dias: 15, tarifa: 15, turismo: 15, comercio: 10, aislado: 10 },
-    metrics: ['score', 'dna_1k', 'tarifa', 'turismo_idx', 'ghi'],
+    weights: { contingencias: 30, saidi: 15, dias: 10, tarifa: 15, turismo: 15, comercio: 10, aislado: 5 },
+    metrics: ['score', 'dna_1k', 'saidi', 'tarifa', 'turismo_idx', 'ghi'],
   },
 };
 export const PROFILE_KEYS = Object.keys(PROFILES);
@@ -187,6 +226,7 @@ export function rowView(m, r) {
     inst_n: m.inst_n || 0, inst_sol: m.inst_sol || 0, mayor_n: m.mayor_n || 0,
     sub_km: m.sub_km, sub_n: m.sub_n, sub_kv: m.sub_kv, solar30_mw: m.solar30_mw || 0, solar30: m.solar30 || 0, kwh_mes_alto: m.kwh_mes_alto,
     upme_n: m.upme_n || 0, upme_mw: Math.round(m.upme_mw || 0),
+    saidi: m.saidi, saifi: m.saifi, col_n: m.col_n || 0, ips_n: m.ips_n || 0, cap_mw: m.cap_mw,
   };
 }
 
