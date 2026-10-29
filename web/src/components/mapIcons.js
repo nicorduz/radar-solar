@@ -28,6 +28,8 @@ const MASK = {
 MASK.tarifa_com = MASK.tarifa;
 MASK.solar30_mw = MASK.panel;
 MASK.upme_mw = MASK.panel;
+MASK.saidi = MASK.dna_1k;
+MASK.cap_mw = MASK.sub_km;
 export const METRIC_ICON = MASK;
 
 // Planta solar en boceto 3D (isométrico, a color)
