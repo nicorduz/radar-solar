@@ -49,6 +49,8 @@ export const METRICS = {
   sub_km: { label: 'Distancia a subestación (km)', short: 'Subest. km', get: (d) => d.sub_km, f: (v) => (v != null && v < 0.5 ? 'en el mpio.' : fmt(v, 1)), unit: 'km', invert: true },
   upme_mw: { label: 'MW en proyectos registrados', short: 'MW proyectos', get: (d) => d.upme_mw, f: (v) => fmt(v), unit: 'MW', log: true },
   dna_dias: { label: 'Días con cortes al año', short: 'Días corte', get: (d) => d.dna_dias, f: (v) => fmt(v), unit: 'días' },
+  saidi: { label: 'Horas sin luz al año (SAIDI del operador)', short: 'SAIDI', get: (d) => d.saidi, f: (v) => fmt(v, 1), unit: 'h/año' },
+  cap_mw: { label: 'Capacidad de conexión a 30 km (MW, UPME)', short: 'Cap. conexión', get: (d) => d.cap_mw, f: (v) => fmt(v, 1), unit: 'MW', log: true },
   solar30_mw: { label: 'MW solares a 30 km', short: 'MW solar 30 km', get: (d) => d.solar30_mw, f: (v) => fmt(v), unit: 'MW', log: true },
 };
 
