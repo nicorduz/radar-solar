@@ -32,7 +32,7 @@ export const PROSPECTS = 'rs_prospectos';
 export const ESTADOS = [
   ['nuevo', 'Por contactar'], ['contactado', 'Contactado'], ['propuesta', 'Propuesta enviada'], ['negociacion', 'En negociación'], ['ganado', 'Ganado'], ['perdido', 'Perdido'],
 ];
-export const TIPOS = { empresa: 'Empresa del sector', industria: 'Empresa C&I', hotel: 'Hotel o turismo', licitacion: 'Licitación', municipio: 'Zona', otro: 'Otro' };
+export const TIPOS = { empresa: 'Empresa del sector', industria: 'Empresa C&I', hotel: 'Hotel o turismo', colegio: 'Colegio', salud: 'Hospital o centro de salud', licitacion: 'Licitación', municipio: 'Zona', otro: 'Otro' };
 export const prospectKey = (p) => `${p.tipo}|${p.nit || p.ref || p.nombre}`;
 export function addProspect(p) {
   const list = readLocal(PROSPECTS, []);
