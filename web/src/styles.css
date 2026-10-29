@@ -172,6 +172,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .layers label { display: flex; align-items: center; gap: 8px; min-height: 30px; cursor: pointer; color: var(--ink-2); }
 .layers label.dis { opacity: 0.55; }
 .layers .sw { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+/* Funciones que vienen pronto (Coming soon) */
+.soon-tag { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; background: #2A2350; color: #C9BFFF; border: 1px solid #4A3F8F; vertical-align: middle; white-space: nowrap; }
+.soon-card { max-width: 420px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.soon-card .soon-tag { margin-left: 0; }
+.soon-box { border: 1px dashed var(--line-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.cap-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .layers .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .map-layers { position: absolute; left: 12px; bottom: 96px; z-index: 5; }
 @media (max-width: 859px) { .map-layers { bottom: calc(var(--nav-h) + 92px); left: 8px; } .map-layers .layers { min-width: 0; } }
