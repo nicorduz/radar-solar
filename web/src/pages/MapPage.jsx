@@ -32,8 +32,15 @@ const LAYERS = {
   lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
   mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
   zni: { label: 'Zonas no interconectadas', img: ICON_ZNI, paid: true },
+  capacidad: { label: 'Capacidad de conexión por subestación (2026)', swatch: 'linear-gradient(90deg,#E2675B,#F2C38A,#4FB286)', paid: true },
+  colegios: { label: 'Colegios', swatch: '#9B8CFF', paid: true },
+  salud: { label: 'Hospitales y centros de salud (por municipio)', swatch: '#FF6B8A', paid: true },
+  trafos: { label: 'Transformadores de distribución', swatch: '#5C6380', soon: true },
 };
-const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme'], servicios: ['solar'], respaldo: ['zni'] };
+const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme', 'capacidad'], servicios: ['solar'], respaldo: ['zni'] };
+const ZOOM_COLEGIOS = 9;
+// Color de la capacidad de conexión: rojo = casi nada, ámbar = poca, verde = 10 MW o más
+const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);
 // Distancia aproximada (km) de un punto a un segmento de línea, en coordenadas locales
 function segDist(p, a, b) {
   const k = Math.cos((p[1] * Math.PI) / 180) * 111.32, kl = 110.57;
@@ -87,6 +94,10 @@ export default function MapPage() {
   const [pin, setPin] = useState(null);
   const [bounds, setBounds] = useState(null);
   const [onlyVisible, setOnlyVisible] = useState(true);
+  const [zoom, setZoom] = useState(5.6);
+  const [colegios, setColegios] = useState(null);
+  const [salud, setSalud] = useState(null);
+  const [soon, setSoon] = useState(false);
   const st = useRef({});
   st.current = { tool, draft, textVal };
   const handler = useRef(() => {});
@@ -105,7 +116,7 @@ export default function MapPage() {
       }
     });
     if (window.innerWidth >= 860) map.setPadding({ right: 380, top: 40, left: 0, bottom: 0 });
-    const b = () => { const x = map.getBounds(); setBounds([x.getWest(), x.getSouth(), x.getEast(), x.getNorth()]); };
+    const b = () => { const x = map.getBounds(); setBounds([x.getWest(), x.getSouth(), x.getEast(), x.getNorth()]); setZoom(map.getZoom()); };
     map.on('load', b); map.on('moveend', b);
     let raf = 0;
     map.on('click', (e) => handler.current('click', [e.lngLat.lng, e.lngLat.lat]));
@@ -127,6 +138,13 @@ export default function MapPage() {
 
   useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
+  useEffect(() => { if (on.has('salud') && paid && !salud) api('/capas/salud').then(setSalud).catch(() => setSalud([])); }, [on, paid, salud]);
+  // Colegios: solo los que caben en la vista y con el mapa acercado (son más de 50.000)
+  useEffect(() => {
+    if (!on.has('colegios') || !paid || !bounds || zoom < ZOOM_COLEGIOS) return;
+    const t = setTimeout(() => api('/capas/colegios?bbox=' + bounds.map((v) => v.toFixed(3)).join(',')).then(setColegios).catch(() => setColegios(null)), 250);
+    return () => clearTimeout(t);
+  }, [on, paid, bounds, zoom]);
 
   // ---- Dibujo: clics sobre el mapa ----
   const addShape = (shape) => { const n = [...shapes, { id: uid(), ...shape }]; setShapes(n); saveShapes(n); setSel(n[n.length - 1].id); };
@@ -239,6 +257,7 @@ export default function MapPage() {
   const set3d = (v) => { setIs3d(v); mapRef.current?.easeTo({ pitch: v ? 45 : 0, bearing: v ? -10 : 0, duration: 700 }); };
   const choose = (k) => { setShow(k); setMenu(null); if (k === 'nada') set3d(false); };
   const toggle = (k) => {
+    if (LAYERS[k].soon) { setSoon(true); setMenu(null); return; }
     if (LAYERS[k].paid && !paid) { setLockMsg({ layer: LAYERS[k].label }); return; }
     const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n);
   };
@@ -326,6 +345,24 @@ export default function MapPage() {
         getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), parameters: ON_TOP, pickable: true,
       }));
     }
+    if (on.has('salud') && salud?.length) {
+      layers.push(new ScatterplotLayer({
+        id: 'salud', data: salud, getPosition: (d) => [d.lon + 0.02, d.lat - 0.02], radiusUnits: 'pixels', getRadius: (d) => Math.min(16, 2 + Math.sqrt(d.n) * 0.8),
+        getFillColor: [255, 107, 138, 120], stroked: true, getLineColor: [255, 255, 255, 200], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true, onClick: ({ object }) => { if (object && !st.current.tool) go('instituciones', `salud-${object.code}`); },
+      }));
+    }
+    if (on.has('colegios') && colegios?.rows?.length && zoom >= ZOOM_COLEGIOS) {
+      layers.push(new ScatterplotLayer({
+        id: 'colegios', data: colegios.rows, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => Math.min(14, 3 + Math.sqrt(d.mat || 0) / 4),
+        getFillColor: (d) => (d.sec === 'O' ? [155, 140, 255, 190] : [214, 200, 255, 220]), stroked: true, getLineColor: [16, 14, 42, 220], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true,
+      }));
+    }
+    if (on.has('capacidad') && red?.capacidad?.length) {
+      layers.push(new ScatterplotLayer({
+        id: 'capacidad', data: red.capacidad, getPosition: (d) => [d.lon - 0.015, d.lat + 0.015], radiusUnits: 'pixels', getRadius: (d) => Math.min(22, 5 + Math.sqrt(d.p95_2026 || 0) * 1.4),
+        getFillColor: (d) => [...CAP_COLOR(d.p95_2026), 215], stroked: true, getLineColor: [16, 14, 42, 230], lineWidthUnits: 'pixels', getLineWidth: 1.2, parameters: ON_TOP, pickable: true,
+      }));
+    }
     if (on.has('zni') && red?.zni?.length) {
       layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
     }
@@ -374,6 +411,9 @@ export default function MapPage() {
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
         else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
+        else if (layer.id === 'capacidad') html = `<b>${d.n}</b> · ${d.kv} kV<br/>Para conectar generación en 2026: <b>${fmt(d.p95_2026, 1)} MW</b> (95% de los escenarios)<br/>Seguro en todos los escenarios: ${fmt(d.p100_2026, 1)} MW · 2027: ${fmt(d.p95_2027, 1)} MW<br/><span style="color:#B3BCDA">Indicativo. ${d.op || ''}</span>`;
+        else if (layer.id === 'colegios') html = `<b>${d.est}</b><br/>Sede ${d.n}<br/>${fmt(d.mat)} estudiantes · ${d.sec === 'O' ? 'oficial' : 'privado'} · ${d.z === 'R' ? 'rural' : 'urbano'}<br/><span style="color:#B3BCDA">Ubicación aproximada (~1 km)</span>`;
+        else if (layer.id === 'salud') html = `<b>${d.name}</b> · ${d.dpto}<br/>${fmt(d.n)} sedes de salud · ${fmt(d.hosp)} hospitales o clínicas · ${fmt(d.pub)} públicas<br/><span style="color:#B3BCDA">Clic para ver la lista</span>`;
         else if (layer.id === 'zni') html = `<b>${d.n}</b> (no interconectada)<br/>${d.mpio}, ${d.dpto}<br/>${fmt(d.horas, 1)} horas de servicio al día<br/><span style="color:#B3BCDA">Dato de ${d.ultimo}</span>`;
         else if (!layer.id.startsWith('muni-')) return null;
         else if (dpto) html = `<b>${d.dpto}</b><br/>Puntaje departamental ${d.score}<br/><span style="color:#B3BCDA">${d.municipios} municipios · detalle en plan completo</span>`;
@@ -381,7 +421,7 @@ export default function MapPage() {
         return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
       },
     });
-  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool]);
+  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool, salud, colegios, zoom]);
 
   const visibles = useMemo(() => {
     if (data?.mode !== 'municipio') return [];
@@ -432,17 +472,20 @@ export default function MapPage() {
         </div>
         <div className="dd">
           <button className={`btn sm glass ${menu === 'layers' ? 'on' : ''}`} onClick={() => setMenu(menu === 'layers' ? null : 'layers')} aria-expanded={menu === 'layers'}>
-            <Icon name="layers" size={16} />Red y plantas{on.size ? ` (${on.size})` : ''}<span className="caret">▾</span>
+            <Icon name="layers" size={16} />Capas{on.size ? ` (${on.size})` : ''}<span className="caret">▾</span>
           </button>
           {menu === 'layers' && (
             <div className="glass dd-menu layers" role="menu">
               {Object.entries(LAYERS).map(([k, l]) => (
-                <label key={k} className={l.paid && !paid ? 'dis' : ''}>
+                <label key={k} className={(l.paid && !paid) || l.soon ? 'dis' : ''}>
                   <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
                   {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
-                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}</span>
+                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}{l.soon && <span className="soon-tag">Coming soon</span>}</span>
                 </label>
               ))}
+              {on.has('colegios') && paid && zoom < ZOOM_COLEGIOS && <span className="small muted">Acércate al mapa para ver los colegios.</span>}
+              {on.has('colegios') && paid && zoom >= ZOOM_COLEGIOS && colegios?.total > colegios?.rows?.length && <span className="small muted">Se muestran los {fmt(colegios.rows.length)} colegios más grandes de {fmt(colegios.total)} en la vista.</span>}
+              {on.has('capacidad') && <span className="small muted">Capacidad indicativa para conectar generación; verde = 10 MW o más, rojo = casi nada.</span>}
               {on.has('mt') && <span className="small muted">Media tensión: modelo estimado. No es la red oficial del operador.</span>}
               {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
             </div>
@@ -555,6 +598,17 @@ export default function MapPage() {
         </div>
       </div>
 
+      {soon && (
+        <div className="modal-bg" onClick={() => setSoon(false)}>
+          <div className="card soon-card" onClick={(e) => e.stopPropagation()}>
+            <span className="soon-tag">Coming soon</span>
+            <h3>Transformadores de distribución</h3>
+            <p className="small">Muy pronto podrás ver en el mapa los transformadores de cada operador de red con su capacidad, su circuito y cuánta generación ya tienen conectada, para saber antes de visitar al cliente si su transformador tiene espacio para un sistema solar.</p>
+            <p className="small muted">Estamos reuniendo esta información con los operadores de red para que sea igual de completa en todo el país.</p>
+            <button className="btn sm" onClick={() => setSoon(false)}>Entendido</button>
+          </div>
+        </div>
+      )}
       {lockMsg && (
         <div className="modal-bg" onClick={() => setLockMsg(null)}>
           <div onClick={(e) => e.stopPropagation()}>
