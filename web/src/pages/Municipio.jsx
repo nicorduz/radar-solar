@@ -16,6 +16,9 @@ const ORDEN = {
 };
 ORDEN.instalador.splice(3, 0, 'industrias');
 ORDEN.proveedor.splice(5, 0, 'industrias');
+// Colegios y salud van justo después de hoteles y turismo
+for (const o of Object.values(ORDEN)) o.splice(o.indexOf('clientes') + 1, 0, 'instituciones');
+const SALUD_TIPO = { hospital: 'Hospital o clínica', centro: 'Centro o puesto de salud', ips: 'IPS' };
 
 export default function Municipio({ code }) {
   const { meta, paid, segment, weights, prof, profile, scoreParams, go } = useApp();
@@ -68,8 +71,10 @@ export default function Municipio({ code }) {
     solar30: ['Solar a 30 km', `${fmt(m.solar30_mw || 0)} MW`, `${fmt(m.solar30 || 0)} plantas`],
     dias: ['Días con cortes', m.dna_dias != null ? fmt(m.dna_dias) : 's/d', 'en los últimos 12 meses'],
     upme: ['Proyectos nuevos', `${fmt(m.upme_mw || 0)} MW`, `${fmt(m.upme_n || 0)} registrados en la zona`],
+    saidi: ['Horas sin luz al año', m.saidi != null ? `${fmt(m.saidi, 1)} h` : 's/d', `promedio de ${m.or_name} en 2024`],
+    cap: ['Capacidad de conexión', m.cap_mw != null ? `${fmt(m.cap_mw, 1)} MW` : 's/d', 'mejor subestación a 30 km (2026)'],
   };
-  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'solar30', 'tarifa_com'], servicios: ['agpe', 'solar30', 'upme', 'inst'], respaldo: ['dna', 'dias', 'tarifa', 'turismo'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
+  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'cap', 'tarifa_com'], servicios: ['agpe', 'solar30', 'upme', 'inst'], respaldo: ['dna', 'saidi', 'tarifa', 'turismo'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
 
   const getPitch = async () => {
     setPitchBusy(true);
@@ -132,9 +137,14 @@ export default function Municipio({ code }) {
         <span className="k">Subárea eléctrica</span><span className="v">{m.subarea || 's/d'}</span>
         <span className="k">Demanda no atendida (12 meses)</span><span className="v">{m.dna_mwh != null ? `${fmt(m.dna_mwh)} MWh · ${fmt(m.dna_dias)} días` : 's/d'}</span>
         {m.zni_n > 0 && <><span className="k">Localidades no interconectadas</span><span className="v">{m.zni_n} · {fmt(m.zni_horas, 1)} h/día</span></>}
+        {m.calidad && <>
+          <span className="k">Horas sin servicio al año por usuario (SAIDI {m.or_name}, 2024)</span><span className="v">{fmt(m.calidad.saidi?.['2024'], 1)} h · meta {fmt(m.calidad.saidi_meta?.['2024'], 1)} h {m.calidad.saidi?.['2024'] <= m.calidad.saidi_meta?.['2024'] ? <span className="tag ok">cumple</span> : <span className="tag hot">no cumple</span>}</span>
+          <span className="k">Interrupciones al año por usuario (SAIFI, 2024)</span><span className="v">{fmt(m.calidad.saifi?.['2024'], 1)} · meta {fmt(m.calidad.saifi_meta?.['2024'], 1)}</span>
+          <span className="k">Tendencia SAIDI 2019 → 2025 (a sep.)</span><span className="v">{['2019', '2021', '2023', '2024', '2025'].filter((y) => m.calidad.saidi?.[y] != null).map((y) => `${y.slice(2)}: ${fmt(m.calidad.saidi[y], 1)}`).join(' · ')}</span>
+        </>}
       </div>
       {m.dna_serie?.length > 1 && <><h3>Cortes por mes en la subárea (kWh)</h3><Spark data={m.dna_serie} unit="kWh" title="Demanda no atendida mensual" /></>}
-      <p className="small muted" style={{ margin: 0 }}>Más cortes, más interés en baterías y sistemas híbridos. Cortes de {meta.cortes.dna}.</p><Fuente>SUI y XM.</Fuente>
+      <p className="small muted" style={{ margin: 0 }}>Más cortes, más interés en baterías y sistemas híbridos. Cortes de {meta.cortes.dna}. El SAIDI y el SAIFI son el promedio de todo el operador, no solo de este municipio.</p><Fuente>SUI y XM. SAIDI y SAIFI: CREG, Circular 254 de 2026, Anexo 2 (datos certificados al SUI).</Fuente>
     </>) },
 
     red: { icon: 'layers', title: 'Red eléctrica, plantas y proyectos', hint: `Subestación ${subTxt} · ${fmt(m.solar30_mw || 0)} MW solares a 30 km · ${m.upme?.length || 0} proyectos registrados`, body: (<>
@@ -153,8 +163,19 @@ export default function Municipio({ code }) {
           {m.upme.map((p) => <tr key={p.id}><td className="name">{p.n}<br /><span className="small muted">{p.mun} · {p.fase}{p.km ? ` · ${p.km} km` : ''}</span></td><td className="num">{fmt(p.mw, 1)}</td><td className="small">{p.operacion?.slice(0, 7) || 's/d'}</td></tr>)}
         </tbody></table></div>
       )}
+      {m.capacidad?.length > 0 && (<>
+        <h3>Capacidad para conectar generación en subestaciones cercanas</h3>
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Subestación (barra)</th><th className="num">2026</th><th className="num hs">Seguro 2026</th><th className="num">2027</th><th className="num">Distancia</th></tr></thead><tbody>
+          {m.capacidad.map((b) => <tr key={b.n}><td className="name"><span className="cap-dot" style={{ background: b.p95_2026 >= 10 ? 'var(--ok)' : b.p95_2026 >= 1 ? '#F2C38A' : '#E2675B' }} />{b.n}<br /><span className="small muted">{b.kv} kV{b.op ? ` · ${b.op}` : ''}</span></td><td className="num">{fmt(b.p95_2026, 1)} MW</td><td className="num hs">{fmt(b.p100_2026, 1)} MW</td><td className="num">{fmt(b.p95_2027, 1)} MW</td><td className="num">{fmt(b.km, 1)} km</td></tr>)}
+        </tbody></table></div>
+        <p className="small muted" style={{ margin: 0 }}>MW que la barra admite en el 95 % de los escenarios de operación; "seguro" es lo que admite en todos. Es una capacidad indicativa para proyectos de generación (granjas y autogeneración grande), no para sistemas residenciales.</p>
+      </>)}
+      <div className="soon-box">
+        <span><b className="small">Transformadores de distribución</b><span className="soon-tag">Coming soon</span></span>
+        <span className="small muted">Pronto verás aquí los transformadores de {m.or_name} con su capacidad y cuánta generación ya tienen conectada.</span>
+      </div>
       <div className="row"><a className="btn sm" href={`https://www.google.com/search?q=${encodeURIComponent(`${m.or_name} "Resolución CREG 174 de 2021" disponibilidad de red`)}`} target="_blank" rel="noreferrer">Ver disponibilidad de red de {m.or_name}</a></div>
-      <p className="small muted" style={{ margin: 0 }}>Cada operador publica gratis la capacidad disponible de sus transformadores (Resolución CREG 174 de 2021, art. 7).</p><Fuente>XM Paratec y UPME.</Fuente>
+      <p className="small muted" style={{ margin: 0 }}>Mientras tanto, cada operador publica la capacidad de sus transformadores en su página (Resolución CREG 174 de 2021, art. 7).</p><Fuente>XM Paratec y UPME. Capacidad de conexión: UPME, tablero de capacidad indicativa por barra 2026-2027 (publicado el {meta.cortes.capacidad}).</Fuente>
     </>) },
 
     vivienda: { icon: 'home', title: 'Vivienda y obra nueva', hint: `${fmt(m.viv12 || 0)} viviendas licenciadas en 12 meses · ${fmt(m.viv12_alto || 0)} de estratos 4-6`, body: (<>
@@ -185,6 +206,30 @@ export default function Municipio({ code }) {
         </tbody></table></div>
       ) : <p className="muted small" style={{ margin: 0 }}>Aún no hay proyectos individuales. El administrador puede cargarlos o extraerlos con IA de los avisos de la curaduría.</p>
     ) },
+
+    instituciones: { icon: 'school', title: 'Colegios, hospitales y centros de salud', hint: `${fmt(m.colegios_n || 0)} sedes educativas · ${fmt(m.salud_n || 0)} sedes de salud (${fmt(m.hosp_n || 0)} hospitales o clínicas)`, body: (<>
+      <div className="grid g4">
+        <Stat label="Sedes educativas" value={fmt(m.col_n || 0)} sub={`${fmt(m.col_ofi || 0)} oficiales · ${fmt(m.col_priv || 0)} privadas`} />
+        <Stat label="Estudiantes" value={fmt(m.col_mat || 0)} sub={`${fmt(m.col_rur || 0)} sedes rurales`} />
+        <Stat label="Sedes de salud" value={fmt(m.ips_n || 0)} sub={`${fmt(m.ips_pub || 0)} públicas`} />
+        <Stat label="Hospitales y clínicas" value={fmt(m.hosp_n || 0)} />
+      </div>
+      {m.salud?.length > 0 && (
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Sede de salud</th><th>Tipo</th><th>Contacto</th></tr></thead><tbody>
+          {m.salud.map((x) => <tr key={x.id}><td className="name">{x.n}<br /><span className="small muted">{x.pr !== x.n ? `${x.pr} · ` : ''}{x.nat}{x.dir ? ` · ${x.dir}` : ''}</span></td><td className="small">{SALUD_TIPO[x.tipo]}</td><td className="small">{x.nit ? <Contact tel={x.tel} mail={x.mail} /> : <span className="muted">Sin NIT de empresa</span>}<ProspectButton p={{ tipo: 'salud', ref: x.id, nit: x.nit, nombre: x.n, code: m.code, mun: m.name, tel: x.tel, mail: x.mail, detalle: SALUD_TIPO[x.tipo] }} /></td></tr>)}
+        </tbody></table></div>
+      )}
+      {m.colegios?.length > 0 && (
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Colegio y sede</th><th className="num">Estudiantes</th><th></th></tr></thead><tbody>
+          {m.colegios.map((c) => <tr key={c.id}><td className="name">{c.est}<br /><span className="small muted">Sede {c.n} · {c.sec === 'O' ? 'oficial' : 'privado'} · {c.z === 'R' ? 'rural' : 'urbano'}{c.dir ? ` · ${c.dir}` : ''}</span></td><td className="num">{fmt(c.mat)}</td><td><ProspectButton p={{ tipo: 'colegio', ref: c.id, nombre: c.est, code: m.code, mun: m.name, detalle: `Sede ${c.n} · ${fmt(c.mat)} estudiantes` }} /></td></tr>)}
+        </tbody></table></div>
+      )}
+      {!paid && (m.colegios_n > 1 || m.salud_n > 1) && <ContactCTA text="La lista completa de colegios y sedes de salud, con contacto de las instituciones con NIT, está en el plan completo." />}
+      {paid && <div className="row"><a className="btn sm" href={`#/instituciones/salud-${m.code}`}>Ver todas las sedes de salud</a><a className="btn sm" href={`#/instituciones/colegios-${m.code}`}>Ver todos los colegios</a></div>}
+      <p className="small muted" style={{ margin: 0 }}>Hospitales y colegios usan energía todo el día y muchos tienen techos grandes; los públicos compran por licitación. Matrícula de {meta.cortes.colegios}.</p>
+      <Fuente>MEN, sedes educativas de preescolar, básica y media (datos.gov.co, año {meta.cortes.colegios}). MinSalud, REPS (corte {meta.cortes.salud}); se excluyen profesionales independientes y transporte de pacientes.</Fuente>
+      <PrivacyNote />
+    </>) },
 
     industrias: { icon: 'factory', title: 'Empresas grandes e industrias', hint: m.ci_n ? `${fmt(m.ci_n)} de las 10.000 empresas más grandes del país tienen sede aquí` : 'Ninguna de las empresas más grandes tiene sede aquí', body: (<>
       {m.ci?.length ? (
