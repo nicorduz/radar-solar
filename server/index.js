@@ -9,7 +9,7 @@ import {
   parseCookies, loadUser, requireUser, requireAdmin, isPaid, loginThrottle, hashPassword, verifyPassword,
   createSession, destroySession, publicUser, validateUsername, validatePassword, ensureBootstrapAdmin,
 } from './auth.js';
-import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier } from './data.js';
+import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
@@ -90,8 +90,8 @@ app.get('/api/meta', requireUser, (req, res) => {
     role: req.role, paid: isPaid(req), admin: isAdmin(req), ci_anio: store.ciAnio,
     segments: Object.fromEntries(Object.entries(SEGMENTS).map(([k, v]) => [k, v.label])),
     profiles: Object.fromEntries(allowedProfiles(req.user).map((k) => { const P = PROFILES[k]; return [k, { label: P.label, short: P.short, desc: P.desc, segments: P.segments, metrics: P.metrics, weights: defaultWeights(k), factors: Object.fromEntries(Object.entries(P.factors).map(([f, v]) => [f, v.label])) }]; })),
-    cortes: { upme: m.upme_corte, generado: m.generado, elic: m.elic_corte, snr: m.snr_corte, sui: m.sui_periodo, agpe_xm: m.agpe_xm_fecha, dna: m.dna_periodo },
-    totals: { municipios: store.municipios.length, secop: m.secop_n, empresas: store.empresas.length, agpe: m.agpe_zonas ? Object.values(m.agpe_zonas).reduce((a, z) => a + z.n, 0) : m.agpe_n, clientes: store.clientes.length, ci: store.ci.length, plantas: m.red_n?.plantas, subs: m.red_n?.subs },
+    cortes: { upme: m.upme_corte, generado: m.generado, elic: m.elic_corte, snr: m.snr_corte, sui: m.sui_periodo, agpe_xm: m.agpe_xm_fecha, dna: m.dna_periodo, colegios: store.colegiosAnio, salud: store.saludCorte, capacidad: store.energia.capacidad?.fecha, importaciones: store.energia.importaciones?.hasta, calidad: store.energia.calidad?.anio },
+    totals: { municipios: store.municipios.length, secop: m.secop_n, empresas: store.empresas.length, agpe: m.agpe_zonas ? Object.values(m.agpe_zonas).reduce((a, z) => a + z.n, 0) : m.agpe_n, clientes: store.clientes.length, ci: store.ci.length, plantas: m.red_n?.plantas, subs: m.red_n?.subs, colegios: store.colegios.length, salud: store.salud.length },
     tarifas: m.tarifas, capex_kwp: getSetting('capex_kwp', config.capexKwp),
     ors: [...new Set(store.municipios.map((x) => x.or_name))].sort(),
     dptos: [...new Set(store.municipios.map((x) => x.dpto))].sort(),
@@ -157,6 +157,9 @@ app.get('/api/municipio/:code', requireUser, (req, res) => {
     upme: (store.red.upme || []).filter((p) => p.code === m.code || (p.lat && m.lat && kmBetween(m, p) <= 30)).map((p) => ({ ...p, km: p.code === m.code ? 0 : Math.round(kmBetween(m, p)) })).sort((a, b) => a.km - b.km),
     dna_serie: store.meta.dna_subareas?.['SUBAREA ' + m.subarea]?.mes || null,
     agpe_zona: m.agpe_zone ? store.meta.agpe_zonas?.[m.agpe_zone] : null,
+    ...institucionesDe(m.code, isPaid(req)),
+    calidad: calidadOR(m.or_name),
+    capacidad: capacidadCerca(m, 40).slice(0, 8),
     profile,
   });
 });
@@ -204,6 +207,54 @@ app.get('/api/clientes', requireUser, (req, res) => {
   const page = Math.max(0, +req.query.page || 0);
   if (!isPaid(req)) return res.json({ total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...view(c), tel: null, mail: null, dir: null })), locked: true });
   res.json({ total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
+});
+
+// Colegios y sedes de salud como clientes institucionales
+const COL_VIEW = (c) => { const m = store.byCode.get(c.code); return { ...c, mun: m?.name, dpto: m?.dpto }; };
+function institucionesDe(code, paid) {
+  const col = store.colegios.filter((c) => c.code === code).sort((a, b) => b.mat - a.mat);
+  const sal = store.salud.filter((s) => s.code === code).sort((a, b) => (a.tipo === 'hospital' ? 0 : a.tipo === 'centro' ? 1 : 2) - (b.tipo === 'hospital' ? 0 : b.tipo === 'centro' ? 1 : 2) || (b.nit ? 1 : 0) - (a.nit ? 1 : 0));
+  const hide = (s) => ({ ...s, tel: null, mail: null });
+  return {
+    colegios: col.slice(0, paid ? 12 : 1), colegios_n: col.length,
+    salud: (paid ? sal.slice(0, 12) : sal.slice(0, 1).map(hide)), salud_n: sal.length,
+  };
+}
+app.get('/api/instituciones', requireUser, (req, res) => {
+  const tipo = req.query.tipo === 'salud' ? 'salud' : 'colegios';
+  const { q, code, dpto, sector, zona, clase, minMat } = req.query;
+  let rows = tipo === 'salud' ? store.salud : store.colegios;
+  if (code) rows = rows.filter((c) => c.code === code);
+  else if (dpto) rows = rows.filter((c) => store.byCode.get(c.code)?.dpto === dpto);
+  if (tipo === 'colegios') {
+    if (sector) rows = rows.filter((c) => c.sec === sector);
+    if (zona) rows = rows.filter((c) => c.z === zona);
+    if (minMat) rows = rows.filter((c) => c.mat >= +minMat);
+    rows = [...rows].sort((a, b) => b.mat - a.mat);
+  } else {
+    if (sector) rows = rows.filter((s) => (sector === 'O' ? s.nat === 'Pública' : s.nat !== 'Pública'));
+    if (clase) rows = rows.filter((s) => s.tipo === clase);
+    const ord = { hospital: 0, centro: 1, ips: 2 };
+    rows = [...rows].sort((a, b) => ord[a.tipo] - ord[b.tipo] || (b.nit ? 1 : 0) - (a.nit ? 1 : 0));
+  }
+  if (q) { const n = norm(q); rows = rows.filter((c) => norm(`${c.n} ${c.est || ''} ${c.pr || ''}`).includes(n) || c.nit === q); }
+  const page = Math.max(0, +req.query.page || 0);
+  const anio = tipo === 'salud' ? store.saludCorte : store.colegiosAnio;
+  if (!isPaid(req)) return res.json({ tipo, anio, total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...COL_VIEW(c), tel: null, mail: null })), locked: true });
+  res.json({ tipo, anio, total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(COL_VIEW), locked: false });
+});
+// Capas del mapa: colegios dentro de la vista (solo con zoom) y sedes de salud agrupadas por municipio
+app.get('/api/capas/colegios', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ locked: true });
+  const [w, s, e, n] = String(req.query.bbox || '').split(',').map(Number);
+  if (![w, s, e, n].every(Number.isFinite)) return res.status(400).json({ error: 'Falta bbox' });
+  const rows = store.colegios.filter((c) => c.lat != null && c.lon >= w && c.lon <= e && c.lat >= s && c.lat <= n);
+  const top = rows.length > 4000 ? [...rows].sort((a, b) => b.mat - a.mat).slice(0, 4000) : rows;
+  res.json({ total: rows.length, rows: top.map((c) => ({ id: c.id, n: c.n, est: c.est, sec: c.sec, z: c.z, mat: c.mat, lat: c.lat, lon: c.lon, code: c.code })) });
+});
+app.get('/api/capas/salud', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ locked: true });
+  res.json(store.municipios.filter((m) => m.ips_n && m.lat).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.ips_n, pub: m.ips_pub, hosp: m.hosp_n })));
 });
 
 // Empresas grandes del país (clientes comerciales e industriales)
@@ -374,7 +425,7 @@ app.get('/api/solar/horario', requireUser, wrap(async (req, res) => {
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
 app.get('/api/red', requireUser, (req, res) => {
   const r = store.red;
-  res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], locked: !isPaid(req) });
+  res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
 });
 app.get('/api/red/mt', requireUser, (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ locked: true });
@@ -398,8 +449,14 @@ app.get('/api/mercado', requireUser, (req, res) => {
     solar: { n: plantas.length, mw: Math.round(plantas.reduce((a, p) => a + p.mw, 0)), operacion: plantas.filter((p) => p.estado === 'Operación').length, pruebas: plantas.filter((p) => p.estado !== 'Operación').length },
   };
   const upme = [...(store.red.upme || [])].sort((a, b) => (b.inscrito || '').localeCompare(a.inscrito || ''));
-  if (!isPaid(req)) return res.json({ ...base, agpe_zonas: base.agpe_zonas.slice(0, 1), dna: base.dna.slice(0, 1), plantas: [], upme: upme.slice(0, 1), locked: true });
-  res.json({ ...base, plantas: plantas.sort((a, b) => b.mw - a.mw), upme, locked: false });
+  // Calidad del servicio por operador (con el nombre que usa la app) e importaciones de paneles y baterías
+  const appName = { 'EE BAJO PUTU': 'Energía del Bajo Putumayo', EMEVASI: 'Energía del Valle de Sibundoy', RUITOQUE: 'Ruitoque', EMEESA: 'EMEESA', ...Object.fromEntries(Object.entries(OR_CREG).map(([k, v]) => [v, k])) };
+  const calidad = (store.energia.calidad?.ors || []).map((o) => ({ ...o, nombre: appName[o.or] || o.or })).sort((a, b) => (b.saidi?.['2024'] ?? 0) - (a.saidi?.['2024'] ?? 0));
+  const imp = store.energia.importaciones || null;
+  const capacidad = [...(store.energia.capacidad?.barras || [])].sort((a, b) => (b.p95_2026 ?? 0) - (a.p95_2026 ?? 0));
+  const extra = { calidad_anio: store.energia.calidad?.anio, capacidad_fecha: store.energia.capacidad?.fecha, capacidad_n: capacidad.length };
+  if (!isPaid(req)) return res.json({ ...base, ...extra, agpe_zonas: base.agpe_zonas.slice(0, 1), dna: base.dna.slice(0, 1), plantas: [], upme: upme.slice(0, 1), calidad: calidad.slice(0, 1), capacidad: capacidad.slice(0, 1), importaciones: imp ? { ...imp, dptos: imp.dptos.slice(0, 1), paises: imp.paises.slice(0, 1) } : null, locked: true });
+  res.json({ ...base, ...extra, plantas: plantas.sort((a, b) => b.mw - a.mw), upme, calidad, capacidad, importaciones: imp, locked: false });
 });
 
 // ---------------- IA ----------------
@@ -430,6 +487,9 @@ function muniBrief(m, r, full) {
     if (m.sub_km != null) lines.push(`Red: subestación más cercana ${m.sub_n} (${m.sub_kv}, ${m.sub_op}) a ${fmt(m.sub_km)} km; ${m.subs30} subestaciones a menos de 30 km; ${m.solar30} plantas solares (${fmt(m.solar30_mw)} MW) a menos de 30 km.`);
     lines.push(`Empresas locales: ${m.inst_n || 0} instaladores ubicados en el municipio (${m.inst_sol || 0} con contratos solares públicos), ${m.mayor_n || 0} mayoristas de equipos.`);
     if (m.upme_n) lines.push(`Proyectos de generación registrados en la UPME en el municipio: ${m.upme_n} (${fmt(m.upme_mw)} MW, ${fmt(m.upme_solar_mw)} MW solares).`);
+    if (m.saidi != null) lines.push(`Calidad del servicio del operador ${m.or_name} en 2024: SAIDI ${fmt(m.saidi, 1)} horas sin servicio por usuario al año y SAIFI ${fmt(m.saifi, 1)} interrupciones por usuario al año (CREG con datos del SUI; es el promedio de todo el operador).`);
+    if (m.col_n || m.ips_n) lines.push(`Instituciones: ${fmt(m.col_n)} sedes educativas (${fmt(m.col_ofi)} oficiales, ${fmt(m.col_priv)} privadas, ${fmt(m.col_mat)} estudiantes; MEN ${store.colegiosAnio}) y ${fmt(m.ips_n)} sedes de prestadores de salud (${fmt(m.hosp_n)} hospitales o clínicas, ${fmt(m.ips_pub)} públicas; REPS).`);
+    { const cap = capacidadCerca(m, 40).slice(0, 3); if (cap.length) lines.push(`Capacidad indicativa para conectar generación (UPME, 2026, 95% de escenarios): ` + cap.map((b) => `${b.n} a ${fmt(b.km)} km: ${fmt(b.p95_2026, 1)} MW`).join('; ') + '.'); }
     if (m.zni_n) lines.push(`Tiene ${m.zni_n} localidades no interconectadas con ${fmt(m.zni_horas)} horas de servicio diario en promedio (IPSE).`);
     if (m.snr6) lines.push(`Licencias urbanísticas en curadurías últimos 6 meses (SNR): ${m.snr6.total} actos; ${m.snr6.construccion} de construcción, ${m.snr6.urbanizacion} de urbanización, ${m.snr6.parcelacion} de parcelación. Curadurías: ${(m.curadurias || []).join(', ')}.`);
     if (p) lines.push(`Ejemplo sistema ${p.kwp} kWp: ${fmt(p.kwh_anual)} kWh/año, ahorro ${fmt(p.ahorro_anual)} COP/año, inversión ${fmt(p.capex)} COP, retorno simple ${p.anos} años (CAPEX supuesto ${fmt(p.capex_kwp)} COP/kWp).`);
@@ -482,6 +542,13 @@ function buildContext(req, question, code) {
     const ci = store.ci.filter((e) => inArea(e.code)).slice(0, 12);
     if (ci.length) parts.push(`\nEMPRESAS GRANDES (CLIENTES COMERCIALES E INDUSTRIALES) EN ${areaTxt.toUpperCase()}, por ingresos (corte ${store.ciAnio}):\n` + ci.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.sector}, ${store.byCode.get(e.code)?.name || e.ciudad}; ingresos ${fmt(e.ing)} mil millones; consumo típico del sector ${e.consumo}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n'));
   }
+  // Colegios y salud
+  if (has(/colegio|escuela|educa|institucion|hospital|clinica|salud|ips|ese\b/)) {
+    const sal = store.salud.filter((x) => inArea(x.code) && x.tipo !== 'ips').slice(0, 10);
+    const col = store.colegios.filter((x) => inArea(x.code)).sort((a, b) => b.mat - a.mat).slice(0, 10);
+    if (col.length) parts.push(`\nCOLEGIOS CON MÁS ESTUDIANTES EN ${areaTxt.toUpperCase()} (MEN ${store.colegiosAnio}):\n` + col.map((c) => `- ${c.est} · sede ${c.n}, ${store.byCode.get(c.code)?.name}: ${fmt(c.mat)} estudiantes, ${c.sec === 'O' ? 'oficial' : 'privado'}, ${c.z === 'R' ? 'rural' : 'urbano'}`).join('\n'));
+    if (sal.length) parts.push(`\nHOSPITALES, CLÍNICAS Y CENTROS DE SALUD EN ${areaTxt.toUpperCase()} (REPS):\n` + sal.map((x) => `- ${x.n} (${x.pr}${x.nit ? `, NIT ${x.nit}` : ''}), ${store.byCode.get(x.code)?.name}, ${x.nat}${x.tel ? `; tel ${x.tel}` : ''}${x.mail ? `; ${x.mail}` : ''}`).join('\n'));
+  }
   // Licitaciones
   if (has(/licitac|secop|contrato|proceso|entidad|public/)) {
     const sec = store.secop.filter((x) => inArea(x.code) || (dptos.length && dptos.some((d) => norm(x.dpto) === norm(d)))).slice(0, 12);
@@ -509,15 +576,15 @@ Respondes en español, claro y práctico, adaptado al perfil del usuario del CON
 Reglas:
 - Usa SOLO los datos del CONTEXTO para cifras, empresas, municipios y proyectos. Si algo no está en el CONTEXTO, dilo en una frase y sugiere la sección de la app donde buscarlo. No inventes cifras, nombres, filtros ni fuentes.
 - Cuando el CONTEXTO trae una lista (empresas, licitaciones, hoteles, proyectos), úsala: resume y destaca los más relevantes.
-- [FUENTES]Qué es cada fuente (no la describas de otra forma): DANE ELIC = licencias de construcción de vivienda y otros usos; SNR = actos de curadurías urbanas; SUI = tarifas y consumo de energía de Superservicios; XM = autogeneradores, cortes (demanda no atendida), precio de bolsa y mapa de red; UPME = registro de proyectos de generación; RNT = Registro Nacional de Turismo; SECOP II = licitaciones y contratos públicos; Registro Mercantil = empresas.
-- Secciones de la app: Mapa (con herramientas para dibujar zonas y medir), Ranking, Ficha del municipio, Empresas e industrias (clientes C&I), Hoteles y turismo, Instaladores y empresas, Mercado y red, Licitaciones, Mis prospectos (zonas que sigue, novedades y prospectos), Calculadora financiera (retorno, financiación y beneficios tributarios), Propuestas en PDF.
+- [FUENTES]Qué es cada fuente (no la describas de otra forma): DANE ELIC = licencias de construcción de vivienda y otros usos; SNR = actos de curadurías urbanas; SUI = tarifas y consumo de energía de Superservicios; CREG = indicadores de calidad SAIDI y SAIFI por operador; MEN = sedes educativas; REPS = prestadores de salud de MinSalud; DANE IMPO = importaciones de paneles y baterías; XM = autogeneradores, cortes (demanda no atendida), precio de bolsa y mapa de red; UPME = registro de proyectos de generación; RNT = Registro Nacional de Turismo; SECOP II = licitaciones y contratos públicos; Registro Mercantil = empresas.
+- Secciones de la app: Mapa (con herramientas para dibujar zonas y medir), Ranking, Ficha del municipio, Empresas e industrias (clientes C&I), Hoteles y turismo, Colegios y salud, Instaladores y empresas, Mercado y red, Licitaciones, Mis prospectos (zonas que sigue, novedades y prospectos), Calculadora financiera (retorno, financiación y beneficios tributarios), Propuestas en PDF.
 - Puedes dar recomendaciones comerciales generales, aclarando que son sugerencias.
 
 Formato (Markdown): empieza con la respuesta directa en 1 o 2 frases. Luego usa títulos cortos con ###, listas con viñetas y **negritas** para cifras clave. Usa una tabla solo para comparar 3 o más elementos con varias columnas. Termina, si aplica, con "Siguiente paso" en una línea. Máximo 250 palabras salvo que pidan más.`;
 // Solo los administradores ven de dónde sale cada dato; a los demás usuarios no se les nombran las fuentes
 const systemFor = (req) => (isAdmin(req)
   ? SYSTEM_BASE.replace('[FUENTES]', '')
-  : SYSTEM_BASE.replace(/- \[FUENTES\][^\n]*\n/, '- Nunca nombres las fuentes ni las entidades de donde vienen los datos (por ejemplo DANE, SUI, Superservicios, XM, UPME, RNT, MinCIT, SECOP, Registro Mercantil, Confecámaras, Supersociedades, NASA, IPSE, datos.gov.co). Si preguntan de dónde salen los datos, responde que son datos de Radar Solar construidos a partir de información pública oficial.\n'));
+  : SYSTEM_BASE.replace(/- \[FUENTES\][^\n]*\n/, '- Nunca nombres las fuentes ni las entidades de donde vienen los datos (por ejemplo DANE, SUI, Superservicios, CREG, MEN, MinSalud, REPS, XM, UPME, RNT, MinCIT, SECOP, Registro Mercantil, Confecámaras, Supersociedades, NASA, IPSE, datos.gov.co). Si preguntan de dónde salen los datos, responde que son datos de Radar Solar construidos a partir de información pública oficial.\n'));
 
 app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
   const quota = aiQuota(req);
