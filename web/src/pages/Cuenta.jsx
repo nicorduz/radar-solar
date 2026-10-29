@@ -35,6 +35,7 @@ export default function Cuenta() {
         <button className="btn" onClick={() => go('prospectos')}><Icon name="star" size={16} />Mis prospectos</button>
         <button className="btn" onClick={() => go('industrias')}><Icon name="factory" size={16} />Empresas e industrias</button>
         <button className="btn" onClick={() => go('clientes')}><Icon name="hotel" size={16} />Hoteles y turismo</button>
+        <button className="btn" onClick={() => go('instituciones')}><Icon name="school" size={16} />Colegios y salud</button>
         <button className="btn" onClick={() => go('calculadora')}><Icon name="calc" size={16} />Calculadora</button>
         <button className="btn" onClick={() => go('empresas')}><Icon name="building" size={16} />Instaladores y empresas</button>
         <button className="btn" onClick={() => go('mercado')}><Icon name="chart" size={16} />Mercado y red</button>
