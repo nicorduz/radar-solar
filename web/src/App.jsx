@@ -16,6 +16,7 @@ import { ProfileSwitch } from './components/ui.jsx';
 import Terminos, { LegalLine, TerminosTexto } from './pages/Terminos.jsx';
 import Plan, { PoweredBy } from './pages/Plan.jsx';
 import Industrias from './pages/Industrias.jsx';
+import Instituciones from './pages/Instituciones.jsx';
 import Prospectos from './pages/Prospectos.jsx';
 import Calculadora from './pages/Calculadora.jsx';
 import Propuesta from './pages/Propuesta.jsx';
@@ -45,6 +46,7 @@ const PAGES = {
   ranking: { label: 'Ranking', icon: 'list' },
   clientes: { label: 'Hoteles y turismo', icon: 'hotel' },
   industrias: { label: 'Empresas e industrias', icon: 'factory' },
+  instituciones: { label: 'Colegios y salud', icon: 'school' },
   prospectos: { label: 'Mis prospectos', icon: 'star' },
   diseno: { label: 'Diseño solar', icon: 'sun' },
   calculadora: { label: 'Calculadora financiera', icon: 'calc' },
@@ -54,11 +56,11 @@ const PAGES = {
   asistente: { label: 'Asistente IA', icon: 'spark' },
 };
 const ORDER = {
-  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'asistente'],
-  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'diseno', 'calculadora', 'asistente'],
-  desarrollador: ['mapa', 'ranking', 'diseno', 'mercado', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'empresas', 'clientes', 'asistente'],
-  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'diseno', 'calculadora', 'asistente'],
-  respaldo: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'mercado', 'licitaciones', 'calculadora', 'empresas', 'asistente'],
+  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'instituciones', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'asistente'],
+  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'instituciones', 'diseno', 'calculadora', 'asistente'],
+  desarrollador: ['mapa', 'ranking', 'diseno', 'mercado', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'empresas', 'clientes', 'instituciones', 'asistente'],
+  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'instituciones', 'diseno', 'calculadora', 'asistente'],
+  respaldo: ['mapa', 'diseno', 'ranking', 'clientes', 'instituciones', 'prospectos', 'industrias', 'mercado', 'licitaciones', 'calculadora', 'empresas', 'asistente'],
 };
 const navFor = (profile) => (ORDER[profile] || ORDER.instalador).map((id) => ({ id, ...PAGES[id] }));
 
@@ -143,6 +145,7 @@ export default function App() {
   else if (view === 'terminos') page = <Terminos appName={cfg.appName} />;
   else if (view === 'plan') page = <Plan />;
   else if (view === 'industrias') page = <Industrias code={arg} />;
+  else if (view === 'instituciones') page = <Instituciones arg={arg} />;
   else if (view === 'prospectos') page = <Prospectos />;
   else if (view === 'calculadora') page = <Calculadora code={arg} />;
   else if (view === 'diseno') page = <Diseno />;
