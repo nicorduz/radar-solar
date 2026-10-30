@@ -9,7 +9,7 @@ import {
   parseCookies, loadUser, requireUser, requireAdmin, isPaid, loginThrottle, hashPassword, verifyPassword,
   createSession, destroySession, publicUser, validateUsername, validatePassword, ensureBootstrapAdmin,
 } from './auth.js';
-import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG } from './data.js';
+import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
@@ -159,6 +159,7 @@ app.get('/api/municipio/:code', requireUser, (req, res) => {
     agpe_zona: m.agpe_zone ? store.meta.agpe_zonas?.[m.agpe_zone] : null,
     ...institucionesDe(m.code, isPaid(req)),
     calidad: calidadOR(m.or_name),
+    trafos: trafosMuni(m.code),
     capacidad: capacidadCerca(m, 40).slice(0, 8),
     profile,
   });
@@ -255,6 +256,33 @@ app.get('/api/capas/colegios', requireUser, (req, res) => {
 app.get('/api/capas/salud', requireUser, (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ locked: true });
   res.json(store.municipios.filter((m) => m.ips_n && m.lat).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.ips_n, pub: m.ips_pub, hosp: m.hosp_n })));
+});
+
+// Límites de departamentos y municipios para el mapa (MGN del DANE, simplificados)
+app.get('/api/geo/:kind', requireUser, (req, res) => {
+  const f = { municipios: 'geo_municipios.json', dptos: 'geo_dptos.json' }[req.params.kind];
+  if (!f) return res.status(404).json({ error: 'No encontrado' });
+  const p = [path.join(builtDir(), f), path.join(ROOT, 'data', 'built', f)].find((x) => fs.existsSync(x));
+  if (!p) return res.json({ type: 'FeatureCollection', features: [] });
+  res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'private, max-age=86400');
+  fs.createReadStream(p).pipe(res);
+});
+
+// Demo de transformadores de distribución: solo en las zonas de los operadores que publicaron su base
+app.get('/api/trafos/resumen', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ locked: true });
+  const T = trafos();
+  const municipios = [...T.munis.entries()].map(([code, a]) => { const m = store.byCode.get(code); return m && { code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: a.n, kva: Math.round(a.kva), espacio: a.n ? a.espacio / a.n : 0, gd_kw: Math.round(a.gd) }; }).filter(Boolean);
+  res.json({ operadores: T.ops, municipios, total: T.n });
+});
+app.get('/api/trafos', requireUser, (req, res) => {
+  if (!isPaid(req)) return res.status(402).json({ locked: true });
+  const b = String(req.query.bbox || '').split(',').map(Number);
+  if (b.length !== 4 || !b.every(Number.isFinite)) return res.status(400).json({ error: 'Falta bbox' });
+  if ((b[2] - b[0]) * (b[3] - b[1]) > 1.5) return res.json({ total: null, rows: [], zoom: true });
+  const T = trafos();
+  const { total, rows } = trafosBbox(b);
+  res.json({ total, rows: rows.map((r) => { const c = trafoCalc(r); return { id: r[0], lon: r[1], lat: r[2], kva: r[3], gd: r[4], disp: r[5], op: T.ops[r[6]]?.nombre, code: r[7], us: r[8], circ: r[9], lim: c.lim, libre: Math.round(c.libre * 10) / 10, uso: c.uso, sem: c.sem }; }) });
 });
 
 // Empresas grandes del país (clientes comerciales e industriales)
