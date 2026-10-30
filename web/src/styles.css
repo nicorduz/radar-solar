@@ -620,3 +620,23 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
 .r2-eqs.col .r2-eq b { flex: 1 1 60%; }
 .r2-eqs.col .r2-eq span { flex: 1 1 100%; padding-left: 66px; }
 @media (max-width: 760px) { .r2-kpis-row { grid-template-columns: 1fr 1fr; } }
+
+/* Mapa: demo de transformadores, tableros y puntos ocultos */
+.trafo-panel { position: absolute; z-index: 5; left: 12px; bottom: 96px; width: 290px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100% - 330px); overflow: auto; }
+.trafo-panel .seg { align-self: flex-start; }
+.trafo-panel .icon-btn { width: 24px; height: 24px; font-weight: 700; }
+.sem-legend { display: flex; flex-direction: column; gap: 3px; }
+.trafo-w { display: flex; flex-direction: column; gap: 6px; }
+.trafo-w label { display: grid; grid-template-columns: 1fr 90px 26px; gap: 6px; align-items: center; }
+.trafo-w input[type=range] { width: 100%; accent-color: var(--blue); }
+.dash-menu { width: 340px; gap: 6px; }
+.dash-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+.dash-item > button:first-child { flex: 1; text-align: left; border: 0; background: none; color: var(--ink); padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+.dash-item > button:first-child:hover, .dash-item.on > button:first-child { background: var(--panel-2); }
+.dash-item.on { box-shadow: inset 3px 0 0 var(--blue); }
+.draw-bar .hid-count { position: relative; }
+.draw-bar .hid-count span { position: absolute; top: 2px; right: 2px; font-size: 10px; background: var(--warm); color: #111; border-radius: 999px; padding: 0 4px; line-height: 14px; }
+@media (max-width: 860px) {
+  .trafo-panel { left: 8px; right: 8px; width: auto; bottom: calc(var(--nav-h) + 64px); max-height: 38%; }
+  .dash-menu { width: min(340px, calc(100vw - 16px)); }
+}
