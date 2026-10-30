@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import { ColumnLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
+import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
 import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
-import { writeLocal } from '../local.js';
+import { writeLocal, useLocal } from '../local.js';
 import { Icon } from '../components/Icon.jsx';
 import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
 import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
@@ -35,12 +35,32 @@ const LAYERS = {
   capacidad: { label: 'Capacidad de conexión por subestación (2026)', swatch: 'linear-gradient(90deg,#E2675B,#F2C38A,#4FB286)', paid: true },
   colegios: { label: 'Colegios', swatch: '#9B8CFF', paid: true },
   salud: { label: 'Hospitales y centros de salud (por municipio)', swatch: '#FF6B8A', paid: true },
-  trafos: { label: 'Transformadores de distribución', swatch: '#5C6380', soon: true },
+  trafos: { label: 'Transformadores de distribución (demo)', swatch: 'linear-gradient(90deg,#4FB286,#F2C38A,#E2675B)', paid: true, demo: true },
 };
 const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme', 'capacidad'], servicios: ['solar'], respaldo: ['zni'] };
 const ZOOM_COLEGIOS = 9;
 // Color de la capacidad de conexión: rojo = casi nada, ámbar = poca, verde = 10 MW o más
 const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);
+// Transformadores (demo): semáforo de uso del límite del 50 % de la capacidad nominal (CREG 174)
+const ZOOM_TRAFOS = 12;
+const SEM_COLOR = { verde: [79, 178, 134], amarillo: [242, 195, 138], naranja: [255, 140, 60], rojo: [226, 103, 91], sd: [120, 170, 255] };
+const SEM_TXT = { verde: 'Con espacio (usa menos de la mitad del límite)', amarillo: 'Espacio medio (50-80 % del límite)', naranja: 'Casi lleno (80-100 %)', rojo: 'Sin espacio', sd: 'El operador no publica la generación conectada' };
+const TRAFO_W0 = { espacio: 45, tam: 25, sat: 20, us: 10 };
+const TRAFO_F = { espacio: 'Espacio libre para autogeneración', tam: 'Tamaño del transformador', sat: 'Poca generación ya conectada', us: 'Usuarios conectados (solo EPM)' };
+const L1 = (v, ref) => Math.min(1, Math.log1p(Math.max(0, v || 0)) / Math.log1p(ref));
+function trafoScore(d, w) {
+  const parts = { espacio: L1(d.libre, 50), tam: L1(d.kva, 500), sat: d.sem === 'sd' ? 0.6 : Math.max(0, 1 - (d.uso || 0)), us: d.us == null ? 0.5 : L1(d.us, 60) };
+  const ws = Object.values(w).reduce((a, x) => a + (+x || 0), 0) || 1;
+  return Object.keys(parts).reduce((a, k) => a + (w[k] || 0) * parts[k], 0) / ws;
+}
+const espacioColor = (p) => (p >= 0.7 ? [79, 178, 134] : p >= 0.4 ? [242, 195, 138] : [226, 103, 91]);
+// Clave de un punto para poder ocultarlo en un tablero
+const HKEY = {
+  muni: (d) => d.code, solar: (d) => `${d.n}|${d.lat}`, upme: (d) => d.id, subs: (d) => d.n, zni: (d) => d.n, capacidad: (d) => d.n,
+  colegios: (d) => d.id, salud: (d) => d.code, trafo: (d) => `${d.op}|${d.id}`, 'trafo-muni': (d) => d.code,
+};
+const layerKind = (id) => (id.startsWith('muni-') ? 'muni' : id);
+const TABLEROS = 'rs_tableros';
 // Distancia aproximada (km) de un punto a un segmento de línea, en coordenadas locales
 function segDist(p, a, b) {
   const k = Math.cos((p[1] * Math.PI) / 180) * 111.32, kl = 110.57;
@@ -57,6 +77,7 @@ const TOOLS = [
   ['point', 'pin', 'Punto', 'Clic donde quieras el punto.'],
   ['text', 'text', 'Texto', 'Escribe el texto y haz clic en el mapa.'],
   ['measure', 'ruler', 'Medir', 'Clic en cada punto del recorrido. Doble clic o "Terminar" para finalizar.'],
+  ['hide', 'eyeoff', 'Ocultar puntos', 'Clic en un municipio, planta, subestación, colegio o transformador para quitarlo del mapa. Se guarda con el tablero.'],
 ];
 const loadShapes = () => { try { return JSON.parse(localStorage.getItem('rs_shapes') || '[]'); } catch { return []; } };
 const saveShapes = (s) => { try { localStorage.setItem('rs_shapes', JSON.stringify(s)); } catch { /* sin almacenamiento */ } };
@@ -66,7 +87,7 @@ const TXT = { fontFamily: 'Inter, system-ui, sans-serif', characterSet: 'auto', 
 const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
 
-export default function MapPage() {
+export default function MapPage({ focus }) {
   const { paid, profile, prof, scoreParams, go } = useApp();
   const el = useRef(null);
   const mapRef = useRef(null);
@@ -98,8 +119,23 @@ export default function MapPage() {
   const [colegios, setColegios] = useState(null);
   const [salud, setSalud] = useState(null);
   const [soon, setSoon] = useState(false);
+  // Transformadores (demo)
+  const [trafoRes, setTrafoRes] = useState(null);
+  const [trafoPts, setTrafoPts] = useState(null);
+  const [trafoMode, setTrafoMode] = useState('sem');
+  const [trafoW, setTrafoW] = useState(TRAFO_W0);
+  // Límites y filtro por departamento
+  const [limites, setLimites] = useState('ninguno'); // ninguno | dptos | munis | relleno
+  const [dptoSel, setDptoSel] = useState('');
+  const [geoD, setGeoD] = useState(null);
+  const [geoM, setGeoM] = useState(null);
+  // Tableros: puntos ocultos y vistas guardadas
+  const [hidden, setHidden] = useState([]);
+  const [tableros, setTableros] = useLocal(TABLEROS, []);
+  const [actual, setActual] = useState(null);
+  const [nombreT, setNombreT] = useState('');
   const st = useRef({});
-  st.current = { tool, draft, textVal };
+  st.current = { tool, draft, textVal, hidden };
   const handler = useRef(() => {});
 
   useEffect(() => {
@@ -128,6 +164,16 @@ export default function MapPage() {
     return () => map.remove();
   }, []);
 
+  // Enlace desde la ficha (#/mapa/trafos-05001): activa la capa y se acerca al municipio
+  useEffect(() => {
+    const mm = String(focus || '').match(/^(trafos)-(\d{5})$/);
+    if (!mm || !data?.items || !mapRef.current) return;
+    const d = data.items.find((x) => x.code === mm[2]);
+    if (!d) return;
+    setOn((o) => new Set([...o, 'trafos']));
+    mapRef.current.flyTo({ center: [d.lon, d.lat], zoom: ZOOM_TRAFOS + 2, pitch: 0, speed: 1.6 });
+  }, [focus, data]);
+
   // Al cambiar de perfil: puntaje y capas recomendadas
   useEffect(() => { setShow('score'); setOn(new Set(DEFAULT_LAYERS[profile] || [])); }, [profile]);
 
@@ -138,6 +184,14 @@ export default function MapPage() {
 
   useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
+  useEffect(() => { api('/geo/dptos').then(setGeoD).catch(() => setGeoD(null)); }, []);
+  useEffect(() => { if ((limites === 'munis' || limites === 'relleno') && !geoM) api('/geo/municipios').then(setGeoM).catch(() => setGeoM(null)); }, [limites, geoM]);
+  useEffect(() => { if (on.has('trafos') && paid && !trafoRes) api('/trafos/resumen').then(setTrafoRes).catch(() => setTrafoRes({ operadores: [], municipios: [] })); }, [on, paid, trafoRes]);
+  useEffect(() => {
+    if (!on.has('trafos') || !paid || !bounds || zoom < ZOOM_TRAFOS) return;
+    const t = setTimeout(() => api('/trafos?bbox=' + bounds.map((v) => v.toFixed(4)).join(',')).then(setTrafoPts).catch(() => setTrafoPts(null)), 250);
+    return () => clearTimeout(t);
+  }, [on, paid, bounds, zoom]);
   useEffect(() => { if (on.has('salud') && paid && !salud) api('/capas/salud').then(setSalud).catch(() => setSalud([])); }, [on, paid, salud]);
   // Colegios: solo los que caben en la vista y con el mapa acercado (son más de 50.000)
   useEffect(() => {
@@ -158,7 +212,7 @@ export default function MapPage() {
   const cancel = () => { setDraft(null); setCursor(null); setTool(null); };
   handler.current = (ev, p, e) => {
     const { tool: t, draft: d } = st.current;
-    if (!t) return;
+    if (!t || t === 'hide') return;
     if (ev === 'dblclick') { e?.preventDefault?.(); if (t === 'polygon' || t === 'measure') finish(); return; }
     if (t === 'point') { addShape({ type: 'point', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
     if (t === 'text') { if (!st.current.textVal.trim()) return; addShape({ type: 'text', pts: [p], text: st.current.textVal.trim() }); setTool(null); return; }
@@ -257,12 +311,67 @@ export default function MapPage() {
   const set3d = (v) => { setIs3d(v); mapRef.current?.easeTo({ pitch: v ? 45 : 0, bearing: v ? -10 : 0, duration: 700 }); };
   const choose = (k) => { setShow(k); setMenu(null); if (k === 'nada') set3d(false); };
   const toggle = (k) => {
-    if (LAYERS[k].soon) { setSoon(true); setMenu(null); return; }
     if (LAYERS[k].paid && !paid) { setLockMsg({ layer: LAYERS[k].label }); return; }
     const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n);
   };
 
   const dpto = data?.mode === 'dpto';
+  const inDpto = (code) => !dptoSel || String(code || '').slice(0, 2) === dptoSel;
+  const hid = useMemo(() => new Set(hidden), [hidden]);
+  const vis = (kind, arr) => (hid.size ? arr.filter((d) => !hid.has(`${kind}:${HKEY[kind](d)}`)) : arr);
+  const dptoNames = useMemo(() => { const o = {}; for (const d of data?.items || []) if (d.code) o[d.code.slice(0, 2)] = d.dpto; return Object.entries(o).sort((a, b) => a[1].localeCompare(b[1], 'es')); }, [data]);
+  const dptoFeat = useMemo(() => (dptoSel && geoD ? geoD.features.find((f) => f.properties.d === dptoSel) : null), [dptoSel, geoD]);
+  // Al elegir un departamento el mapa se acerca a él
+  useEffect(() => {
+    if (!dptoFeat || !mapRef.current) return;
+    const polys = dptoFeat.geometry.type === 'Polygon' ? [dptoFeat.geometry.coordinates] : dptoFeat.geometry.coordinates;
+    let w = 180, s2 = 90, e = -180, n = -90;
+    for (const p of polys) for (const [x, y] of p[0]) { w = Math.min(w, x); e = Math.max(e, x); s2 = Math.min(s2, y); n = Math.max(n, y); }
+    mapRef.current.fitBounds([[w, s2], [e, n]], { padding: { top: 90, bottom: 40, left: 70, right: window.innerWidth >= 860 ? 400 : 20 }, duration: 900 });
+  }, [dptoFeat]);
+  const trafoRows = useMemo(() => {
+    if (!trafoPts?.rows) return [];
+    const rows = trafoPts.rows.filter((d) => inDpto(d.code)).map((d) => ({ ...d, score: trafoScore(d, trafoW) }));
+    // El color usa la posición de cada transformador frente a los demás de la vista (contraste aunque los puntajes se parezcan)
+    const ord = rows.map((d, i) => [d.score, i]).sort((a, b) => a[0] - b[0]);
+    ord.forEach(([, i], k) => { rows[i].t = ord.length > 1 ? k / (ord.length - 1) : 0.5; });
+    return rows;
+  }, [trafoPts, trafoW, dptoSel]);
+
+  // ---- Tableros guardados ----
+  const snapshot = (name) => {
+    const map = mapRef.current; const c = map.getCenter();
+    return { id: actual?.id && actual.name === name ? actual.id : uid(), name, fecha: new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }), profile,
+      view: { center: [c.lng, c.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() },
+      show, is3d, on: [...on], shapes, hidden, dpto: dptoSel, limites, trafoMode, trafoW };
+  };
+  const guardarTablero = (asNew) => {
+    const name = (asNew ? nombreT : actual?.name || nombreT).trim() || `Tablero ${tableros.length + 1}`;
+    const t = snapshot(name);
+    if (asNew) t.id = uid();
+    setTableros([t, ...tableros.filter((x) => x.id !== t.id)]); setActual(t); setNombreT('');
+  };
+  const abrirTablero = (t) => {
+    setShow(t.show || 'score'); setIs3d(!!t.is3d); setOn(new Set(t.on || [])); setShapes(t.shapes || []); saveShapes(t.shapes || []);
+    setHidden(t.hidden || []); setDptoSel(t.dpto || ''); setLimites(t.limites || 'ninguno'); setTrafoMode(t.trafoMode || 'sem'); setTrafoW(t.trafoW || TRAFO_W0);
+    setSel(null); setActual(t); setMenu(null);
+    if (t.view) setTimeout(() => mapRef.current?.jumpTo({ center: t.view.center, zoom: t.view.zoom, pitch: t.view.pitch, bearing: t.view.bearing }), t.dpto ? 950 : 0);
+  };
+  const borrarTablero = (id) => { setTableros(tableros.filter((x) => x.id !== id)); if (actual?.id === id) setActual(null); };
+  const exportar = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(tableros, null, 1)], { type: 'application/json' })); a.download = 'tableros-radar-solar.json'; a.click(); };
+  const importar = async (file) => {
+    try {
+      const list = JSON.parse(await file.text());
+      const ok = (Array.isArray(list) ? list : [list]).filter((t) => t && t.name && t.view).map((t) => ({ ...t, id: uid() }));
+      setTableros([...ok, ...tableros]);
+    } catch { /* archivo inválido */ }
+  };
+  const toggleHidden = (layerId, object) => {
+    const kind = layerKind(layerId);
+    if (!HKEY[kind] || !object) return;
+    const k = `${kind}:${HKEY[kind](object.properties?.item || object)}`;
+    setHidden((h) => (h.includes(k) ? h.filter((x) => x !== k) : [...h, k]));
+  };
   const metricKeys = prof.metrics.filter((k) => METRICS[k]);
   const showKey = dpto && show !== 'nada' ? 'score' : show;
   const M = METRICS[showKey] || METRICS.score;
@@ -280,8 +389,8 @@ export default function MapPage() {
       return { ...d, t };
     }).filter((d) => d.t != null);
     // Todos los municipios; los de menor valor se dibujan primero para que los altos queden encima
-    return rows.sort((a, b) => a.t - b.t);
-  }, [data, showKey]);
+    return vis('muni', rows.filter((d) => dpto || inDpto(d.code))).sort((a, b) => a.t - b.t);
+  }, [data, showKey, dptoSel, hid]);
 
   useEffect(() => {
     if (!overlayRef.current || !data) return;
@@ -302,7 +411,26 @@ export default function MapPage() {
       }));
     }
     const onMuni = ({ object }) => { if (!object || st.current.tool) return; if (dpto) setLockMsg(object); else go('m', object.code); };
-    if (showKey === 'score' && is3d) {
+    // Municipios coloreados (mapa de calor por polígono) y límites
+    const relleno = limites === 'relleno' && geoM && !dpto;
+    if (relleno) {
+      const byCode = new Map(scaled.map((d) => [d.code, d]));
+      const feats = geoM.features.filter((f) => byCode.has(f.properties.code)).map((f) => ({ ...f, properties: { ...f.properties, item: byCode.get(f.properties.code) } }));
+      layers.push(new GeoJsonLayer({
+        id: 'muni-poly', data: { type: 'FeatureCollection', features: feats }, filled: true, stroked: true,
+        getFillColor: (f) => [...colorAt(f.properties.item.t), 175], getLineColor: [16, 14, 42, 160], lineWidthUnits: 'pixels', getLineWidth: 0.6,
+        pickable: true, updateTriggers: { getFillColor: trig }, onClick: ({ object }) => { if (object) onMuni({ object: object.properties.item }); },
+      }));
+    }
+    if ((limites === 'munis' || relleno) && geoM && !relleno) {
+      layers.push(new GeoJsonLayer({ id: 'lim-muni', data: dptoSel ? { ...geoM, features: geoM.features.filter((f) => f.properties.d === dptoSel) } : geoM, filled: false, stroked: true, getLineColor: [168, 197, 255, 110], lineWidthUnits: 'pixels', getLineWidth: 0.7 }));
+    }
+    if (limites !== 'ninguno' && geoD) {
+      layers.push(new GeoJsonLayer({ id: 'lim-dpto', data: geoD, filled: false, stroked: true, getLineColor: [200, 215, 255, 200], lineWidthUnits: 'pixels', getLineWidth: 1.4 }));
+    }
+    // Con los transformadores a la vista, las columnas del municipio estorban
+    const sinMuni = relleno || (on.has('trafos') && paid && zoom >= ZOOM_TRAFOS);
+    if (sinMuni) { /* los municipios ya están coloreados o se ven los transformadores */ } else if (showKey === 'score' && is3d) {
       layers.push(new ColumnLayer({
         id: 'muni-3d', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 14000 : 3500, extruded: true, pickable: true,
         elevationScale: dpto ? 700 : 220, getPosition: (d) => [d.lon, d.lat],
@@ -334,37 +462,59 @@ export default function MapPage() {
       }));
     }
     if (on.has('subs') && red?.subs?.length) {
-      layers.push(new IconLayer({ id: 'subs', data: red.subs, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
+      layers.push(new IconLayer({ id: 'subs', data: vis('subs', red.subs), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('upme') && red?.upme?.length) {
-      layers.push(new IconLayer({ id: 'upme', data: red.upme, getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
+      layers.push(new IconLayer({ id: 'upme', data: vis('upme', red.upme), getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('solar') && red?.plantas?.length) {
       layers.push(new IconLayer({
-        id: 'solar', data: red.plantas.filter((p) => p.tipo === 'solar'), getPosition: (d) => [d.lon, d.lat],
+        id: 'solar', data: vis('solar', red.plantas.filter((p) => p.tipo === 'solar')), getPosition: (d) => [d.lon, d.lat],
         getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), parameters: ON_TOP, pickable: true,
       }));
     }
     if (on.has('salud') && salud?.length) {
       layers.push(new ScatterplotLayer({
-        id: 'salud', data: salud, getPosition: (d) => [d.lon + 0.02, d.lat - 0.02], radiusUnits: 'pixels', getRadius: (d) => Math.min(16, 2 + Math.sqrt(d.n) * 0.8),
+        id: 'salud', data: vis('salud', salud.filter((d) => inDpto(d.code))), getPosition: (d) => [d.lon + 0.02, d.lat - 0.02], radiusUnits: 'pixels', getRadius: (d) => Math.min(16, 2 + Math.sqrt(d.n) * 0.8),
         getFillColor: [255, 107, 138, 120], stroked: true, getLineColor: [255, 255, 255, 200], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true, onClick: ({ object }) => { if (object && !st.current.tool) go('instituciones', `salud-${object.code}`); },
       }));
     }
     if (on.has('colegios') && colegios?.rows?.length && zoom >= ZOOM_COLEGIOS) {
       layers.push(new ScatterplotLayer({
-        id: 'colegios', data: colegios.rows, getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => Math.min(14, 3 + Math.sqrt(d.mat || 0) / 4),
+        id: 'colegios', data: vis('colegios', colegios.rows.filter((d) => inDpto(d.code))), getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => Math.min(14, 3 + Math.sqrt(d.mat || 0) / 4),
         getFillColor: (d) => (d.sec === 'O' ? [155, 140, 255, 190] : [214, 200, 255, 220]), stroked: true, getLineColor: [16, 14, 42, 220], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true,
       }));
     }
     if (on.has('capacidad') && red?.capacidad?.length) {
       layers.push(new ScatterplotLayer({
-        id: 'capacidad', data: red.capacidad, getPosition: (d) => [d.lon - 0.015, d.lat + 0.015], radiusUnits: 'pixels', getRadius: (d) => Math.min(22, 5 + Math.sqrt(d.p95_2026 || 0) * 1.4),
+        id: 'capacidad', data: vis('capacidad', red.capacidad), getPosition: (d) => [d.lon - 0.015, d.lat + 0.015], radiusUnits: 'pixels', getRadius: (d) => Math.min(22, 5 + Math.sqrt(d.p95_2026 || 0) * 1.4),
         getFillColor: (d) => [...CAP_COLOR(d.p95_2026), 215], stroked: true, getLineColor: [16, 14, 42, 230], lineWidthUnits: 'pixels', getLineWidth: 1.2, parameters: ON_TOP, pickable: true,
       }));
     }
     if (on.has('zni') && red?.zni?.length) {
-      layers.push(new IconLayer({ id: 'zni', data: red.zni, getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
+      layers.push(new IconLayer({ id: 'zni', data: vis('zni', red.zni), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_ZNI), sizeUnits: 'pixels', getSize: (d) => (d.horas < 12 ? 22 : 16), parameters: ON_TOP, pickable: true }));
+    }
+    if (on.has('trafos') && paid) {
+      if (zoom < ZOOM_TRAFOS && trafoRes?.municipios?.length) {
+        layers.push(new ScatterplotLayer({
+          id: 'trafo-muni', data: vis('trafo-muni', trafoRes.municipios.filter((d) => inDpto(d.code))), getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels',
+          getRadius: (d) => Math.min(24, 3 + Math.sqrt(d.n) / 5), getFillColor: (d) => [...espacioColor(d.espacio), 170], stroked: true, getLineColor: [255, 255, 255, 220], lineWidthUnits: 'pixels', getLineWidth: 1,
+          parameters: ON_TOP, pickable: true, onClick: ({ object }) => { if (object && !st.current.tool) mapRef.current?.flyTo({ center: [object.lon, object.lat], zoom: ZOOM_TRAFOS + 1, speed: 1.6 }); },
+        }));
+      } else if (zoom >= ZOOM_TRAFOS && trafoRows.length) {
+        const tr = [trafoMode, JSON.stringify(trafoW)];
+        layers.push(new ScatterplotLayer({
+          id: 'trafo', data: vis('trafo', trafoRows), getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => Math.min(11, 3 + Math.sqrt(d.kva) / 3),
+          getFillColor: (d) => (trafoMode === 'sem' ? [...SEM_COLOR[d.sem], 230] : [...colorAt(d.t), 235]), stroked: true, getLineColor: [16, 14, 42, 230], lineWidthUnits: 'pixels', getLineWidth: 1,
+          parameters: ON_TOP, pickable: true, updateTriggers: { getFillColor: tr },
+        }));
+      }
+    }
+    // Departamento elegido: el resto del país queda oscurecido
+    if (dptoFeat) {
+      const polys = dptoFeat.geometry.type === 'Polygon' ? [dptoFeat.geometry.coordinates] : dptoFeat.geometry.coordinates;
+      layers.push(new SolidPolygonLayer({ id: 'mask-dpto', data: [{ p: [[[-100, -25], [-40, -25], [-40, 30], [-100, 30], [-100, -25]], ...polys.map((p) => p[0])] }], getPolygon: (d) => d.p, getFillColor: [10, 9, 30, 205], pickable: false, parameters: ON_TOP }));
+      layers.push(new PathLayer({ id: 'borde-dpto', data: polys.map((p) => ({ path: p[0] })), getPath: (d) => d.path, getColor: [255, 160, 70, 230], widthUnits: 'pixels', getWidth: 2, parameters: ON_TOP }));
     }
     // Dibujos del usuario, vista previa y resultado de búsqueda
     const polys = shapes.filter((x) => ringOf(x)).map((x) => ({ ...x, ring: ringOf(x) }));
@@ -403,6 +553,7 @@ export default function MapPage() {
 
     overlayRef.current.setProps({
       layers,
+      onClick: (info) => { if (st.current.tool === 'hide' && info.object && info.layer) toggleHidden(info.layer.id, info.object); },
       getTooltip: ({ object: d, layer }) => {
         if (tool) return null;
         if (!d || !layer) return null;
@@ -411,6 +562,9 @@ export default function MapPage() {
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
         else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
+        else if (layer.id === 'trafo') html = `<b>Transformador ${d.id}</b> · ${d.op}<br/>${fmt(d.kva, 1)} kVA · límite para autogeneración ${fmt(d.lim, 1)} kW<br/>${d.gd != null ? `Generación conectada: ${fmt(d.gd, 1)} kW<br/>` : ''}${d.disp != null ? `Disponible según el operador: ${fmt(d.disp, 1)} kW<br/>` : ''}Espacio estimado: <b>${fmt(d.libre, 1)} kW</b>${d.sem === 'sd' ? ' (máximo)' : ''}<br/>${d.us != null ? `${fmt(d.us)} usuarios conectados<br/>` : ''}${d.circ ? `Circuito ${d.circ}<br/>` : ''}Puntaje ${Math.round(d.score * 100)}/100<br/><span style="color:#B3BCDA">${SEM_TXT[d.sem]}. Demo indicativo.</span>`;
+        else if (layer.id === 'trafo-muni') html = `<b>${d.name}</b> · ${d.dpto}<br/>${fmt(d.n)} transformadores · ${fmt(d.kva)} kVA<br/>${fmt(d.espacio * 100)} % con espacio para 3 kW o más<br/><span style="color:#B3BCDA">Clic para acercarte y verlos uno por uno</span>`;
+        else if (layer.id === 'muni-poly') { const x = d.properties.item; html = `<b>${x.name}</b> · ${x.dpto}<br/>${showKey === 'score' ? `#${x.rank} · puntaje ${x.score}` : `${M.label}: <b>${M.f(M.get(x))}</b>`}<br/><span style="color:#B3BCDA">Clic para ver la ficha</span>`; }
         else if (layer.id === 'capacidad') html = `<b>${d.n}</b> · ${d.kv} kV<br/>Para conectar generación en 2026: <b>${fmt(d.p95_2026, 1)} MW</b> (95% de los escenarios)<br/>Seguro en todos los escenarios: ${fmt(d.p100_2026, 1)} MW · 2027: ${fmt(d.p95_2027, 1)} MW<br/><span style="color:#B3BCDA">Indicativo. ${d.op || ''}</span>`;
         else if (layer.id === 'colegios') html = `<b>${d.est}</b><br/>Sede ${d.n}<br/>${fmt(d.mat)} estudiantes · ${d.sec === 'O' ? 'oficial' : 'privado'} · ${d.z === 'R' ? 'rural' : 'urbano'}<br/><span style="color:#B3BCDA">Ubicación aproximada (~1 km)</span>`;
         else if (layer.id === 'salud') html = `<b>${d.name}</b> · ${d.dpto}<br/>${fmt(d.n)} sedes de salud · ${fmt(d.hosp)} hospitales o clínicas · ${fmt(d.pub)} públicas<br/><span style="color:#B3BCDA">Clic para ver la lista</span>`;
@@ -421,15 +575,15 @@ export default function MapPage() {
         return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
       },
     });
-  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool, salud, colegios, zoom]);
+  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool, salud, colegios, zoom, trafoRes, trafoRows, trafoMode, trafoW, limites, geoM, geoD, dptoFeat, hid]);
 
   const visibles = useMemo(() => {
     if (data?.mode !== 'municipio') return [];
-    const all = [...data.items].sort((a, b) => a.rank - b.rank);
+    const all = vis('muni', data.items.filter((d) => inDpto(d.code))).sort((a, b) => a.rank - b.rank);
     if (!onlyVisible || !bounds) return all;
     const [w, s, e, n] = bounds;
     return all.filter((d) => d.lon >= w && d.lon <= e && d.lat >= s && d.lat <= n);
-  }, [data, bounds, onlyVisible]);
+  }, [data, bounds, onlyVisible, dptoSel, hid]);
   const top = visibles.slice(0, 30);
   const fly = (d) => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: 9, pitch: is3d ? 50 : 0, speed: 1.4 });
   const sub = (d) => metricKeys.filter((k) => k !== 'score').slice(0, 2).map((k) => `${METRICS[k].short} ${METRICS[k].f(METRICS[k].get(d))}`).join(' · ');
@@ -477,10 +631,10 @@ export default function MapPage() {
           {menu === 'layers' && (
             <div className="glass dd-menu layers" role="menu">
               {Object.entries(LAYERS).map(([k, l]) => (
-                <label key={k} className={(l.paid && !paid) || l.soon ? 'dis' : ''}>
+                <label key={k} className={l.paid && !paid ? 'dis' : ''}>
                   <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
                   {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
-                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}{l.soon && <span className="soon-tag">Coming soon</span>}</span>
+                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}{l.demo && <span className="soon-tag">Demo</span>}</span>
                 </label>
               ))}
               {on.has('colegios') && paid && zoom < ZOOM_COLEGIOS && <span className="small muted">Acércate al mapa para ver los colegios.</span>}
@@ -488,6 +642,54 @@ export default function MapPage() {
               {on.has('capacidad') && <span className="small muted">Capacidad indicativa para conectar generación; verde = 10 MW o más, rojo = casi nada.</span>}
               {on.has('mt') && <span className="small muted">Media tensión: modelo estimado. No es la red oficial del operador.</span>}
               {on.has('mt') && paid && !mt && <span className="small muted">Cargando red estimada…</span>}
+            </div>
+          )}
+        </div>
+        <div className="dd">
+          <button className={`btn sm glass ${menu === 'lim' ? 'on' : ''}`} onClick={() => setMenu(menu === 'lim' ? null : 'lim')} aria-expanded={menu === 'lim'}>
+            <Icon name="polygon" size={16} />{dptoSel ? (dptoNames.find(([c]) => c === dptoSel)?.[1] || 'Departamento') : 'Límites'}<span className="caret">▾</span>
+          </button>
+          {menu === 'lim' && (
+            <div className="glass dd-menu layers" role="menu">
+              <b className="small">Mostrar límites</b>
+              {[['ninguno', 'Ninguno'], ['dptos', 'Departamentos'], ['munis', 'Departamentos y municipios'], ['relleno', 'Municipios coloreados por el valor elegido']].map(([k, l]) => (
+                <label key={k}><input type="radio" name="lim" checked={limites === k} onChange={() => setLimites(k)} /><span>{l}</span></label>
+              ))}
+              {limites === 'relleno' && <span className="small muted">Cada municipio se pinta con el valor de "Mostrar" (azul bajo, naranja alto) en vez de columnas.</span>}
+              <b className="small" style={{ marginTop: 6 }}>Ver solo un departamento</b>
+              <select className="select" value={dptoSel} onChange={(e) => { setDptoSel(e.target.value); if (e.target.value && limites === 'ninguno') setLimites('munis'); }} aria-label="Departamento">
+                <option value="">Todo el país</option>
+                {dptoNames.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+              </select>
+              {dptoSel && <button className="btn sm" onClick={() => setDptoSel('')}>Quitar filtro</button>}
+            </div>
+          )}
+        </div>
+        <div className="dd">
+          <button className={`btn sm glass ${menu === 'dash' ? 'on' : ''}`} onClick={() => setMenu(menu === 'dash' ? null : 'dash')} aria-expanded={menu === 'dash'}>
+            <Icon name="star" size={16} />{actual ? actual.name : 'Tableros'}<span className="caret">▾</span>
+          </button>
+          {menu === 'dash' && (
+            <div className="glass dd-menu layers dash-menu" role="menu">
+              <span className="small muted">Guarda cómo dejaste el mapa: vista, capas, departamento, dibujos, puntos agregados y ocultos.</span>
+              {actual && <button className="btn sm primary" onClick={() => guardarTablero(false)}><Icon name="check" size={14} />Guardar cambios en "{actual.name}"</button>}
+              <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                <input className="input" value={nombreT} onChange={(e) => setNombreT(e.target.value)} placeholder="Nombre del tablero nuevo" aria-label="Nombre del tablero" style={{ minHeight: 34 }} onKeyDown={(e) => { if (e.key === 'Enter') guardarTablero(true); }} />
+                <button className="btn sm" onClick={() => guardarTablero(true)}>Guardar</button>
+              </div>
+              {tableros.length > 0 && <b className="small" style={{ marginTop: 4 }}>Mis tableros</b>}
+              {tableros.map((t) => (
+                <div key={t.id} className={`dash-item ${actual?.id === t.id ? 'on' : ''}`}>
+                  <button onClick={() => abrirTablero(t)}><b>{t.name}</b><br /><span className="small muted">{t.fecha} · {t.on?.length || 0} capas{t.hidden?.length ? ` · ${t.hidden.length} ocultos` : ''}{t.shapes?.length ? ` · ${t.shapes.length} dibujos` : ''}</span></button>
+                  <button className="icon-btn" onClick={() => borrarTablero(t.id)} title="Eliminar tablero" aria-label={`Eliminar ${t.name}`}><Icon name="trash" size={15} /></button>
+                </div>
+              ))}
+              <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                {tableros.length > 0 && <button className="btn sm ghost" onClick={exportar}>Exportar</button>}
+                <label className="btn sm ghost" style={{ cursor: 'pointer' }}>Importar<input type="file" accept="application/json" hidden onChange={(e) => { if (e.target.files[0]) importar(e.target.files[0]); e.target.value = ''; }} /></label>
+                {actual && <button className="btn sm ghost" onClick={() => setActual(null)}>Cerrar tablero</button>}
+              </div>
+              <span className="small muted">Se guardan en este navegador. Usa Exportar para pasarlos a otro equipo.</span>
             </div>
           )}
         </div>
@@ -503,6 +705,7 @@ export default function MapPage() {
           <button key={k} className={tool === k ? 'on' : ''} onClick={() => pickTool(k)} title={label} aria-label={label} aria-pressed={tool === k}><Icon name={ic} size={18} /></button>
         ))}
         {shapes.length > 0 && <button onClick={clearShapes} title="Borrar todos los dibujos" aria-label="Borrar todos los dibujos"><Icon name="trash" size={18} /></button>}
+        {hidden.length > 0 && <button onClick={() => setHidden([])} title={`Mostrar los ${hidden.length} puntos ocultos`} aria-label="Mostrar puntos ocultos" className="hid-count"><Icon name="eye" size={18} /><span>{hidden.length}</span></button>}
       </div>
       {tool && (
         <div className="draw-hint glass">
@@ -598,13 +801,40 @@ export default function MapPage() {
         </div>
       </div>
 
+      {on.has('trafos') && paid && (
+        <div className="trafo-panel glass">
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+            <b className="small">Transformadores <span className="soon-tag">Demo</span></b>
+            <button className="icon-btn" onClick={() => setSoon(true)} title="Qué es este demo" aria-label="Qué es este demo">?</button>
+          </div>
+          {zoom < ZOOM_TRAFOS
+            ? <span className="small muted">{trafoRes ? `${fmt(trafoRes.total)} transformadores en ${fmt(trafoRes.municipios.length)} municipios (${trafoRes.operadores.map((o) => o.nombre).join(', ')}). Haz clic en un círculo o acércate para verlos uno por uno.` : 'Cargando…'}</span>
+            : <span className="small muted">{trafoPts?.total != null ? `${fmt(trafoRows.length)} en la vista${trafoPts.total > trafoPts.rows.length ? ` (los ${fmt(trafoPts.rows.length)} más grandes de ${fmt(trafoPts.total)})` : ''}` : 'Cargando…'}{trafoPts?.total === 0 ? '. Aquí aún no hay datos del operador.' : ''}</span>}
+          <div className="seg" role="group" aria-label="Color de los transformadores">
+            <button className={trafoMode === 'sem' ? 'on' : ''} onClick={() => setTrafoMode('sem')}>Disponibilidad</button>
+            <button className={trafoMode === 'score' ? 'on' : ''} onClick={() => setTrafoMode('score')}>Puntaje con pesos</button>
+          </div>
+          {trafoMode === 'sem' ? (
+            <div className="sem-legend">{Object.keys(SEM_COLOR).map((k) => <span key={k} className="small"><span className="cap-dot" style={{ background: `rgb(${SEM_COLOR[k].join(',')})` }} />{SEM_TXT[k]}</span>)}</div>
+          ) : (
+            <div className="trafo-w">
+              {Object.entries(TRAFO_F).map(([k, l]) => (
+                <label key={k} className="small"><span>{l}</span><input type="range" min="0" max="100" step="5" value={trafoW[k]} onChange={(e) => setTrafoW({ ...trafoW, [k]: +e.target.value })} /><span className="mono">{trafoW[k]}</span></label>
+              ))}
+              <span className="small muted">Naranja = mejores de la vista para ofrecer un sistema solar; azul = los de menos oportunidad.</span>
+              <button className="btn sm ghost" onClick={() => setTrafoW(TRAFO_W0)}>Pesos por defecto</button>
+            </div>
+          )}
+        </div>
+      )}
       {soon && (
         <div className="modal-bg" onClick={() => setSoon(false)}>
           <div className="card soon-card" onClick={(e) => e.stopPropagation()}>
-            <span className="soon-tag">Coming soon</span>
+            <span className="soon-tag">Demo</span>
             <h3>Transformadores de distribución</h3>
-            <p className="small">Muy pronto podrás ver en el mapa los transformadores de cada operador de red con su capacidad, su circuito y cuánta generación ya tienen conectada, para saber antes de visitar al cliente si su transformador tiene espacio para un sistema solar.</p>
-            <p className="small muted">Estamos reuniendo esta información con los operadores de red para que sea igual de completa en todo el país.</p>
+            <p className="small">Cada operador de red debe publicar sus transformadores con la capacidad disponible para autogeneración (Resolución CREG 174 de 2021). Por ahora tenemos la base de {(trafoRes?.operadores || []).map((o) => o.nombre).join(', ') || 'algunos operadores'}; el resto del país viene en camino.</p>
+            <p className="small">El espacio para un sistema solar se estima con la regla del 50 %: un transformador admite autogeneración hasta la mitad de su capacidad nominal, menos lo que ya está conectado. Donde el operador publica su propio valor disponible, se usa ese.</p>
+            <p className="small muted">Es una guía para priorizar visitas. La disponibilidad real la confirma el operador cuando se radica la solicitud.</p>
             <button className="btn sm" onClick={() => setSoon(false)}>Entendido</button>
           </div>
         </div>
