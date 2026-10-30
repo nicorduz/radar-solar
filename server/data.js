@@ -268,3 +268,79 @@ export function projectsFor(code) {
   const own = db.prepare('SELECT * FROM projects WHERE municipio=? ORDER BY id DESC').all(code).map((p) => ({ ...p, origen: 'cargado' }));
   return [...own, ...base.sort((a, b) => (b.unidades || 0) - (a.unidades || 0))];
 }
+
+// ---------------- Demo de transformadores de distribución (CREG 174) ----------------
+// Se carga la primera vez que se pide (son ~300.000 transformadores) y se indexa en una cuadrícula de 0,05°.
+const TR = { loaded: false, ops: [], n: 0, grid: new Map(), munis: new Map() };
+const tKey = (x, y) => `${Math.floor(x * 20)}|${Math.floor(y * 20)}`;
+// Espacio para autogeneración según la regla del 50 % de la capacidad nominal (CREG 174, art. 6).
+// Si el operador publica el disponible se usa; si publica la generación conectada se descuenta; si no, el límite es un máximo.
+export function trafoCalc(r) {
+  const [, , , kva, gd, disp] = r;
+  const lim = kva * 0.5;
+  const libre = disp != null ? Math.max(0, disp) : gd != null ? Math.max(0, lim - gd) : lim;
+  const uso = lim > 0 ? Math.min(1.5, 1 - libre / lim) : null;
+  const sd = disp == null && gd == null; // sin dato de generación conectada
+  const sem = sd ? 'sd' : uso < 0.5 ? 'verde' : uso < 0.8 ? 'amarillo' : uso < 1 ? 'naranja' : 'rojo';
+  return { lim, libre, uso, sem, sd };
+}
+// Se guarda en columnas (arreglos tipados) para ocupar poca memoria en el servidor
+const nn = (v) => (Number.isNaN(v) ? null : v);
+const r5 = (x) => Math.round(x * 1e5) / 1e5;
+const trafoRow = (i) => [TR.id[i], r5(TR.lon[i]), r5(TR.lat[i]), TR.kva[i], nn(TR.gd[i]), nn(TR.disp[i]), TR.op[i], TR.codes[TR.code[i]], TR.us[i] < 0 ? null : TR.us[i], TR.circ[i] || null];
+export function trafos() {
+  if (TR.loaded) return TR;
+  TR.loaded = true;
+  const own = path.join(builtDir(), 'trafos_demo.json'), repo = path.join(ROOT, 'data', 'built', 'trafos_demo.json');
+  const f = fs.existsSync(own) ? own : fs.existsSync(repo) ? repo : null;
+  if (!f) return TR;
+  let d = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const n = d.id.length;
+  TR.ops = d.operadores || []; TR.n = n;
+  TR.id = d.id; TR.circ = d.circ;
+  TR.lon = Float32Array.from(d.lon); TR.lat = Float32Array.from(d.lat); TR.kva = Float32Array.from(d.kva);
+  TR.gd = Float32Array.from(d.gd, (v) => v ?? NaN); TR.disp = Float32Array.from(d.disp, (v) => v ?? NaN);
+  TR.op = Uint8Array.from(d.op); TR.us = Int16Array.from(d.us, (v) => (v == null ? -1 : Math.min(32000, v)));
+  TR.codes = [...new Set(d.code)]; const ci = new Map(TR.codes.map((c, i) => [c, i]));
+  TR.code = Uint16Array.from(d.code, (c) => ci.get(c));
+  const cells = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = trafoRow(i);
+    const k = tKey(d.lon[i], d.lat[i]);
+    if (!cells.has(k)) cells.set(k, []);
+    cells.get(k).push(i);
+    const c = trafoCalc(r);
+    const a = TR.munis.get(r[7]) || { n: 0, kva: 0, libre: 0, espacio: 0, gd: 0, gd_n: 0, sd: 0, ops: new Set() };
+    a.n++; a.kva += r[3]; a.libre += c.libre; if (c.libre >= 3) a.espacio++; if (r[4]) { a.gd += r[4]; a.gd_n++; } if (c.sd) a.sd++; a.ops.add(r[6]);
+    TR.munis.set(r[7], a);
+  }
+  for (const [k, v] of cells) TR.grid.set(k, Int32Array.from(v));
+  d = null;
+  console.log(`Demo de transformadores: ${n} en ${TR.munis.size} municipios`);
+  return TR;
+}
+export function trafosBbox([w, s, e, n], limit = 8000) {
+  const T = trafos();
+  const out = [];
+  for (let gx = Math.floor(w * 20); gx <= Math.floor(e * 20); gx++) for (let gy = Math.floor(s * 20); gy <= Math.floor(n * 20); gy++) {
+    for (const i of T.grid.get(`${gx}|${gy}`) || []) if (T.lon[i] >= w && T.lon[i] <= e && T.lat[i] >= s && T.lat[i] <= n) out.push(i);
+  }
+  const total = out.length;
+  const idx = total > limit ? out.sort((a, b) => T.kva[b] - T.kva[a]).slice(0, limit) : out;
+  return { total, rows: idx.map(trafoRow) };
+}
+export function trafosMuni(code) {
+  const T = trafos();
+  const a = T.munis.get(code);
+  if (!a) return null;
+  // Distribución por tamaño y por semáforo (se recorre la base: es rápido)
+  const tam = { '≤ 15 kVA': 0, '15-50 kVA': 0, '50-150 kVA': 0, '> 150 kVA': 0 }, sem = { verde: 0, amarillo: 0, naranja: 0, rojo: 0, sd: 0 };
+  const ci = T.codes.indexOf(code);
+  for (let i = 0; i < T.n; i++) {
+    if (T.code[i] !== ci) continue;
+    const r = trafoRow(i);
+    tam[r[3] <= 15 ? '≤ 15 kVA' : r[3] <= 50 ? '15-50 kVA' : r[3] <= 150 ? '50-150 kVA' : '> 150 kVA']++;
+    sem[trafoCalc(r).sem]++;
+  }
+  return { n: a.n, kva: Math.round(a.kva), libre_kw: Math.round(a.libre), espacio: a.espacio, gd_kw: Math.round(a.gd), gd_n: a.gd_n, sin_gd: a.sd, ops: [...a.ops].map((i) => T.ops[i]?.nombre), tam, sem };
+}
