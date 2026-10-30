@@ -170,10 +170,27 @@ export default function Municipio({ code }) {
         </tbody></table></div>
         <p className="small muted" style={{ margin: 0 }}>MW que la barra admite en el 95 % de los escenarios de operación; "seguro" es lo que admite en todos. Es una capacidad indicativa para proyectos de generación (granjas y autogeneración grande), no para sistemas residenciales.</p>
       </>)}
-      <div className="soon-box">
-        <span><b className="small">Transformadores de distribución</b><span className="soon-tag">Coming soon</span></span>
-        <span className="small muted">Pronto verás aquí los transformadores de {m.or_name} con su capacidad y cuánta generación ya tienen conectada.</span>
-      </div>
+      {m.trafos ? (
+        <div className="soon-box">
+          <span><b className="small">Transformadores de distribución</b><span className="soon-tag">Demo</span></span>
+          <div className="grid g4">
+            <Stat label="Transformadores" value={fmt(m.trafos.n)} sub={`${fmt(m.trafos.kva)} kVA instalados`} />
+            <Stat label="Con espacio para 3 kW o más" value={`${fmt((m.trafos.espacio / m.trafos.n) * 100)} %`} sub={`${fmt(m.trafos.espacio)} transformadores`} />
+            <Stat label="Espacio estimado total" value={`${fmt(m.trafos.libre_kw)} kW`} sub="regla del 50 % de la capacidad" />
+            <Stat label="Generación ya conectada" value={m.trafos.sin_gd === m.trafos.n ? 's/d' : `${fmt(m.trafos.gd_kw)} kW`} sub={m.trafos.sin_gd === m.trafos.n ? 'el operador no la publica' : `en ${fmt(m.trafos.gd_n)} transformadores`} />
+          </div>
+          <div className="kv">
+            {Object.entries(m.trafos.tam).map(([k, v]) => <React.Fragment key={k}><span className="k">Transformadores de {k}</span><span className="v">{fmt(v)}</span></React.Fragment>)}
+          </div>
+          <span className="small muted">Datos de {m.trafos.ops.join(', ')}. El espacio es indicativo: el operador lo confirma al radicar la solicitud. En el mapa, activa la capa "Transformadores (demo)" y acércate a {m.name} para verlos uno por uno.</span>
+          <div className="row"><button className="btn sm" onClick={() => go('mapa', `trafos-${m.code}`)}>Ver transformadores en el mapa</button></div>
+        </div>
+      ) : (
+        <div className="soon-box">
+          <span><b className="small">Transformadores de distribución</b><span className="soon-tag">Coming soon</span></span>
+          <span className="small muted">Ya hay un demo con los transformadores de EPM, Afinia, Celsia, CEO y DISPAC. Pronto estarán los de {m.or_name}.</span>
+        </div>
+      )}
       <div className="row"><a className="btn sm" href={`https://www.google.com/search?q=${encodeURIComponent(`${m.or_name} "Resolución CREG 174 de 2021" disponibilidad de red`)}`} target="_blank" rel="noreferrer">Ver disponibilidad de red de {m.or_name}</a></div>
       <p className="small muted" style={{ margin: 0 }}>Mientras tanto, cada operador publica la capacidad de sus transformadores en su página (Resolución CREG 174 de 2021, art. 7).</p><Fuente>XM Paratec y UPME. Capacidad de conexión: UPME, tablero de capacidad indicativa por barra 2026-2027 (publicado el {meta.cortes.capacidad}).</Fuente>
     </>) },
