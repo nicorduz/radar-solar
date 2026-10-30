@@ -151,7 +151,7 @@ export default function App() {
   else if (view === 'diseno') page = <Diseno />;
   else if (view === 'marca') page = <Marca />;
   else if (view === 'propuesta' && arg) page = <Propuesta key={arg} arg={arg} />;
-  else page = <MapPage />;
+  else page = <MapPage focus={view === 'mapa' ? arg : null} />;
 
   const active = view === 'm' || view === 'propuesta' ? 'ranking' : view;
   return (
