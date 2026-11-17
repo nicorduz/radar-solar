@@ -3,7 +3,7 @@ import { api, fmt, money, csvDownload } from '../api.js';
 import { useApp } from '../App.jsx';
 import { Spinner, Contact, ContactCTA, ProspectButton, waShare } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
-import { useLocal, FOLLOWS, PROSPECTS, SEEN, ESTADOS, TIPOS, toggleFollow, addProspect, writeLocal } from '../local.js';
+import { useLocal, FOLLOWS, PROSPECTS, SEEN, ESTADOS, TIPOS, toggleFollow, addProspect, writeLocal, readLocal } from '../local.js';
 
 const TIPO_NOV = { licitacion: ['doc', 'Licitación'], obra: ['home', 'Obra o licencia'], proyecto: ['bolt', 'Proyecto de generación'] };
 
@@ -133,7 +133,7 @@ function Tablero({ paid }) {
   const exportCsv = () => csvDownload('prospectos.csv', ['nombre', 'tipo', 'estado', 'municipio', 'telefono', 'correo', 'valor', 'detalle', 'nota', 'creado', 'actualizado'],
     list.map((p) => [p.nombre, TIPOS[p.tipo] || p.tipo, ESTADOS.find((e) => e[0] === p.estado)?.[1], p.mun, p.tel, p.mail, p.valor, p.detalle, p.nota, p.creado, p.actualizado]));
   const backup = () => {
-    const blob = new Blob([JSON.stringify({ version: 1, prospectos: list, zonas: JSON.parse(localStorage.getItem(FOLLOWS) || '[]') })], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ version: 1, prospectos: list, zonas: readLocal(FOLLOWS, []) })], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `radar-solar-prospectos-${new Date().toISOString().slice(0, 10)}.json`; a.click();
   };
   const restore = async (file) => {
@@ -141,7 +141,7 @@ function Tablero({ paid }) {
       const d = JSON.parse(await file.text());
       const ids = new Set(list.map((p) => p.id));
       setList([...list, ...(d.prospectos || []).filter((p) => p.id && !ids.has(p.id))]);
-      if (Array.isArray(d.zonas)) { const cur = JSON.parse(localStorage.getItem(FOLLOWS) || '[]'); const have = new Set(cur.map((z) => z.code)); writeLocal(FOLLOWS, [...cur, ...d.zonas.filter((z) => z.code && !have.has(z.code))]); }
+      if (Array.isArray(d.zonas)) { const cur = readLocal(FOLLOWS, []); const have = new Set(cur.map((z) => z.code)); writeLocal(FOLLOWS, [...cur, ...d.zonas.filter((z) => z.code && !have.has(z.code))]); }
       setMsg('Copia de seguridad cargada.');
     } catch { setMsg('El archivo no es una copia de seguridad válida.'); }
   };

@@ -10,6 +10,8 @@ export async function api(path, { method = 'GET', body, form } = {}) {
     const caido = !data?.error && [502, 503, 504].includes(r.status);
     const err = new Error(data?.error || (caido ? 'El servidor se está iniciando o actualizando. Intenta de nuevo en un minuto.' : `Error ${r.status}`));
     err.status = r.status; err.data = data;
+    // El servidor pide aceptar términos o cambiar la contraseña: la app muestra la pantalla correspondiente
+    if (['consent_required', 'must_change_pw'].includes(data?.code)) window.dispatchEvent(new CustomEvent('rs-gate', { detail: data.code }));
     throw err;
   }
   return data;
@@ -56,7 +58,15 @@ export const METRICS = {
 
 export const PROFILE_ICONS = { instalador: 'home', proveedor: 'box', desarrollador: 'bolt', servicios: 'wrench', respaldo: 'battery' };
 
+// Las celdas que empiezan con = + - @ (o tabulador) se marcan como texto para que Excel no las ejecute como fórmula
+const celda = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
 export const csvDownload = (name, head, rows) => {
-  const blob = new Blob(['﻿' + [head, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
+  const blob = new Blob(['\ufeff' + [head, ...rows].map((r) => r.map(celda).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  // Queda registro de la exportación (tipo y número de filas, sin el contenido)
+  api('/audit/export', { method: 'POST', body: { tipo: name, filas: rows.length } }).catch(() => {});
+  announce(`Descarga lista: ${name}, ${rows.length} filas.`);
 };
+// Mensajes para lectores de pantalla (región aria-live del layout)
+export function announce(msg) { window.dispatchEvent(new CustomEvent('rs-announce', { detail: msg })); }

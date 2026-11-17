@@ -13,7 +13,9 @@ import Cuenta from './pages/Cuenta.jsx';
 import Clientes from './pages/Clientes.jsx';
 import Mercado from './pages/Mercado.jsx';
 import { ProfileSwitch } from './components/ui.jsx';
-import Terminos, { LegalLine, TerminosTexto } from './pages/Terminos.jsx';
+import Legal, { LegalLine, PublicShell } from './pages/Legal.jsx';
+import Derechos from './pages/Derechos.jsx';
+import { ConsentScreen, ForcePassword } from './components/Gates.jsx';
 import Plan, { PoweredBy } from './pages/Plan.jsx';
 import Industrias from './pages/Industrias.jsx';
 import Instituciones from './pages/Instituciones.jsx';
@@ -24,7 +26,7 @@ import Compartido from './pages/Compartido.jsx';
 import Diseno from './pages/Diseno.jsx';
 import Marca from './pages/Marca.jsx';
 import Tour from './components/Tour.jsx';
-import { useLocal, FOLLOWS, SEEN } from './local.js';
+import { useLocal, FOLLOWS, SEEN, setLocalUser } from './local.js';
 
 export const Ctx = createContext(null);
 // localStorage puede fallar (modo privado): se usa con try/catch
@@ -75,23 +77,31 @@ export default function App() {
   const [follows] = useLocal(FOLLOWS, []);
   const [seen] = useLocal(SEEN, []);
   const [nov, setNov] = useState(null);
+  const [gate, setGate] = useState(null); // 'consent_required' | 'must_change_pw'
+  const [live, setLive] = useState('');
 
+  const refreshUser = useCallback(() => api('/me').then((r) => { setUser(r.user); setGate(null); }).catch(() => setUser(null)), []);
   useEffect(() => {
     api('/config').then(setCfg).catch(() => {});
-    api('/me').then((r) => setUser(r.user)).catch(() => setUser(null));
-    const on = () => setRoute(parseHash());
-    window.addEventListener('hashchange', on);
-    return () => window.removeEventListener('hashchange', on);
+    refreshUser();
+    const on = () => { setRoute(parseHash()); document.getElementById('main')?.focus({ preventScroll: true }); };
+    const onGate = (e) => setGate(e.detail);
+    let t; const onAnn = (e) => { setLive(''); clearTimeout(t); t = setTimeout(() => setLive(e.detail), 60); };
+    window.addEventListener('hashchange', on); window.addEventListener('rs-gate', onGate); window.addEventListener('rs-announce', onAnn);
+    return () => { window.removeEventListener('hashchange', on); window.removeEventListener('rs-gate', onGate); window.removeEventListener('rs-announce', onAnn); };
   }, []);
+  // Los datos guardados en el navegador se separan por usuario
+  useEffect(() => { setLocalUser(user?.id || null); if (user?.must_change_pw) setGate('must_change_pw'); }, [user?.id, user?.must_change_pw]);
 
   useEffect(() => {
     if (!user) return;
+    if (gate) return;
     api('/meta').then((m) => {
       setMeta(m);
       const keys = Object.keys(m.profiles);
       setProfile((p) => (keys.includes(p) ? p : keys[0]));
     }).catch((e) => { if (e.status === 401) setUser(null); });
-  }, [user]);
+  }, [user, gate]);
 
   // Pesos guardados por perfil en este navegador (solo plan completo)
   useEffect(() => {
@@ -112,24 +122,34 @@ export default function App() {
   const updateWeights = (w) => { setWeights(w); store.set('rs_weights_' + profile, JSON.stringify(w)); };
   const updateSegment = (s) => { setSegment(s); store.set('rs_segment', s); };
   const updateProfile = (p) => { setWeights(null); setProfile(p); store.set('rs_profile', p); };
-  const logout = async () => { await api('/logout', { method: 'POST' }).catch(() => {}); setUser(null); setMeta(null); };
+  const logout = async () => {
+    await api('/logout', { method: 'POST' }).catch(() => {});
+    // El chat del asistente vive solo en la pestaña: se borra al salir
+    try { for (const k of Object.keys(sessionStorage)) if (k.startsWith('rs_chat')) sessionStorage.removeItem(k); } catch { /* sin almacenamiento */ }
+    setLocalUser(null); setUser(null); setMeta(null); setGate(null);
+  };
+  const liveRegion = <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{live}</div>;
 
-  // Ficha compartida por enlace: se ve sin iniciar sesión
+  // Ficha compartida por enlace, documentos legales y canal de derechos: se ven sin iniciar sesión
   if (route.view === 'compartido' && route.arg) return <Compartido token={route.arg} />;
-  if (user === undefined) return <div className="login"><div className="spinner" /></div>;
-  if (!user) {
-    if (route.view === 'terminos') return <div className="login" style={{ alignItems: 'flex-start' }}><div className="card" style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 14 }}><a href="#/" className="small">← Volver al ingreso</a><h1>Términos de la licencia de uso</h1><TerminosTexto appName={cfg.appName} /></div></div>;
-    return <Login cfg={cfg} onLogin={setUser} />;
-  }
-  if (!meta || !weights || !profile || !meta.profiles[profile]) return <div className="login"><div className="spinner" /></div>;
+  if (!user && (route.view === 'legal' || route.view === 'terminos')) return <PublicShell><Legal doc={route.arg || 'terminos'} /></PublicShell>;
+  if (!user && route.view === 'derechos') return <PublicShell><Derechos /></PublicShell>;
+  if (user === undefined) return <div className="boot" role="status" aria-label="Cargando"><div className="spinner" /></div>;
+  if (!user) return <Login cfg={cfg} onLogin={(u) => { setUser(u); setGate(null); }} />;
+  // Bloqueos que exige el servidor antes de usar la plataforma
+  if (gate === 'must_change_pw') return <>{liveRegion}<ForcePassword user={user} onDone={refreshUser} onLogout={logout} /></>;
+  if (gate === 'consent_required' && !['legal', 'derechos'].includes(route.view)) return <>{liveRegion}<ConsentScreen onDone={() => { setGate(null); refreshUser(); }} onLogout={logout} /></>;
+  if (gate === 'consent_required') return <PublicShell>{route.view === 'derechos' ? <Derechos user={user} /> : <Legal doc={route.arg} />}</PublicShell>;
+  if (!meta || !weights || !profile || !meta.profiles[profile]) return <div className="boot" role="status" aria-label="Cargando"><div className="spinner" /></div>;
 
   const paid = meta.paid;
   const NAV = navFor(profile);
-  const nav = [...NAV, ...(user.role === 'admin' ? [{ id: 'admin', label: 'Administración', icon: 'gear' }] : [])];
+  const isAdmin = user.stored_role === 'admin';
+  const nav = [...NAV, ...(isAdmin ? [{ id: 'admin', label: 'Administración', icon: 'gear' }] : [])];
   const prof = meta.profiles[profile];
   // Parámetros que todas las consultas de puntaje envían al servidor
   const scoreParams = { profile, ...(prof.segments ? { segment } : {}), ...Object.fromEntries(Object.entries(weights).map(([k, v]) => [`w_${k}`, v])) };
-  const ctx = { user, cfg, meta, paid, profile, prof, setProfile: updateProfile, segment, setSegment: updateSegment, weights, setWeights: updateWeights, scoreParams, go, logout };
+  const ctx = { user, cfg, meta, paid, profile, prof, setProfile: updateProfile, segment, setSegment: updateSegment, weights, setWeights: updateWeights, scoreParams, go, logout, refreshUser, isAdmin };
   const { view, arg } = route;
 
   let page;
@@ -140,9 +160,10 @@ export default function App() {
   else if (view === 'clientes') page = <Clientes code={arg} />;
   else if (view === 'mercado') page = <Mercado />;
   else if (view === 'asistente') page = <Asistente code={arg} />;
-  else if (view === 'admin' && user.role === 'admin') page = <Admin />;
+  else if (view === 'admin' && isAdmin) page = <Admin />;
   else if (view === 'cuenta') page = <Cuenta />;
-  else if (view === 'terminos') page = <Terminos appName={cfg.appName} />;
+  else if (view === 'terminos' || view === 'legal') page = <Legal doc={arg || 'terminos'} />;
+  else if (view === 'derechos') page = <Derechos user={user} />;
   else if (view === 'plan') page = <Plan />;
   else if (view === 'industrias') page = <Industrias code={arg} />;
   else if (view === 'instituciones') page = <Instituciones arg={arg} />;
@@ -156,30 +177,32 @@ export default function App() {
   const active = view === 'm' || view === 'propuesta' ? 'ranking' : view;
   return (
     <Ctx.Provider value={ctx}>
+      <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Saltar al contenido</a>
+      {liveRegion}
       <div className="shell">
-        <aside className="side">
-          <div className="brand"><img src="/icon.svg" alt="" /><span>{cfg.appName}</span></div>
-          <PoweredBy />
+        <aside className="side" aria-label="Navegación principal">
+          <div className="brand"><img src="/icon.svg" alt="" width="28" height="28" /><span>{cfg.appName}</span></div>
           <ProfileSwitch />
-          {nav.map((n) => (
-            <button key={n.id} className={`navbtn ${active === n.id ? 'on' : ''}`} onClick={() => go(n.id)}>
-              <Icon name={n.icon} />{n.label}{n.id === 'prospectos' && sinVer > 0 && <span className="badge" aria-label={`${sinVer} novedades sin ver`}>{sinVer > 99 ? '99+' : sinVer}</span>}
-            </button>
-          ))}
+          <nav className="side-nav">
+            {nav.map((n) => (
+              <a key={n.id} href={`#/${n.id}`} className={`navbtn ${active === n.id ? 'on' : ''}`} aria-current={active === n.id ? 'page' : undefined}>
+                <Icon name={n.icon} />{n.label}{n.id === 'prospectos' && sinVer > 0 && <span className="badge"><span aria-hidden="true">{sinVer > 99 ? '99+' : sinVer}</span><span className="sr-only">{sinVer} novedades sin ver</span></span>}
+              </a>
+            ))}
+          </nav>
           <div className="spacer" />
-          <button className={`navbtn ${active === 'marca' ? 'on' : ''}`} onClick={() => go('marca')}><Icon name="palette" />Mi marca</button>
-          {!paid && <button className="btn primary sm" style={{ margin: '0 4px 8px' }} onClick={() => go('plan')}>Plan completo · pago único</button>}
-          <button className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} onClick={() => go('cuenta')}><Icon name="user" />{user.name || user.username}</button>
-          <div className="legal-foot"><LegalLine go={go} /></div>
+          <a href="#/marca" className={`navbtn ${active === 'marca' ? 'on' : ''}`} aria-current={active === 'marca' ? 'page' : undefined}><Icon name="palette" />Mi marca</a>
+          {!paid && <a href="#/plan" className="btn primary sm side-cta">Plan completo</a>}
+          <a href="#/cuenta" className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} aria-current={active === 'cuenta' ? 'page' : undefined}><Icon name="user" /><span className="trunc">{user.name || user.username}</span></a>
+          <PoweredBy />
         </aside>
-        <main className="main">{page}</main>
+        <main id="main" className="main" tabIndex={-1}>{page}<footer className="app-foot"><LegalLine titular={cfg.titular} /></footer></main>
         <Tour paid={paid} go={go} />
-        <nav className="bottomnav">
-          {[...NAV.slice(0, 3), PAGES.asistente && { id: 'asistente', ...PAGES.asistente }, { id: 'cuenta', label: 'Más', icon: 'menu' }].map((n) => (
-            <button key={n.id} className={active === n.id || (n.id === 'cuenta' && !['mapa', 'ranking', 'asistente', NAV[2].id].includes(active)) ? 'on' : ''} onClick={() => go(n.id)}>
-              <Icon name={n.icon} />{n.label}
-            </button>
-          ))}
+        <nav className="bottomnav" aria-label="Navegación principal">
+          {[...NAV.slice(0, 3), PAGES.asistente && { id: 'asistente', ...PAGES.asistente }, { id: 'cuenta', label: 'Más', icon: 'menu' }].map((n) => {
+            const on = active === n.id || (n.id === 'cuenta' && !['mapa', 'ranking', 'asistente', NAV[2].id].includes(active));
+            return <a key={n.id} href={`#/${n.id}`} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}><Icon name={n.icon} />{n.label}</a>;
+          })}
         </nav>
       </div>
     </Ctx.Provider>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import maplibregl from '../maplibre.js';
 
 // Estilo satelital gratuito con nombres de lugares encima
 export function satStyle(sat) {

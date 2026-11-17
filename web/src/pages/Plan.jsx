@@ -4,15 +4,20 @@ import { Icon } from '../components/Icon.jsx';
 import { fmt } from '../api.js';
 import { TESTIMONIOS } from '../testimonios.js';
 
-export const PLAN_PRECIO = 750000; // COP, pago único
+// El precio y las condiciones vienen del servidor (PLAN_PRECIO_COP, PLAN_IMPUESTOS, LEGAL_VIGENCIA_PLAN)
+export const PLAN_PRECIO = 750000; // respaldo si el servidor no responde
 export const TALERA_URL = 'https://www.talera.co/';
 const cop = (n) => '$' + Math.round(n).toLocaleString('es-CO');
+export const usePlan = () => {
+  const { cfg } = useApp();
+  return { precio: cfg.plan?.precio || PLAN_PRECIO, impuestos: cfg.plan?.impuestos || null, vigencia: cfg.plan?.vigencia || null };
+};
 
 // "Powered by Talera" con enlace a la página de Talera
 export function PoweredBy({ className = 'powered' }) {
   return (
-    <a className={className} href={TALERA_URL} target="_blank" rel="noreferrer" title="Ir a talera.co">
-      <span>Powered by</span><img src="/talera-logo.png" alt="Talera" />
+    <a className={className} href={TALERA_URL} target="_blank" rel="noreferrer">
+      <span>Powered by</span><img src="/talera-logo.png" alt="Talera" width="64" height="16" /><span className="sr-only">(abre talera.co en otra pestaña)</span>
     </a>
   );
 }
@@ -23,11 +28,12 @@ function waLink(cfg, texto) {
 
 export function ComprarBotones({ grande }) {
   const { cfg } = useApp();
-  const wa = waLink(cfg, `Hola, quiero comprar el plan completo de ${cfg.appName} (pago único de ${cop(PLAN_PRECIO)} COP).`);
+  const { precio } = usePlan();
+  const wa = waLink(cfg, `Hola, quiero una cotización del plan completo de ${cfg.appName} (${cop(precio)} COP, pago único).`);
   return (
-    <div className="row" style={{ justifyContent: 'center' }}>
-      {wa && <a className={`btn primary ${grande ? 'lg' : ''}`} href={wa} target="_blank" rel="noreferrer">Quiero el plan completo</a>}
-      {cfg.contact?.email && <a className="btn" href={`mailto:${cfg.contact.email}?subject=${encodeURIComponent('Plan completo ' + cfg.appName)}`}>Escribir por correo</a>}
+    <div className="row center">
+      {wa && <a className={`btn primary ${grande ? 'lg' : ''}`} href={wa} target="_blank" rel="noreferrer">Pedir cotización por WhatsApp</a>}
+      {cfg.contact?.email && <a className={`btn ${wa ? '' : 'primary'} ${grande ? 'lg' : ''}`} href={`mailto:${cfg.contact.email}?subject=${encodeURIComponent('Plan completo ' + cfg.appName)}`}>Escribir por correo</a>}
       {!wa && !cfg.contact?.email && <a className="btn primary" href={TALERA_URL} target="_blank" rel="noreferrer">Contactar a Talera</a>}
     </div>
   );
@@ -35,92 +41,86 @@ export function ComprarBotones({ grande }) {
 
 // Resumen corto del precio (para la página Cuenta y los avisos de contenido bloqueado)
 export function PrecioCorto() {
+  const { precio, impuestos } = usePlan();
   return (
-    <div className="precio-corto">
-      <span className="mono">{cop(PLAN_PRECIO)}</span><span> COP · pago único, sin mensualidades</span>
-    </div>
+    <p className="precio-corto"><span className="num">{cop(precio)}</span> COP · pago único, sin cobros recurrentes{impuestos ? ` · ${impuestos}` : ''}</p>
   );
 }
 
 export default function Plan() {
   const { meta, paid, cfg } = useApp();
+  const { precio, impuestos, vigencia } = usePlan();
   const t = meta.totals || {};
-  const mensualAnio = PLAN_PRECIO / 12;
   const incluye = [
-    ['map', 'Mapa 3D y ranking de oportunidad', 'Más de 1.000 municipios con puntaje para instaladores, proveedores, desarrolladores, mantenimiento y baterías. Busca lugares, dibuja zonas y mide distancias.'],
+    ['map', 'Mapa y ranking de oportunidad', `${fmt(t.municipios || 1122)} municipios con puntaje para instaladores, proveedores, desarrolladores, mantenimiento y baterías. Busca lugares, dibuja zonas y mide distancias.`],
     ['bolt', 'Tarifas, cortes y sol de cada municipio', 'Tarifa por operador y estrato, cortes de energía de los últimos 12 meses, radiación y clima.'],
-    ['factory', 'Empresas grandes e industrias', `Las ${fmt(t.ci || 10000)} empresas más grandes del país con sector, ingresos, sede y contacto: clientes comerciales e industriales.`],
-    ['hotel', 'Hoteles y turismo', `${fmt(t.clientes)} hoteles, viviendas turísticas y parques con número de habitaciones y contacto de la empresa.`],
-    ['school', 'Colegios, hospitales y centros de salud', `${fmt(t.colegios)} sedes educativas y ${fmt(t.salud)} sedes de salud con tamaño, ubicación y contacto de las instituciones con NIT.`],
-    ['building', 'Instaladores, mayoristas y competencia', `${fmt(t.empresas)} empresas del sector con municipio, teléfono, correo y contratos solares ganados.`],
+    ['factory', 'Empresas grandes e industrias', `Las ${fmt(t.ci || 10000)} empresas más grandes del país con sector, ingresos, sede y contacto comercial de la empresa.`],
+    ['hotel', 'Hoteles y turismo', `${fmt(t.clientes)} prestadores turísticos con número de habitaciones; el contacto se muestra solo cuando el prestador es una empresa.`],
+    ['school', 'Colegios, hospitales y centros de salud', `${fmt(t.colegios)} sedes educativas y ${fmt(t.salud)} sedes de salud con tamaño y ubicación; contacto solo de instituciones con NIT.`],
+    ['building', 'Instaladores, mayoristas y competencia', `${fmt(t.empresas)} empresas del sector con municipio, datos de contacto empresariales y contratos solares ganados.`],
     ['doc', 'Licitaciones públicas solares', `${fmt(t.secop)} procesos de contratación pública: quién compra, por cuánto y quién ganó.`],
     ['star', 'Mis prospectos y novedades', 'Sigue tus zonas, mira las licitaciones, obras y proyectos nuevos y lleva el estado de cada cliente potencial.'],
-    ['sun', 'Diseño solar sobre imagen satelital', 'Dibuja el techo del cliente, llena los paneles, compara con y sin baterías y entrega una propuesta en PDF con imágenes y retorno de la inversión.'],
-    ['pdf', 'Propuestas e informes en PDF', 'Propuestas comerciales para tus clientes, informes de zona y para alcaldías, con tu empresa como autora.'],
+    ['sun', 'Diseño solar sobre imagen satelital', 'Dibuja el techo, distribuye los paneles, compara con y sin baterías y entrega una propuesta en PDF con estimaciones de generación y retorno.'],
+    ['pdf', 'Propuestas e informes en PDF', 'Propuestas comerciales, informes de zona y para alcaldías, con tu empresa como autora.'],
     ['calc', 'Calculadora financiera', 'Retorno, cuota del crédito, valor presente, TIR y beneficios tributarios de la Ley 1715.'],
-    ['layers', 'Red eléctrica y proyectos', `Líneas de transmisión, ${fmt(t.subs)} subestaciones con su capacidad para conectar generación, ${fmt(t.plantas)} plantas de generación y proyectos registrados. Evalúa sitios en el mapa.`],
+    ['layers', 'Red eléctrica y proyectos', `Líneas de transmisión, ${fmt(t.subs)} subestaciones con su capacidad indicativa de conexión, ${fmt(t.plantas)} plantas de generación y proyectos registrados.`],
     ['clock', 'Calidad del servicio por operador', 'Horas sin luz y número de cortes al año de cada operador de red, frente a la meta que le fija el regulador.'],
     ['box', 'Importaciones de paneles y baterías', 'Cuántos paneles entran al país cada mes, a qué precio, de dónde vienen y a qué departamentos llegan.'],
-    ['share', 'Comparte por WhatsApp', 'Envía la ficha de un municipio con un enlace de solo lectura, sin que tu cliente necesite cuenta.'],
-    ['spark', 'Asistente con inteligencia artificial', 'Argumentos de venta, estrategia por zona y mensajes de WhatsApp listos para enviar.'],
+    ['share', 'Enlaces de solo lectura', 'Envía la ficha de un municipio con un enlace que vence a los 30 días y que puedes revocar cuando quieras.'],
+    ['spark', 'Asistente con inteligencia artificial', 'Borradores de argumentos de venta, estrategia por zona y mensajes. Son textos generados por IA: revísalos antes de enviarlos.'],
   ];
-  const waEquipo = cfg.contact?.whatsapp ? `https://wa.me/${cfg.contact.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, quiero cotizar una licencia de ${cfg.appName} para mi equipo.`)}` : null;
+  const waEquipo = waLink(cfg, `Hola, quiero cotizar una licencia de ${cfg.appName} para mi equipo.`);
 
   return (
-    <div className="page" style={{ maxWidth: 1000 }}>
-      <section className="plan-hero card">
-        <div className="diag" aria-hidden="true" />
-        <span className="tag hot">Plan completo</span>
-        <h1>Paga una vez. Úsala siempre.</h1>
-        <p className="muted" style={{ margin: 0, maxWidth: 620 }}>Toda la inteligencia de mercado solar de Colombia en una sola plataforma, sin suscripciones que te cobran cada mes.</p>
+    <div className="page plan">
+      <section className="plan-hero" aria-labelledby="plan-t">
+        <p className="eyebrow">Plan completo</p>
+        <h1 id="plan-t">Toda la inteligencia de mercado solar de Colombia, con un solo pago.</h1>
+        <p className="lead">Sin suscripción ni cobros automáticos. Pagas una vez y recibes acceso completo con tu propio usuario.</p>
         <div className="plan-precio">
-          <span className="mono">{cop(PLAN_PRECIO)}</span>
-          <span>COP<br /><b>pago único</b></span>
+          <span className="num">{cop(precio)}</span>
+          <span className="plan-precio-u">COP<br />pago único</span>
         </div>
-        <p className="small muted" style={{ margin: 0 }}>Equivale a {cop(mensualAnio)} al mes durante el primer año. Desde el mes 13 no vuelves a pagar.</p>
+        <dl className="plan-terms">
+          <dt>Impuestos</dt><dd>{impuestos || 'El valor total con impuestos se indica en la cotización, antes de pagar.'}</dd>
+          <dt>Vigencia del acceso</dt><dd>{vigencia || <>Según los <a href="#/legal/terminos">términos de uso</a> vigentes al momento de la compra.</>}</dd>
+          <dt>Factura</dt><dd>Factura electrónica a nombre de quien compra.</dd>
+          <dt>Retracto y reversión</dt><dd><a href="#/legal/cancelaciones">Cuándo aplican y cómo pedirlos</a></dd>
+        </dl>
         {paid ? <div className="alert ok">Tu cuenta ya tiene el plan completo.</div> : <ComprarBotones grande />}
       </section>
 
-      <div className="grid g2">
-        <div className="card plan-vs off">
-          <h3>Una suscripción mensual</h3>
-          <ul>
-            <li>Te cobra cada mes, la uses o no.</li>
-            <li>El costo crece mientras más tiempo la necesitas.</li>
-            <li>Si dejas de pagar, pierdes el acceso.</li>
-          </ul>
-        </div>
-        <div className="card plan-vs on">
-          <h3>Radar Solar · pago único</h3>
-          <ul>
-            <li>Pagas una sola vez: {cop(PLAN_PRECIO)} COP.</li>
-            <li>Entras cuando la necesites, sin renovaciones ni cobros automáticos.</li>
-            <li>Los datos se actualizan con información pública oficial.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h2>Todo lo que incluye</h2>
-        <div className="plan-items">
+      <section className="stack" aria-labelledby="inc-t">
+        <h2 id="inc-t">Qué incluye</h2>
+        <ul className="plan-items">
           {incluye.map(([ic, titulo, texto]) => (
-            <div key={titulo} className="plan-item">
-              <span className="sec-ic"><Icon name={ic} /></span>
-              <span><b>{titulo}</b><br /><span className="small muted">{texto}</span></span>
-            </div>
+            <li key={titulo} className="plan-item">
+              <span className="ic" aria-hidden="true"><Icon name={ic} /></span>
+              <span><b>{titulo}</b><span className="small muted">{texto}</span></span>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+        <p className="small muted">Los datos vienen de fuentes públicas y se actualizan cuando cada entidad publica una nueva versión. Los puntajes, la generación y el retorno son estimaciones. <a href="#/legal/fuentes">Alcance de la información</a>.</p>
+      </section>
 
-      <div className="card plan-team">
-        <span className="sec-ic"><Icon name="users" /></span>
-        <span style={{ flex: '1 1 320px' }}><b>Licencia para equipos</b><br /><span className="small muted">Un usuario para cada vendedor o ingeniero de tu empresa, con las mismas condiciones de pago único. Cotiza según el número de personas.</span></span>
+      <section className="card plan-steps" aria-labelledby="como-t">
+        <h2 id="como-t">Cómo es la compra</h2>
+        <ol>
+          <li><b>Pides la cotización</b><span className="small muted">por WhatsApp o correo, con el número de usuarios que necesitas.</span></li>
+          <li><b>Recibes las condiciones por escrito</b><span className="small muted">valor total, impuestos, medio de pago y vigencia.</span></li>
+          <li><b>Pagas y activamos tu cuenta</b><span className="small muted">te confirmamos la fecha de activación y enviamos la factura electrónica.</span></li>
+        </ol>
+      </section>
+
+      <section className="card plan-team" aria-labelledby="eq-t">
+        <span className="ic" aria-hidden="true"><Icon name="users" /></span>
+        <span className="grow"><b id="eq-t">Licencia para equipos</b><span className="small muted">Un usuario para cada vendedor o ingeniero de tu empresa. Cada persona entra con su propia cuenta. Cotiza según el número de personas.</span></span>
         {waEquipo ? <a className="btn" href={waEquipo} target="_blank" rel="noreferrer">Cotizar para mi equipo</a> : cfg.contact?.email ? <a className="btn" href={`mailto:${cfg.contact.email}?subject=${encodeURIComponent('Licencia de equipo ' + cfg.appName)}`}>Cotizar para mi equipo</a> : <a className="btn" href={TALERA_URL} target="_blank" rel="noreferrer">Cotizar para mi equipo</a>}
-      </div>
+      </section>
 
       {TESTIMONIOS.length > 0 && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <h2>Lo que dicen nuestros clientes</h2>
+        <section className="stack" aria-labelledby="test-t">
+          <h2 id="test-t">Lo que dicen nuestros clientes</h2>
           <div className="grid g2">
             {TESTIMONIOS.map((x, i) => (
               <figure key={i} className="testimonio">
@@ -129,21 +129,14 @@ export default function Plan() {
               </figure>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="card plan-roi">
-        <Icon name="sun" size={22} />
-        <span>Un sistema residencial de 6 kWp cuesta cerca de {cop(3800000 * 6)} según el costo de referencia de la plataforma. <b>Con cerrar una sola venta, la licencia queda pagada.</b></span>
-      </div>
-
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center' }}>
-        <h2>¿Listo para vender más?</h2>
-        <p className="muted" style={{ margin: 0 }}>Escríbenos y activamos tu plan el mismo día.</p>
-        {!paid && <ComprarBotones grande />}
+      <section className="plan-close">
+        <p className="small muted">Como referencia, un sistema residencial de 6 kWp cuesta cerca de {cop(3800000 * 6)} con el costo de referencia de la plataforma. El resultado comercial depende de tu gestión; la plataforma no garantiza ventas.</p>
+        {!paid && <ComprarBotones />}
         <PoweredBy />
-        <span className="small muted">{cfg.appName} es una plataforma de Talera Colombia Consulting S.A.S. · <a href={TALERA_URL} target="_blank" rel="noreferrer">talera.co</a></span>
-      </div>
+      </section>
     </div>
   );
 }

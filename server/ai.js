@@ -17,7 +17,7 @@ export const aiInfo = () => {
 export async function complete({ system, messages, json = false, temperature = 0.3, maxTokens = 1500 }) {
   const args = { system, messages, json, temperature, maxTokens };
   const cadena = [...new Set([config.ai.provider, ...ORDEN])].filter((k) => config.ai[k]?.key);
-  if (!cadena.length) throw Object.assign(new Error('La IA no está configurada. Agrega GROQ_API_KEY (gratis en console.groq.com) en las variables del servidor.'), { status: 503 });
+  if (!cadena.length) throw Object.assign(new Error('El asistente no está disponible en este momento.'), { status: 503 });
   const errores = [];
   for (const p of cadena) {
     try {

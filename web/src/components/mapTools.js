@@ -67,11 +67,11 @@ export function parseCoords(q) {
 }
 export const normTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
-// Búsqueda de direcciones y lugares con OpenStreetMap (Nominatim), limitada a Colombia
+// Búsqueda de direcciones y lugares con OpenStreetMap (Nominatim), limitada a Colombia.
+// Pasa por el servidor: OpenStreetMap no recibe la IP del usuario.
 export async function geocode(q) {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=co&accept-language=es&q=${encodeURIComponent(q)}`;
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
   if (!r.ok) return [];
   const j = await r.json();
-  return j.map((x) => ({ label: x.display_name.split(',').slice(0, 3).join(','), sub: x.display_name.split(',').slice(3, 5).join(',').trim(), pos: [+x.lon, +x.lat], zoom: x.type === 'administrative' || x.addresstype === 'city' || x.addresstype === 'town' ? 11 : 16 }));
+  return j.map((x) => ({ label: x.display_name.split(',').slice(0, 3).join(','), sub: x.display_name.split(',').slice(3, 5).join(',').trim(), pos: [+x.lon, +x.lat], zoom: x.type === 'administrative' || x.class === 'boundary' || x.addresstype === 'town' ? 11 : 16 }));
 }

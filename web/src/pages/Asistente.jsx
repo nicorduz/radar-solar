@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { useApp } from '../App.jsx';
 import { Icon } from '../components/Icon.jsx';
 import Markdown from '../components/Markdown.jsx';
+import { chatKey } from '../local.js';
 
 const SUGS = {
   instalador: ['¿Dónde conviene vender sistemas con baterías por los cortes de energía?', '¿Qué municipios con hoteles y tarifa alta debería visitar primero?', 'Compara Anapoima, Melgar y Girardot para vender casas campestres', 'Dame un guion de llamada para un hotel de 40 habitaciones'],
@@ -12,14 +13,14 @@ const SUGS = {
 
 export default function Asistente({ code }) {
   const { paid, profile, segment, prof } = useApp();
-  const [msgs, setMsgs] = useState(() => { try { return JSON.parse(sessionStorage.getItem('rs_chat') || '[]'); } catch { return []; } });
+  const [msgs, setMsgs] = useState(() => { try { return JSON.parse(sessionStorage.getItem(chatKey()) || '[]'); } catch { return []; } });
   const [txt, setTxt] = useState('');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const end = useRef(null);
 
   useEffect(() => { api('/ai/status').then(setStatus).catch(() => {}); }, []);
-  useEffect(() => { sessionStorage.setItem('rs_chat', JSON.stringify(msgs.slice(-20))); end.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
+  useEffect(() => { sessionStorage.setItem(chatKey(), JSON.stringify(msgs.slice(-20))); end.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
   const send = async (q) => {
     const question = (q ?? txt).trim(); if (!question || busy) return;

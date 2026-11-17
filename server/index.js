@@ -6,57 +6,67 @@ import multer from 'multer';
 import { config, ROOT, STORAGE } from './config.js';
 import { db, getSetting, setSetting } from './db.js';
 import {
-  parseCookies, loadUser, requireUser, requireAdmin, isPaid, loginThrottle, hashPassword, verifyPassword,
-  createSession, destroySession, publicUser, validateUsername, validatePassword, ensureBootstrapAdmin,
+  parseCookies, loadUser, requireUser, requireAdmin, isPaid, hashPassword, verifyPassword, login, loginMfa, mfaSetup, mfaEnable, mfaVerifySession,
+  destroySession, destroyOtherSessions, listSessions, revokeSession, publicUser, validateUsername, passwordProblem, ensureBootstrapAdmin,
 } from './auth.js';
+import { securityHeaders, csrfGuard, limiter, audit, errorHandler, purgeOld, contacto as limpiarContacto, ipOf } from './security.js';
+import { privacyRoutes, deleteUser } from './privacy.js';
+import { startBackups, createBackup, listBackups } from './backup.js';
 import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
 
-ensureBootstrapAdmin();
+await ensureBootstrapAdmin();
 loadData();
+purgeOld();
+setInterval(purgeOld, 24 * 3600e3).unref();
+startBackups();
 // Si el volumen tiene una base de una versión anterior de la app, se agregan las fuentes nuevas y se reconstruye
 if ((store.meta.schema || 1) < 2) {
   ensureRaw();
   try { startJob('reconstruir', rebuild); console.log('Base de versión anterior: reconstruyendo con las fuentes nuevas…'); } catch (e) { console.error(e.message); }
 }
 
-const TERMS_VERSION = '2026-11';
 const isAdmin = (req) => req.role === 'admin';
 const app = express();
+// Un solo proxy delante (el del hosting): req.ip toma la IP real del visitante y no una que el cliente invente
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+app.use(securityHeaders);
 app.use(express.json({ limit: '1mb' }));
-app.use(parseCookies, loadUser);
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // Protección CSRF básica: las peticiones que cambian estado deben venir del mismo origen
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.path.startsWith('/api/')) {
-    const origin = req.headers.origin;
-    if (origin && new URL(origin).host !== req.headers.host) return res.status(403).json({ error: 'Origen no permitido' });
-  }
-  next();
-});
+app.use(parseCookies, loadUser, csrfGuard);
+// Límite general de la API por usuario o por IP, además de los límites propios de cada operación
+app.use('/api/', limiter('api', 600, 60));
 
-const upload = multer({ dest: path.join(STORAGE, 'tmp'), limits: { fileSize: 40 * 1024 * 1024 } });
+const upload = multer({ dest: path.join(STORAGE, 'tmp'), limits: { fileSize: 40 * 1024 * 1024, files: 1 } });
+// Verifica el contenido real del archivo, no solo la extensión
+function fileKindOk(file, allowed) {
+  const ext = path.extname(file.originalname).toLowerCase().slice(1);
+  if (!allowed.includes(ext)) return false;
+  const fd = fs.openSync(file.path, 'r'); const buf = Buffer.alloc(8); fs.readSync(fd, buf, 0, 8, 0); fs.closeSync(fd);
+  if (ext === 'pdf') return buf.slice(0, 5).toString() === '%PDF-';
+  if (['xlsx', 'docx'].includes(ext)) return buf[0] === 0x50 && buf[1] === 0x4b;
+  if (['csv', 'txt', 'md'].includes(ext)) { const head = fs.readFileSync(file.path).subarray(0, 4096); return !head.includes(0); }
+  return false;
+}
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ---------------- Sesión ----------------
-app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact: config.contact, ai: aiInfo().configured, sat: { tiles: config.satTiles, attribution: config.satAttribution } }));
+app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact: config.contact, ai: aiInfo().configured, sat: { tiles: config.satTiles, attribution: config.satAttribution }, plan: { precio: config.planPrecio, impuestos: config.planImpuestos, vigencia: process.env.LEGAL_VIGENCIA_PLAN || null }, titular: config.legal.razonSocial || null, pw_min: 15 }));
 
-app.post('/api/login', loginThrottle, (req, res) => {
-  const { username, password } = req.body || {};
-  const u = db.prepare('SELECT * FROM users WHERE username=?').get(String(username || '').trim());
-  if (!u || !u.active || !verifyPassword(String(password || ''), u.pass_hash)) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
-  createSession(res, u.id);
-  // El ingreso implica aceptar los términos de la licencia (se muestran en la pantalla de ingreso)
-  db.prepare("UPDATE users SET terms_at=datetime('now'), terms_version=? WHERE id=?").run(TERMS_VERSION, u.id);
-  res.json({ user: publicUser(u) });
-});
-app.post('/api/logout', (req, res) => { destroySession(req, res); res.json({ ok: true }); });
-app.get('/api/me', (req, res) => res.json({ user: req.user ? publicUser(req.user) : null }));
+app.post('/api/login', wrap(login));
+app.post('/api/login/mfa', wrap(loginMfa));
+app.post('/api/logout', (req, res) => { if (req.user) audit(req, 'logout'); destroySession(req, res); res.json({ ok: true }); });
+app.get('/api/me', (req, res) => res.json({ user: req.user ? publicUser(req.user, req.session) : null }));
+// Segundo factor de administradores
+app.post('/api/mfa/setup', requireUser, wrap(mfaSetup));
+app.post('/api/mfa/enable', requireUser, wrap(mfaEnable));
+app.post('/api/mfa/verify', requireUser, wrap(mfaVerifySession));
+// Sesiones abiertas del usuario
+app.get('/api/me/sessions', requireUser, (req, res) => res.json(listSessions(req, req.user.id)));
+app.post('/api/me/sessions/cerrar-otras', requireUser, (req, res) => { destroyOtherSessions(req, req.user.id); audit(req, 'sesiones_cerradas'); res.json({ ok: true }); });
+app.delete('/api/me/sessions/:id', requireUser, (req, res) => { revokeSession(req.user.id, req.params.id); audit(req, 'sesion_cerrada'); res.json({ ok: true }); });
 // Marca de la empresa del usuario (se usa en propuestas y reportes)
 app.get('/api/branding', requireUser, (req, res) => {
   const r = db.prepare('SELECT data, updated_at FROM branding WHERE user_id=?').get(req.user.id);
@@ -75,13 +85,18 @@ app.put('/api/branding', requireUser, (req, res) => {
   db.prepare("INSERT INTO branding(user_id,data,updated_at) VALUES(?,?,datetime('now')) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at").run(req.user.id, JSON.stringify(data));
   res.json(data);
 });
-app.post('/api/me/password', requireUser, (req, res) => {
+app.post('/api/me/password', requireUser, limiter('pw', 8, 15 * 60), wrap(async (req, res) => {
   const { current, next: nw } = req.body || {};
-  if (!verifyPassword(String(current || ''), req.user.pass_hash)) return res.status(400).json({ error: 'La contraseña actual no coincide' });
-  if (!validatePassword(nw)) return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
-  db.prepare('UPDATE users SET pass_hash=? WHERE id=?').run(hashPassword(nw), req.user.id);
+  if (!(await verifyPassword(String(current || ''), req.user.pass_hash))) return res.status(400).json({ error: 'La contraseña actual no coincide', campo: 'current' });
+  const prob = passwordProblem(nw, req.user.username);
+  if (prob) return res.status(400).json({ error: prob, campo: 'next' });
+  if (await verifyPassword(nw, req.user.pass_hash)) return res.status(400).json({ error: 'La nueva contraseña debe ser distinta de la actual.', campo: 'next' });
+  db.prepare("UPDATE users SET pass_hash=?, must_change_pw=0, pw_changed_at=datetime('now') WHERE id=?").run(await hashPassword(nw), req.user.id);
+  // Cambiar la contraseña cierra las demás sesiones
+  destroyOtherSessions(req, req.user.id);
+  audit(req, 'contraseña_cambiada');
   res.json({ ok: true });
-});
+}));
 
 // ---------------- Datos ----------------
 app.get('/api/meta', requireUser, (req, res) => {
@@ -147,10 +162,10 @@ app.get('/api/municipio/:code', requireUser, (req, res) => {
   res.json({
     ...m, rank: r.rank, score: r.score, comp: r.comp, tier: r.score != null ? tier(r.score) : null, total_rank: sc.rows.length,
     payback: payback(m), tarifa_info: t, proyectos: projectsFor(m.code).slice(0, 60).map((p) => (isAdmin(req) ? p : { ...p, fuente: undefined, origen: undefined })),
-    ci: isPaid(req) ? store.ci.filter((e) => e.code === m.code).slice(0, 12) : [], ci_n: store.ci.filter((e) => e.code === m.code).length,
+    ci: isPaid(req) ? store.ci.filter((e) => e.code === m.code).slice(0, 12).map(limpiarContacto) : [], ci_n: store.ci.filter((e) => e.code === m.code).length,
     secop: secopLocal, secop_dpto: secopDpto,
     docs: db.prepare("SELECT id,title,created_at FROM documents WHERE municipio=? AND purpose='ia'").all(m.code),
-    clientes: store.clientes.filter((c) => c.code === m.code).slice(0, isPaid(req) ? 15 : 1).map((c) => (isPaid(req) ? c : { ...c, tel: null, mail: null, dir: null })),
+    clientes: store.clientes.filter((c) => c.code === m.code).slice(0, isPaid(req) ? 15 : 1).map((c) => (isPaid(req) ? limpiarContacto(c) : { ...c, tel: null, mail: null, dir: null })),
     clientes_n: store.clientes.filter((c) => c.code === m.code).length,
     ...localInstallers(m, isPaid(req)),
     plantas: store.red.plantas.filter((p) => p.tipo === 'solar' && m.lat && kmBetween(m, p) <= 30).sort((a, b) => b.mw - a.mw).slice(0, 12),
@@ -189,7 +204,7 @@ app.get('/api/empresas', requireUser, (req, res) => {
   const cats = {};
   for (const e of rows) cats[e.cat] = (cats[e.cat] || 0) + 1;
   rows = [...rows].sort((a, b) => (b.sol_n || 0) - (a.sol_n || 0) || (b.tel || b.mail ? 1 : 0) - (a.tel || a.mail ? 1 : 0));
-  const view = (e) => ({ ...e, ubic: e.code ? `${store.byCode.get(e.code)?.name}, ${store.byCode.get(e.code)?.dpto}` : e.cam });
+  const view = (e) => limpiarContacto({ ...e, ubic: e.code ? `${store.byCode.get(e.code)?.name}, ${store.byCode.get(e.code)?.dpto}` : e.cam });
   const page = Math.max(0, +req.query.page || 0);
   if (!isPaid(req)) return res.json({ total: rows.length, cats, rows: rows.slice(0, 1).map((e) => ({ ...view(e), tel: null, mail: null })), locked: true });
   res.json({ total: rows.length, cats, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
@@ -204,21 +219,21 @@ app.get('/api/clientes', requireUser, (req, res) => {
   if (cat) rows = rows.filter((c) => c.cat === cat);
   if (minHab) rows = rows.filter((c) => c.hab >= +minHab);
   if (q) { const n = norm(q); rows = rows.filter((c) => norm(c.n).includes(n) || norm(c.sub).includes(n)); }
-  const view = (c) => { const m = store.byCode.get(c.code); return { ...c, mun: m?.name, dpto: m?.dpto, tarifa: m?.tarifa, ghi: m?.ghi }; };
+  const view = (c) => { const m = store.byCode.get(c.code); return limpiarContacto({ ...c, mun: m?.name, dpto: m?.dpto, tarifa: m?.tarifa, ghi: m?.ghi }); };
   const page = Math.max(0, +req.query.page || 0);
   if (!isPaid(req)) return res.json({ total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...view(c), tel: null, mail: null, dir: null })), locked: true });
   res.json({ total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
 });
 
 // Colegios y sedes de salud como clientes institucionales
-const COL_VIEW = (c) => { const m = store.byCode.get(c.code); return { ...c, mun: m?.name, dpto: m?.dpto }; };
+const COL_VIEW = (c) => { const m = store.byCode.get(c.code); return limpiarContacto({ ...c, mun: m?.name, dpto: m?.dpto }); };
 function institucionesDe(code, paid) {
   const col = store.colegios.filter((c) => c.code === code).sort((a, b) => b.mat - a.mat);
   const sal = store.salud.filter((s) => s.code === code).sort((a, b) => (a.tipo === 'hospital' ? 0 : a.tipo === 'centro' ? 1 : 2) - (b.tipo === 'hospital' ? 0 : b.tipo === 'centro' ? 1 : 2) || (b.nit ? 1 : 0) - (a.nit ? 1 : 0));
   const hide = (s) => ({ ...s, tel: null, mail: null });
   return {
     colegios: col.slice(0, paid ? 12 : 1), colegios_n: col.length,
-    salud: (paid ? sal.slice(0, 12) : sal.slice(0, 1).map(hide)), salud_n: sal.length,
+    salud: (paid ? sal.slice(0, 12).map(limpiarContacto) : sal.slice(0, 1).map(hide)), salud_n: sal.length,
   };
 }
 app.get('/api/instituciones', requireUser, (req, res) => {
@@ -298,7 +313,7 @@ app.get('/api/ci', requireUser, (req, res) => {
   if (q) { const n = norm(q); rows = rows.filter((e) => norm(e.n).includes(n) || e.nit === q); }
   const sectores = {};
   for (const e of store.ci) sectores[e.sector] = (sectores[e.sector] || 0) + 1;
-  const view = (e) => { const m = store.byCode.get(e.code); return { ...e, mun: m?.name || e.ciudad, dpto: m?.dpto, tarifa_com: m?.tarifa_com ?? m?.tarifa, ghi: m?.ghi }; };
+  const view = (e) => { const m = store.byCode.get(e.code); return limpiarContacto({ ...e, mun: m?.name || e.ciudad, dpto: m?.dpto, tarifa_com: m?.tarifa_com ?? m?.tarifa, ghi: m?.ghi }); };
   const page = Math.max(0, +req.query.page || 0);
   if (!isPaid(req)) return res.json({ total: rows.length, sectores, anio: store.ciAnio, rows: rows.slice(0, 1).map((e) => ({ ...view(e), tel: null, mail: null, web: null })), locked: true });
   res.json({ total: rows.length, sectores, anio: store.ciAnio, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
@@ -328,20 +343,26 @@ app.post('/api/novedades', requireUser, (req, res) => {
 });
 
 // Enlaces de solo lectura para compartir la ficha de un municipio (válidos 30 días, sin datos de contacto)
+// Alcance: solo datos agregados del municipio, sin contactos ni datos del CRM. Se guardan en la base para poder revocarlos.
 const shareSign = (payload) => crypto.createHmac('sha256', config.secret).update(payload).digest('base64url').slice(0, 22);
-app.post('/api/share/:code', requireUser, (req, res) => {
+app.post('/api/share/:code', requireUser, limiter('share', 30, 3600), (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
   const m = store.byCode.get(req.params.code); if (!m) return res.status(404).json({ error: 'No encontrado' });
   const { profile } = parseQuery({ profile: req.body?.profile }, req.user, true);
   const exp = Math.floor(Date.now() / 1000) + 30 * 86400;
-  const payload = Buffer.from(JSON.stringify({ c: m.code, p: profile, e: exp, by: (req.user.company || req.user.name || '').slice(0, 60) })).toString('base64url');
-  res.json({ token: `${payload}.${shareSign(payload)}`, expira: new Date(exp * 1000).toISOString().slice(0, 10) });
+  const id = crypto.randomBytes(9).toString('base64url');
+  db.prepare('INSERT INTO shares(id,user_id,code,profile,expires_at) VALUES(?,?,?,?,?)').run(id, req.user.id, m.code, profile, new Date(exp * 1000).toISOString());
+  const payload = Buffer.from(JSON.stringify({ i: id, c: m.code, p: profile, e: exp, by: (req.user.company || req.user.name || '').slice(0, 60) })).toString('base64url');
+  audit(req, 'enlace_creado', id, { code: m.code });
+  res.json({ token: `${payload}.${shareSign(payload)}`, expira: new Date(exp * 1000).toISOString().slice(0, 10), id });
 });
-app.get('/api/public/ficha/:token', (req, res) => {
+app.get('/api/public/ficha/:token', limiter('ficha', 60, 60, (req) => ipOf(req)), (req, res) => {
   const [payload, sig] = String(req.params.token).split('.');
   if (!payload || !sig || sig.length !== 22 || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(shareSign(payload)))) return res.status(404).json({ error: 'Enlace no válido' });
   let d; try { d = JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch { return res.status(404).json({ error: 'Enlace no válido' }); }
   if (d.e * 1000 < Date.now()) return res.status(410).json({ error: 'Este enlace ya venció. Pide uno nuevo a quien te lo compartió.' });
+  // Enlaces nuevos: deben existir y no estar revocados. Los anteriores sin id vencen solos en 30 días.
+  if (d.i) { const sh = db.prepare('SELECT revoked_at FROM shares WHERE id=?').get(d.i); if (!sh || sh.revoked_at) return res.status(410).json({ error: 'Quien compartió este enlace lo desactivó.' }); }
   const m = store.byCode.get(d.c); if (!m) return res.status(404).json({ error: 'No encontrado' });
   const profile = PROFILES[d.p] ? d.p : 'instalador';
   const sc = scored(profile, null, 'campestre');
@@ -563,19 +584,19 @@ function buildContext(req, question, code) {
     const emp = store.empresas.filter((e) => inArea(e.code) && (e.sol_n || e.cat === 'Instaladores eléctricos' || e.cat === 'Contratistas solares (SECOP)' || e.cat === 'Proveedores mayoristas de equipo'))
       .sort((a, b) => (b.sol_n || 0) - (a.sol_n || 0) || (b.tel || b.mail ? 1 : 0) - (a.tel || a.mail ? 1 : 0)).slice(0, 15);
     parts.push(`\nEMPRESAS EN ${areaTxt.toUpperCase()} (Registro Mercantil + SECOP II; contratos solares = procesos SECOP con "solar" o "fotovoltaico" adjudicados). Total que cumplen el filtro: ${store.empresas.filter((e) => inArea(e.code) && e.sol_n).length} con contratos solares.\n` +
-      (emp.length ? emp.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.cat}, ${store.byCode.get(e.code)?.name || e.cam}; contratos solares: ${e.sol_n || 0}${e.sol_valor ? ` por ${money(e.sol_valor)}` : ''}${e.sol_ultimo ? `, último ${e.sol_ultimo}` : ''}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n') : '(sin empresas con ubicación en esa zona)'));
+      (emp.length ? emp.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.cat}, ${store.byCode.get(e.code)?.name || e.cam}; contratos solares: ${e.sol_n || 0}${e.sol_valor ? ` por ${money(e.sol_valor)}` : ''}${e.sol_ultimo ? `, último ${e.sol_ultimo}` : ''}`).join('\n') : '(sin empresas con ubicación en esa zona)'));
   }
   // Clientes comerciales e industriales (empresas grandes)
   if (has(/industri|fabrica|empresa grande|grandes empresas|c&i|comercial e industrial|supermercado|clinica|hospital|bodega|agroindustria|cliente/)) {
     const ci = store.ci.filter((e) => inArea(e.code)).slice(0, 12);
-    if (ci.length) parts.push(`\nEMPRESAS GRANDES (CLIENTES COMERCIALES E INDUSTRIALES) EN ${areaTxt.toUpperCase()}, por ingresos (corte ${store.ciAnio}):\n` + ci.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.sector}, ${store.byCode.get(e.code)?.name || e.ciudad}; ingresos ${fmt(e.ing)} mil millones; consumo típico del sector ${e.consumo}${e.tel ? `; tel ${e.tel}` : ''}${e.mail ? `; ${e.mail}` : ''}`).join('\n'));
+    if (ci.length) parts.push(`\nEMPRESAS GRANDES (CLIENTES COMERCIALES E INDUSTRIALES) EN ${areaTxt.toUpperCase()}, por ingresos (corte ${store.ciAnio}):\n` + ci.map((e) => `- ${e.n} (NIT ${e.nit}), ${e.sector}, ${store.byCode.get(e.code)?.name || e.ciudad}; ingresos ${fmt(e.ing)} mil millones; consumo típico del sector ${e.consumo}`).join('\n'));
   }
   // Colegios y salud
   if (has(/colegio|escuela|educa|institucion|hospital|clinica|salud|ips|ese\b/)) {
     const sal = store.salud.filter((x) => inArea(x.code) && x.tipo !== 'ips').slice(0, 10);
     const col = store.colegios.filter((x) => inArea(x.code)).sort((a, b) => b.mat - a.mat).slice(0, 10);
     if (col.length) parts.push(`\nCOLEGIOS CON MÁS ESTUDIANTES EN ${areaTxt.toUpperCase()} (MEN ${store.colegiosAnio}):\n` + col.map((c) => `- ${c.est} · sede ${c.n}, ${store.byCode.get(c.code)?.name}: ${fmt(c.mat)} estudiantes, ${c.sec === 'O' ? 'oficial' : 'privado'}, ${c.z === 'R' ? 'rural' : 'urbano'}`).join('\n'));
-    if (sal.length) parts.push(`\nHOSPITALES, CLÍNICAS Y CENTROS DE SALUD EN ${areaTxt.toUpperCase()} (REPS):\n` + sal.map((x) => `- ${x.n} (${x.pr}${x.nit ? `, NIT ${x.nit}` : ''}), ${store.byCode.get(x.code)?.name}, ${x.nat}${x.tel ? `; tel ${x.tel}` : ''}${x.mail ? `; ${x.mail}` : ''}`).join('\n'));
+    if (sal.length) parts.push(`\nHOSPITALES, CLÍNICAS Y CENTROS DE SALUD EN ${areaTxt.toUpperCase()} (REPS):\n` + sal.map((x) => `- ${x.n} (${x.pr}${x.nit ? `, NIT ${x.nit}` : ''}), ${store.byCode.get(x.code)?.name}, ${x.nat}`).join('\n'));
   }
   // Licitaciones
   if (has(/licitac|secop|contrato|proceso|entidad|public/)) {
@@ -585,7 +606,7 @@ function buildContext(req, question, code) {
   // Clientes turísticos
   if (has(/hotel|turis|alojamiento|cliente|vivienda turistica|parque/)) {
     const cl = store.clientes.filter((c) => inArea(c.code)).slice(0, 12);
-    if (cl.length) parts.push(`\nHOTELES Y ALOJAMIENTOS EN ${areaTxt.toUpperCase()} (Registro Nacional de Turismo, mayor número de habitaciones):\n` + cl.map((c) => `- ${c.n}, ${store.byCode.get(c.code)?.name}: ${c.hab} habitaciones${c.tel ? `; tel ${c.tel}` : ''}${c.mail ? `; ${c.mail}` : ''}`).join('\n'));
+    if (cl.length) parts.push(`\nHOTELES Y ALOJAMIENTOS EN ${areaTxt.toUpperCase()} (Registro Nacional de Turismo, mayor número de habitaciones):\n` + cl.map((c) => `- ${c.n}, ${store.byCode.get(c.code)?.name}: ${c.hab} habitaciones`).join('\n'));
   }
   // Proyectos UPME y plantas
   if (has(/upme|proyecto|planta|granja|parque solar|mw|desarroll|invers/)) {
@@ -614,7 +635,7 @@ const systemFor = (req) => (isAdmin(req)
   ? SYSTEM_BASE.replace('[FUENTES]', '')
   : SYSTEM_BASE.replace(/- \[FUENTES\][^\n]*\n/, '- Nunca nombres las fuentes ni las entidades de donde vienen los datos (por ejemplo DANE, SUI, Superservicios, CREG, MEN, MinSalud, REPS, XM, UPME, RNT, MinCIT, SECOP, Registro Mercantil, Confecámaras, Supersociedades, NASA, IPSE, datos.gov.co). Si preguntan de dónde salen los datos, responde que son datos de Radar Solar construidos a partir de información pública oficial.\n'));
 
-app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
+app.post('/api/ai/chat', requireUser, limiter('ia', 8, 60), wrap(async (req, res) => {
   const quota = aiQuota(req);
   if (!quota.left) return res.status(429).json({ error: isPaid(req) ? 'Llegaste al límite diario de consultas.' : 'En la versión de prueba tienes 3 consultas al día. Activa el plan completo para seguir.', quota });
   const msgs = (req.body?.messages || []).slice(-8).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 2000) }));
@@ -625,7 +646,7 @@ app.post('/api/ai/chat', requireUser, wrap(async (req, res) => {
   res.json({ answer, quota: aiQuota(req) });
 }));
 
-app.post('/api/ai/pitch/:code', requireUser, wrap(async (req, res) => {
+app.post('/api/ai/pitch/:code', requireUser, limiter('ia', 8, 60), wrap(async (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
   const m = store.byCode.get(req.params.code); if (!m) return res.status(404).json({ error: 'No encontrado' });
   const quota = aiQuota(req); if (!quota.left) return res.status(429).json({ error: 'Límite diario alcanzado' });
@@ -646,13 +667,14 @@ app.post('/api/ai/pitch/:code', requireUser, wrap(async (req, res) => {
 }));
 
 // Texto de introducción para propuestas e informes en PDF
-app.post('/api/ai/propuesta/:code', requireUser, wrap(async (req, res) => {
+app.post('/api/ai/propuesta/:code', requireUser, limiter('ia', 8, 60), wrap(async (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ error: 'Disponible en el plan completo', locked: true });
   const m = store.byCode.get(req.params.code); if (!m) return res.status(404).json({ error: 'No encontrado' });
   const quota = aiQuota(req); if (!quota.left) return res.status(429).json({ error: 'Límite diario alcanzado' });
   const { profile } = parseQuery({ profile: req.body?.profile }, req.user, true);
   const sc = scored(profile, null, 'campestre');
-  const cliente = String(req.body?.cliente || '').slice(0, 120);
+  // El nombre del cliente no se envía al proveedor de IA (minimización): el PDF lo agrega en el navegador
+  const cliente = '';
   const tipo = req.body?.tipo;
   const kwp = Math.max(1, Math.min(5000, +req.body?.kwp || 6));
   const prompt = tipo === 'alcaldia'
@@ -671,24 +693,54 @@ app.get('/api/team', requireUser, (req, res) => {
   res.json({ company: req.user.company, members: db.prepare('SELECT username, name, last_login FROM users WHERE company=? AND active=1 ORDER BY username').all(req.user.company) });
 });
 
+// Búsqueda de direcciones: pasa por el servidor para no exponer la IP del usuario a terceros y respetar
+// la política de uso de Nominatim (1 consulta por segundo, identificación de la aplicación, caché)
+const geoCache = new Map();
+let geoLast = 0;
+app.get('/api/geocode', requireUser, limiter('geo', 30, 60), wrap(async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 160);
+  if (q.length < 3) return res.json([]);
+  const key = q.toLowerCase();
+  if (geoCache.has(key)) return res.json(geoCache.get(key));
+  const wait = Math.max(0, geoLast + 1100 - Date.now()); geoLast = Date.now() + wait;
+  if (wait) await new Promise((r) => setTimeout(r, wait));
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=co&accept-language=es&q=${encodeURIComponent(q)}`;
+  const r = await fetch(url, { headers: { 'User-Agent': `${config.appName} (${config.legal.web || 'radar-solar'})` }, signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!r?.ok) return res.status(502).json({ error: 'El buscador de direcciones no respondió. Intenta de nuevo.' });
+  const out = (await r.json()).map((x) => ({ display_name: x.display_name, lat: x.lat, lon: x.lon, type: x.type, class: x.category || x.class, addresstype: x.addresstype }));
+  geoCache.set(key, out); if (geoCache.size > 2000) geoCache.delete(geoCache.keys().next().value);
+  res.json(out);
+}));
+// Registro de exportaciones hechas en el navegador (CSV, JSON, PDF): qué y cuántas filas, sin el contenido
+app.post('/api/audit/export', requireUser, limiter('export', 60, 3600), (req, res) => {
+  const tipo = String(req.body?.tipo || '').replace(/[^\w.-]/g, '').slice(0, 60);
+  audit(req, 'exportacion', tipo, { filas: Math.max(0, Math.min(1e6, +req.body?.filas || 0)) });
+  res.json({ ok: true });
+});
+
+// ---------------- Privacidad, legal y derechos de titulares ----------------
+app.use('/api', privacyRoutes({ requireUser, requireAdmin, isPaid }));
+
 // ---------------- Administración ----------------
 const admin = express.Router();
 admin.use(requireUser, requireAdmin);
+// Toda acción administrativa que cambia algo queda en la auditoría
+admin.use((req, res, next) => { if (req.method !== 'GET') res.on('finish', () => { if (res.statusCode < 400) audit(req, `admin_${req.method.toLowerCase()}`, req.path); }); next(); });
 
-admin.get('/users', (req, res) => res.json(db.prepare('SELECT id,username,role,profile,terms_at,terms_version,name,company,phone,notes,paid_until,active,created_at,last_login FROM users ORDER BY id DESC').all()));
+admin.get('/users', (req, res) => res.json(db.prepare('SELECT id,username,role,profile,name,company,phone,notes,paid_until,active,created_at,last_login,mfa_enabled,must_change_pw,plan_activated_at,plan_amount,plan_invoice FROM users ORDER BY id DESC').all()));
 const PROF_OK = ['todos', ...PROFILE_KEYS];
-admin.post('/users', (req, res) => {
+admin.post('/users', wrap(async (req, res) => {
   const { username, password, role = 'trial', name, company, phone, notes, paid_until, profile = 'todos' } = req.body || {};
   if (!PROF_OK.includes(profile)) return res.status(400).json({ error: 'Perfil inválido' });
   if (!validateUsername(username)) return res.status(400).json({ error: 'Usuario inválido (3-60 caracteres: letras, números, . _ - @)' });
-  if (!validatePassword(password)) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+  const prob = passwordProblem(password, username); if (prob) return res.status(400).json({ error: prob });
   if (!['trial', 'paid', 'admin'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
   if (db.prepare('SELECT 1 FROM users WHERE username=?').get(username)) return res.status(409).json({ error: 'Ese usuario ya existe' });
-  const r = db.prepare('INSERT INTO users(username,pass_hash,role,name,company,phone,notes,paid_until,profile) VALUES(?,?,?,?,?,?,?,?,?)').run(username.trim(), hashPassword(password), role, name || null, company || null, phone || null, notes || null, paid_until || null, profile);
+  const r = db.prepare('INSERT INTO users(username,pass_hash,role,name,company,phone,notes,paid_until,profile,must_change_pw) VALUES(?,?,?,?,?,?,?,?,?,1)').run(username.trim(), await hashPassword(password), role, name || null, company || null, phone || null, notes || null, paid_until || null, profile);
   res.json({ id: r.lastInsertRowid });
-});
+}));
 // Crea varios usuarios de una misma empresa (licencia de equipo) con contraseñas generadas
-admin.post('/users/team', (req, res) => {
+admin.post('/users/team', wrap(async (req, res) => {
   const { company, n = 3, prefix, role = 'paid', profile = 'todos', paid_until } = req.body || {};
   const count = Math.max(1, Math.min(50, +n || 0));
   if (!company || String(company).trim().length < 2) return res.status(400).json({ error: 'Escribe el nombre de la empresa' });
@@ -699,33 +751,53 @@ admin.post('/users/team', (req, res) => {
   for (let i = 1; out.length < count && i < 500; i++) {
     const username = `${base}${i}`;
     if (db.prepare('SELECT 1 FROM users WHERE username=?').get(username)) continue;
-    const password = crypto.randomBytes(9).toString('base64url');
-    db.prepare('INSERT INTO users(username,pass_hash,role,company,paid_until,profile,name) VALUES(?,?,?,?,?,?,?)').run(username, hashPassword(password), role, String(company).trim(), paid_until || null, profile, username);
+    // Claves aleatorias de 19 caracteres: cumplen la política y se entregan una sola vez
+    const password = crypto.randomBytes(14).toString('base64url');
+    db.prepare('INSERT INTO users(username,pass_hash,role,company,paid_until,profile,name) VALUES(?,?,?,?,?,?,?)').run(username, await hashPassword(password), role, String(company).trim(), paid_until || null, profile, username);
     out.push({ username, password });
   }
   res.json({ users: out, seed: out.map((u) => `${u.username}:${u.password}:${role}:${profile}:${String(company).trim().replace(/[:;]/g, ' ')}`).join(';') });
-});
-admin.patch('/users/:id', (req, res) => {
+}));
+admin.patch('/users/:id', wrap(async (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(+req.params.id); if (!u) return res.status(404).json({ error: 'No existe' });
   const b = req.body || {};
   if (b.role && !['trial', 'paid', 'admin'].includes(b.role)) return res.status(400).json({ error: 'Rol inválido' });
   if (u.id === req.user.id && (b.role && b.role !== 'admin' || b.active === 0)) return res.status(400).json({ error: 'No puedes quitarte el rol de administrador ni desactivarte' });
-  if (b.password != null && !validatePassword(b.password)) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
-  const f = { role: b.role ?? u.role, name: b.name ?? u.name, company: b.company ?? u.company, phone: b.phone ?? u.phone, notes: b.notes ?? u.notes, paid_until: b.paid_until !== undefined ? (b.paid_until || null) : u.paid_until, active: b.active ?? u.active };
+  if (b.password != null) { const prob = passwordProblem(b.password, u.username); if (prob) return res.status(400).json({ error: prob }); }
+  const txt = (v, n) => (v == null ? null : String(v).slice(0, n));
+  const f = { role: b.role ?? u.role, name: b.name !== undefined ? txt(b.name, 120) : u.name, company: b.company !== undefined ? txt(b.company, 120) : u.company, phone: b.phone !== undefined ? txt(b.phone, 40) : u.phone, notes: b.notes !== undefined ? txt(b.notes, 1000) : u.notes, paid_until: b.paid_until !== undefined ? (/^\d{4}-\d{2}-\d{2}$/.test(b.paid_until || '') ? b.paid_until : null) : u.paid_until, active: b.active ?? u.active };
   const prof = b.profile ?? u.profile ?? 'todos';
   if (!PROF_OK.includes(prof)) return res.status(400).json({ error: 'Perfil inválido' });
-  db.prepare('UPDATE users SET role=?,name=?,company=?,phone=?,notes=?,paid_until=?,active=?,profile=? WHERE id=?').run(f.role, f.name, f.company, f.phone, f.notes, f.paid_until, f.active ? 1 : 0, prof, u.id);
-  if (b.password) { db.prepare('UPDATE users SET pass_hash=? WHERE id=?').run(hashPassword(b.password), u.id); db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); }
-  if (!f.active) db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id);
+  // Datos de la activación del plan que el cliente ve en su cuenta (evidencia de la operación)
+  const plan = {
+    at: b.plan_activated_at !== undefined ? (/^\d{4}-\d{2}-\d{2}$/.test(b.plan_activated_at || '') ? b.plan_activated_at : null) : u.plan_activated_at,
+    amount: b.plan_amount !== undefined ? (Number.isFinite(+b.plan_amount) && +b.plan_amount > 0 ? Math.round(+b.plan_amount) : null) : u.plan_amount,
+    invoice: b.plan_invoice !== undefined ? txt(b.plan_invoice, 60) : u.plan_invoice,
+  };
+  db.prepare('UPDATE users SET role=?,name=?,company=?,phone=?,notes=?,paid_until=?,active=?,profile=?,plan_activated_at=?,plan_amount=?,plan_invoice=? WHERE id=?')
+    .run(f.role, f.name, f.company, f.phone, f.notes, f.paid_until, f.active ? 1 : 0, prof, plan.at, plan.amount, plan.invoice, u.id);
+  // Un cambio de rol o una clave nueva cierran las sesiones del usuario; una clave puesta por el administrador es temporal
+  if (b.password) { db.prepare('UPDATE users SET pass_hash=?, must_change_pw=1 WHERE id=?').run(await hashPassword(b.password), u.id); db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); }
+  if (!f.active || f.role !== u.role) db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id);
+  if (f.role !== u.role) audit(req, 'cambio_rol', `user:${u.id}`, { de: u.role, a: f.role });
+  if (b.reset_mfa && u.id !== req.user.id) { db.prepare('UPDATE users SET mfa_enabled=0, mfa_secret=NULL, mfa_recovery=NULL WHERE id=?').run(u.id); db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); audit(req, 'mfa_reiniciado', `user:${u.id}`); }
   res.json({ ok: true });
-});
+}));
 admin.delete('/users/:id', (req, res) => {
   if (+req.params.id === req.user.id) return res.status(400).json({ error: 'No puedes borrarte a ti mismo' });
-  db.prepare('DELETE FROM users WHERE id=?').run(+req.params.id); res.json({ ok: true });
+  if (!deleteUser(req, +req.params.id)) return res.status(404).json({ error: 'No existe' });
+  res.json({ ok: true });
 });
+// Respaldos cifrados: estado, copia manual y lista (la restauración se hace con la línea de comandos)
+admin.get('/backups', (req, res) => res.json({ activo: !!config.backup.key, persistente: config.persistentStorage, externo: !!config.backup.s3.endpoint, copias: listBackups() }));
+admin.post('/backups', wrap(async (req, res) => res.json(await createBackup('manual'))));
 
 admin.get('/stats', (req, res) => res.json({
   users: db.prepare("SELECT role, COUNT(*) n FROM users GROUP BY role").all(),
+  derechos: db.prepare("SELECT COUNT(*) abiertas, SUM(CASE WHEN due_at < date('now','-5 hours') THEN 1 ELSE 0 END) vencidas FROM rights_requests WHERE closed_at IS NULL").get(),
+  avisos: [...(config.persistentStorage ? [] : ['El disco del servidor no está marcado como persistente (PERSISTENT_STORAGE=1). En Render Free la base se borra al reiniciar: se pierden usuarios, aceptaciones, solicitudes y auditoría.']),
+    ...(config.backup.key ? [] : ['Las copias de seguridad cifradas no están activas (falta BACKUP_KEY).']),
+    ...(config.legal.razonSocial && config.legal.nit && config.legal.correoDatos ? [] : ['Faltan los datos del responsable en las políticas (LEGAL_RAZON_SOCIAL, LEGAL_NIT, LEGAL_CORREO_DATOS…).'])],
   docs: db.prepare('SELECT COUNT(*) n FROM documents').get().n,
   projects: db.prepare('SELECT COUNT(*) n FROM projects').get().n,
   ai_today: db.prepare('SELECT COALESCE(SUM(n),0) n FROM ai_usage WHERE day=?').get(new Date().toISOString().slice(0, 10)).n,
@@ -748,6 +820,7 @@ admin.put('/settings', (req, res) => {
 admin.get('/docs', (req, res) => res.json(db.prepare('SELECT d.*, (SELECT COUNT(*) FROM doc_chunks c WHERE c.doc_id=d.id) chunks, (SELECT COUNT(*) FROM projects p WHERE p.doc_id=d.id) projects FROM documents d ORDER BY id DESC').all()));
 admin.post('/docs', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Falta el archivo' });
+  if (!fileKindOk(req.file, ['pdf', 'docx', 'xlsx', 'csv', 'txt', 'md'])) { fs.rmSync(req.file.path, { force: true }); return res.status(400).json({ error: 'El contenido del archivo no corresponde a un PDF, Word, Excel, CSV o texto.' }); }
   const title = (req.body.title || req.file.originalname).slice(0, 200);
   const municipio = store.byCode.has(req.body.municipio) ? req.body.municipio : null;
   try {
@@ -796,6 +869,7 @@ admin.delete('/projects/:id', (req, res) => { db.prepare('DELETE FROM projects W
 // Cargas de datos estructurados
 admin.post('/data/upload', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Falta el archivo' });
+  if (!fileKindOk(req.file, ['xlsx', 'csv'])) { fs.rmSync(req.file.path, { force: true }); return res.status(400).json({ error: 'El contenido del archivo no corresponde a un Excel (.xlsx) o CSV.' }); }
   const type = req.body.type;
   try {
     ensureRaw();
@@ -871,7 +945,7 @@ function localInstallers(m, paid) {
   const rank = (a, b) => (b.sol_n || 0) - (a.sol_n || 0) || (b.tel || b.mail ? 1 : 0) - (a.tel || a.mail ? 1 : 0);
   const local = store.empresas.filter((e) => e.code === m.code && isInst(e)).sort(rank);
   const dpto = local.length >= 8 ? [] : store.empresas.filter((e) => e.code && e.code !== m.code && e.code.slice(0, 2) === m.code.slice(0, 2) && isInst(e) && (e.tel || e.mail || e.sol_n)).sort(rank);
-  const view = (e, ambito) => ({ n: e.n, nit: e.nit, cat: e.cat, sol_n: e.sol_n || 0, sol_ultimo: e.sol_ultimo, ambito, mun: store.byCode.get(e.code)?.name, tel: paid ? e.tel : null, mail: paid ? e.mail : null, web: paid ? e.web : null });
+  const view = (e, ambito) => limpiarContacto({ n: e.n, nit: e.nit, cat: e.cat, sol_n: e.sol_n || 0, sol_ultimo: e.sol_ultimo, ambito, mun: store.byCode.get(e.code)?.name, tel: paid ? e.tel : null, mail: paid ? e.mail : null, web: paid ? e.web : null });
   const rows = [...local.slice(0, 15).map((e) => view(e, 'municipio')), ...dpto.slice(0, 15 - Math.min(local.length, 15)).map((e) => view(e, 'departamento'))];
   return { instaladores: paid ? rows : rows.slice(0, 1), instaladores_n: { municipio: local.length, departamento: dpto.length } };
 }
@@ -897,10 +971,9 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
   if (fs.existsSync(f)) res.sendFile(f); else res.status(500).send('Falta compilar el front-end: npm run build');
 });
 
-app.use((err, req, res, _next) => {
-  if (err.status !== 429 && err.status !== 503) console.error(err);
-  res.status(err.status || 500).json({ error: err.message || 'Error interno' });
-});
+// Rutas de la API inexistentes: 404 en JSON, sin detalles
+app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
+app.use(errorHandler);
 
 app.listen(config.port, () => console.log(`${config.appName} escuchando en http://localhost:${config.port}`));
 
