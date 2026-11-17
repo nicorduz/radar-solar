@@ -1,19 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, fmt } from '../api.js';
 import { useApp } from '../App.jsx';
-import { Spinner } from '../components/ui.jsx';
+import { Spinner, Modal } from '../components/ui.jsx';
+import MfaPanel from '../components/Mfa.jsx';
 
 const ROLES = { trial: 'Prueba', paid: 'Pago', admin: 'Administrador' };
 const PERFILES = { todos: 'Todos los perfiles', instalador: 'Instalador solar', proveedor: 'Proveedor de equipos', desarrollador: 'Desarrollador o inversionista', servicios: 'Mantenimiento y servicios (O&M)', respaldo: 'Baterías y respaldo' };
 
 export default function Admin() {
+  const { user, refreshUser } = useApp();
   const [tab, setTab] = useState('usuarios');
-  const tabs = { usuarios: 'Usuarios', datos: 'Datos y fuentes', documentos: 'Documentos e IA', proyectos: 'Proyectos', ajustes: 'Ajustes' };
+  const tabs = { usuarios: 'Usuarios', privacidad: 'Privacidad y seguridad', datos: 'Datos y fuentes', documentos: 'Documentos e IA', proyectos: 'Proyectos', ajustes: 'Ajustes' };
+  // La administración exige verificación en dos pasos en esta sesión
+  if (user.mfa_needed) return <div className="page narrow"><header className="page-head"><p className="eyebrow">Administración</p><h1>Un paso más</h1></header><MfaPanel user={user} onDone={refreshUser} /></div>;
   return (
     <div className="page">
-      <h1>Administración</h1>
-      <div className="tabs">{Object.entries(tabs).map(([k, l]) => <button key={k} className={`btn sm ${tab === k ? 'primary' : 'ghost'}`} onClick={() => setTab(k)}>{l}</button>)}</div>
+      <header className="page-head"><p className="eyebrow">Plataforma</p><h1>Administración</h1></header>
+      <div className="tabs" role="tablist" aria-label="Secciones de administración">{Object.entries(tabs).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
       {tab === 'usuarios' && <Usuarios />}
+      {tab === 'privacidad' && <Privacidad />}
       {tab === 'datos' && <Datos />}
       {tab === 'documentos' && <Documentos />}
       {tab === 'proyectos' && <Proyectos />}
@@ -45,27 +50,26 @@ function Usuarios() {
       setEdit(null); load(); setMsg({ ok: true, t: 'Guardado' });
     } catch (e2) { setMsg({ ok: false, t: e2.message }); }
   };
-  const del = async (u) => { if (!confirm(`¿Eliminar a ${u.username}? Esta acción no se puede deshacer.`)) return; await api(`/admin/users/${u.id}`, { method: 'DELETE' }).catch((e) => alert(e.message)); load(); };
+  const del = async (u) => { if (!confirm(`¿Eliminar a ${u.username}? Se borran su cuenta, su marca, sus enlaces compartidos y su uso de IA. Esta acción no se puede deshacer.`)) return; await api(`/admin/users/${u.id}`, { method: 'DELETE' }).catch((e) => alert(e.message)); load(); };
   if (!list) return <Spinner />;
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
+      <div className="row between">
         <span className="muted small">{list.length} usuarios · {list.filter((u) => u.role === 'paid').length} de pago</span>
         <span className="row" style={{ gap: 6 }}><button className="btn" onClick={() => setTeam({ company: '', n: 3, prefix: '', role: 'paid', profile: 'todos', paid_until: '' })}>Crear equipo</button>
         <button className="btn primary" onClick={() => setEdit({ username: '', password: '', role: 'trial', profile: 'todos', name: '', company: '', phone: '', paid_until: '', active: 1 })}>Crear usuario</button></span>
       </div>
       {teamOut && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="card stack" role="status">
           <b>Equipo creado. Copia estas claves ahora: no se vuelven a mostrar.</b>
           <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Usuario</th><th>Contraseña</th></tr></thead><tbody>{teamOut.users.map((u) => <tr key={u.username}><td className="mono">{u.username}</td><td className="mono">{u.password}</td></tr>)}</tbody></table></div>
-          <span className="small muted">En el plan gratis de Render los usuarios creados aquí se borran al reiniciar. Para que no se pierdan, agrega este texto al final de la variable SEED_USERS (separado con punto y coma):</span>
+          <span className="small muted">Si el servidor no tiene disco persistente, los usuarios creados aquí se borran al reiniciar. En ese caso agrega este texto al final de la variable SEED_USERS (separado con punto y coma) y bórralo de tu portapapeles después:</span>
           <textarea className="input mono small" rows={3} readOnly value={teamOut.seed} onFocus={(e) => e.target.select()} />
           <div className="row"><button className="btn sm" onClick={() => navigator.clipboard?.writeText(teamOut.seed)}>Copiar para SEED_USERS</button><button className="btn sm ghost" onClick={() => setTeamOut(null)}>Cerrar</button></div>
         </div>
       )}
       {team && (
-        <div className="modal-bg" onClick={() => setTeam(null)}>
-          <form className="card modal" onClick={(e) => e.stopPropagation()} onSubmit={saveTeam} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Modal as="form" className="stack" label="Crear licencia de equipo" onClose={() => setTeam(null)} onSubmit={saveTeam}>
             <h2>Crear licencia de equipo</h2>
             <label className="f">Empresa<input className="input" required value={team.company} onChange={(e) => setTeam({ ...team, company: e.target.value })} /></label>
             <div className="grid g2" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -75,11 +79,10 @@ function Usuarios() {
             <label className="f">Tipo<select className="select" value={team.role} onChange={(e) => setTeam({ ...team, role: e.target.value })}><option value="paid">Pago: acceso completo</option><option value="trial">Prueba</option></select></label>
             <label className="f">Perfil<select className="select" value={team.profile} onChange={(e) => setTeam({ ...team, profile: e.target.value })}>{Object.entries(PERFILES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             <label className="f">Pago válido hasta (opcional)<input className="input" type="date" value={team.paid_until} onChange={(e) => setTeam({ ...team, paid_until: e.target.value })} /></label>
-            <span className="small muted">Se crean usuarios como prefijo1, prefijo2… con contraseñas aleatorias. Todos quedan en la misma empresa y se ven como equipo.</span>
+            <span className="small muted">Se crean usuarios como prefijo1, prefijo2… con contraseñas temporales aleatorias que deberán cambiar al ingresar. Todos quedan en la misma empresa y se ven como equipo.</span>
             {msg && !msg.ok && <div className="alert err">{msg.t}</div>}
-            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost" onClick={() => setTeam(null)}>Cancelar</button><button className="btn primary">Crear usuarios</button></div>
-          </form>
-        </div>
+            <div className="row end"><button type="button" className="btn ghost" onClick={() => setTeam(null)}>Cancelar</button><button className="btn primary">Crear usuarios</button></div>
+        </Modal>
       )}
       {msg && <div className={`alert ${msg.ok ? 'ok' : 'err'}`}>{msg.t}</div>}
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Usuario</th><th>Rol</th><th>Perfil</th><th>Empresa</th><th>Pago hasta</th><th>Último ingreso</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -90,17 +93,16 @@ function Usuarios() {
             <td className="small">{PERFILES[u.profile || 'todos']}</td>
             <td className="small">{u.company || '—'}<br /><span className="muted">{u.phone}</span></td>
             <td className="small mono">{u.paid_until || '—'}</td>
-            <td className="small mono">{u.last_login?.slice(0, 16) || 'nunca'}{u.terms_at ? <><br /><span className="muted">términos v{u.terms_version} aceptados</span></> : null}</td>
+            <td className="small mono">{u.last_login?.slice(0, 16) || 'nunca'}{u.must_change_pw ? <><br /><span className="tag warn">Clave temporal</span></> : null}{u.role === 'admin' ? <><br /><span className={`tag ${u.mfa_enabled ? 'ok' : 'warn'}`}>{u.mfa_enabled ? '2 pasos activo' : 'Sin 2 pasos'}</span></> : null}</td>
             <td className="small">{u.active ? 'Activo' : 'Inactivo'}</td>
             <td><div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}><button className="btn sm" onClick={() => setEdit({ ...u, password: '' })}>Editar</button>{u.id !== user.id && <button className="btn sm danger" onClick={() => del(u)}>Eliminar</button>}</div></td>
           </tr>))}
       </tbody></table></div>
       {edit && (
-        <div className="modal-bg" onClick={() => setEdit(null)}>
-          <form className="card modal" onClick={(e) => e.stopPropagation()} onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Modal as="form" className="stack" label={edit.id ? `Editar ${edit.username}` : 'Nuevo usuario'} onClose={() => setEdit(null)} onSubmit={save}>
             <h2>{edit.id ? `Editar ${edit.username}` : 'Nuevo usuario'}</h2>
             {!edit.id && <label className="f">Usuario (para iniciar sesión)<input className="input" value={edit.username} onChange={(e) => setEdit({ ...edit, username: e.target.value })} required autoComplete="off" /></label>}
-            <label className="f">{edit.id ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña (mínimo 8 caracteres)'}<input className="input" type="text" value={edit.password} onChange={(e) => setEdit({ ...edit, password: e.target.value })} required={!edit.id} minLength={8} autoComplete="new-password" /></label>
+            <label className="f">{edit.id ? 'Contraseña temporal nueva (vacío para no cambiarla)' : 'Contraseña temporal'}<input className="input mono" type="text" value={edit.password} onChange={(e) => setEdit({ ...edit, password: e.target.value })} required={!edit.id} minLength={15} maxLength={128} autoComplete="new-password" aria-describedby="pw-hint" /><span id="pw-hint" className="hint">Mínimo 15 caracteres. La persona deberá cambiarla al ingresar. Entrégala por un canal distinto al del usuario.</span></label>
             <label className="f">Tipo de usuario
               <select className="select" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
                 <option value="trial">Prueba: ve la primera fila y datos básicos</option><option value="paid">Pago: acceso completo</option><option value="admin">Administrador</option>
@@ -115,11 +117,21 @@ function Usuarios() {
               <label className="f">Empresa<input className="input" value={edit.company || ''} onChange={(e) => setEdit({ ...edit, company: e.target.value })} /></label>
             </div>
             <label className="f">Teléfono<input className="input" value={edit.phone || ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></label>
-            {edit.id && <label className="row small"><input type="checkbox" checked={!!edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked ? 1 : 0 })} /> Cuenta activa</label>}
+            {edit.role !== 'trial' && edit.role !== 'admin' && (
+              <fieldset className="fs">
+                <legend>Activación del plan (soporte para garantía y facturación)</legend>
+                <div className="grid g3">
+                  <label className="f">Fecha de activación<input className="input" type="date" value={edit.plan_activated_at || ''} onChange={(e) => setEdit({ ...edit, plan_activated_at: e.target.value })} /></label>
+                  <label className="f">Valor pagado (COP)<input className="input" type="number" min="0" step="1000" value={edit.plan_amount || ''} onChange={(e) => setEdit({ ...edit, plan_amount: e.target.value })} /></label>
+                  <label className="f">N.º factura electrónica<input className="input" maxLength={60} value={edit.plan_invoice || ''} onChange={(e) => setEdit({ ...edit, plan_invoice: e.target.value })} /></label>
+                </div>
+              </fieldset>
+            )}
+            {edit.id && <label className="check"><input type="checkbox" checked={!!edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked ? 1 : 0 })} /> Cuenta activa</label>}
+            {edit.id && edit.role === 'admin' && edit.mfa_enabled && edit.id !== user.id && <label className="check"><input type="checkbox" checked={!!edit.reset_mfa} onChange={(e) => setEdit({ ...edit, reset_mfa: e.target.checked })} /> Reiniciar verificación en dos pasos (perdió el teléfono y los códigos)</label>}
             {msg && !msg.ok && <div className="alert err">{msg.t}</div>}
-            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost" onClick={() => setEdit(null)}>Cancelar</button><button className="btn primary">Guardar</button></div>
-          </form>
-        </div>
+            <div className="row end"><button type="button" className="btn ghost" onClick={() => setEdit(null)}>Cancelar</button><button className="btn primary">Guardar</button></div>
+        </Modal>
       )}
     </>
   );
@@ -309,5 +321,211 @@ function Ajustes() {
         <p className="small muted" style={{ margin: 0 }}>La clave se define en el servidor (archivo .env o variables del hosting): GEMINI_API_KEY (gratis en aistudio.google.com) o GROQ_API_KEY (gratis en console.groq.com). Límite diario por usuario: AI_DAILY_TRIAL y AI_DAILY_PAID.</p>
       </div>
     </div>
+  );
+}
+
+const ESTADOS = { recibida: 'Recibida', en_tramite: 'En trámite', incompleta: 'Incompleta (se pidió información)', resuelta: 'Resuelta', rechazada: 'Rechazada', desistida: 'Desistida' };
+const fecha = (s) => (s ? String(s).slice(0, 16).replace('T', ' ') : '—');
+
+// Panel de cumplimiento: avisos de configuración, solicitudes de titulares, contactos retirados, aceptaciones, auditoría y respaldos
+function Privacidad() {
+  const [stats, setStats] = useState(null);
+  const [sec, setSec] = useState('solicitudes');
+  useEffect(() => { api('/admin/stats').then(setStats).catch(() => {}); }, [sec]);
+  const secs = { solicitudes: 'Solicitudes de titulares', retiros: 'Contactos retirados', aceptaciones: 'Aceptaciones', auditoria: 'Registro de actividad', respaldos: 'Copias de seguridad', documentos: 'Datos pendientes en políticas' };
+  return (
+    <div className="stack lg">
+      {stats?.avisos?.length > 0 && (
+        <div className="alert warn" role="status">
+          <b>Configuración pendiente en el servidor</b>
+          <ul className="tight">{stats.avisos.map((a) => <li key={a}>{a}</li>)}</ul>
+        </div>
+      )}
+      {stats?.derechos && (
+        <div className="grid g3">
+          <div className="card stat"><span className="l">Solicitudes abiertas</span><span className="v">{stats.derechos.abiertas || 0}</span></div>
+          <div className={`card stat ${stats.derechos.vencidas ? 'danger' : ''}`}><span className="l">Vencidas</span><span className="v">{stats.derechos.vencidas || 0}</span></div>
+          <div className="card stat"><span className="l">Plazos legales</span><span className="v sm">Consulta 10 · Reclamo 15 días hábiles</span></div>
+        </div>
+      )}
+      <div className="seg wrap" role="tablist" aria-label="Privacidad y seguridad">{Object.entries(secs).map(([k, l]) => <button key={k} role="tab" aria-selected={sec === k} className={sec === k ? 'on' : ''} onClick={() => setSec(k)}>{l}</button>)}</div>
+      {sec === 'solicitudes' && <Solicitudes />}
+      {sec === 'retiros' && <Retiros />}
+      {sec === 'aceptaciones' && <Aceptaciones />}
+      {sec === 'auditoria' && <Auditoria />}
+      {sec === 'respaldos' && <Respaldos />}
+      {sec === 'documentos' && <Pendientes />}
+    </div>
+  );
+}
+
+function Solicitudes() {
+  const [list, setList] = useState(null);
+  const [open, setOpen] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const load = () => api('/admin/derechos').then(setList);
+  useEffect(() => { load(); }, []);
+  const save = async (e) => {
+    e.preventDefault(); setMsg(null);
+    try {
+      const body = { status: open.status, response: open.response || '' };
+      if (open._prorrogar) body.prorrogar = open._motivo || '';
+      await api(`/admin/derechos/${open.id}`, { method: 'PATCH', body });
+      if (open._retirar && open.referencia) await api('/admin/suppressions', { method: 'POST', body: { value: open._retirar, reason: `Solicitud ${open.radicado}`, request_id: open.id } });
+      setOpen(null); load(); setMsg({ ok: true, t: 'Solicitud actualizada.' });
+    } catch (e2) { setMsg({ ok: false, t: e2.message, modal: true }); }
+  };
+  if (!list) return <Spinner />;
+  return (
+    <>
+      <p className="small muted measure">Cada solicitud llega con radicado y fecha límite en días hábiles de Colombia. La prórroga (5 días para consultas, 8 para reclamos) solo se puede usar una vez y antes del vencimiento, informando el motivo al titular. Responde siempre al correo que dejó la persona.</p>
+      {msg && !msg.modal && <div className={`alert ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.t}</div>}
+      <div className="tbl-wrap"><table className="tbl"><caption className="sr-only">Solicitudes de titulares de datos</caption>
+        <thead><tr><th>Radicado</th><th>Tipo</th><th>Titular</th><th>Estado</th><th>Vence</th><th></th></tr></thead><tbody>
+          {list.map((r) => (
+            <tr key={r.id}>
+              <td className="mono small">{r.radicado}<br /><span className="muted">{fecha(r.created_at)}</span></td>
+              <td className="small">{r.tipo_label}<br /><span className="tag">{r.clase}</span></td>
+              <td className="small">{r.nombre}<br /><span className="muted">{r.correo}</span></td>
+              <td className="small">{ESTADOS[r.status] || r.status}</td>
+              <td className="small mono">{r.due_at}{r.closed_at ? null : r.vencida ? <><br /><span className="tag danger">Vencida</span></> : <><br /><span className={`tag ${r.dias_restantes <= 2 ? 'warn' : ''}`}>{r.dias_restantes} días hábiles</span></>}{r.extended ? <><br /><span className="tag">Prorrogada</span></> : null}</td>
+              <td><button className="btn sm" onClick={() => { setMsg(null); setOpen({ ...r, _retirar: r.tipo === 'retirar_contacto' ? (String(r.referencia || '').match(/\d{9,10}/)?.[0] || '') : '' }); }}>Gestionar</button></td>
+            </tr>))}
+          {!list.length && <tr><td colSpan={6} className="empty">No hay solicitudes.</td></tr>}
+        </tbody></table></div>
+      {open && (
+        <Modal as="form" className="stack wide" label={`Solicitud ${open.radicado}`} onClose={() => setOpen(null)} onSubmit={save}>
+          <h2>Solicitud {open.radicado}</h2>
+          <dl className="kv">
+            <dt>Tipo</dt><dd>{open.tipo_label} ({open.clase})</dd>
+            <dt>Titular</dt><dd>{open.nombre} · {open.correo}{open.relacion ? ` · ${open.relacion}` : ''}</dd>
+            {open.referencia && <><dt>Referencia</dt><dd>{open.referencia}</dd></>}
+            <dt>Vence</dt><dd>{open.due_at}{open.extended ? ` (prorrogada: ${open.extension_reason})` : ''}</dd>
+          </dl>
+          <blockquote className="quote small">{open.detalle}</blockquote>
+          <label className="f">Estado<select className="select" value={open.status} onChange={(e) => setOpen({ ...open, status: e.target.value })}>{Object.entries(ESTADOS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+          <label className="f">Respuesta enviada al titular (queda como evidencia)<textarea className="input" rows={5} maxLength={4000} value={open.response || ''} onChange={(e) => setOpen({ ...open, response: e.target.value })} /></label>
+          {open.tipo === 'retirar_contacto' && (
+            <label className="f">NIT o identificador a retirar de toda la plataforma (opcional)<input className="input mono" value={open._retirar} onChange={(e) => setOpen({ ...open, _retirar: e.target.value })} /><span className="hint">Al guardar, el teléfono, el correo y la web de ese registro dejan de mostrarse a todos los usuarios, también después de restaurar una copia.</span></label>
+          )}
+          {!open.extended && !open.closed_at && !open.vencida && (
+            <>
+              <label className="check"><input type="checkbox" checked={!!open._prorrogar} onChange={(e) => setOpen({ ...open, _prorrogar: e.target.checked })} /> Usar la prórroga legal</label>
+              {open._prorrogar && <label className="f">Motivo que se informará al titular<textarea className="input" rows={2} minLength={10} maxLength={500} required value={open._motivo || ''} onChange={(e) => setOpen({ ...open, _motivo: e.target.value })} /></label>}
+            </>
+          )}
+          {msg?.modal && <div className="alert err" role="alert">{msg.t}</div>}
+          <div className="row end"><button type="button" className="btn ghost" onClick={() => setOpen(null)}>Cancelar</button><button className="btn primary">Guardar</button></div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function Retiros() {
+  const [list, setList] = useState(null);
+  const [f, setF] = useState({ value: '', reason: '' });
+  const [msg, setMsg] = useState(null);
+  const load = () => api('/admin/suppressions').then(setList);
+  useEffect(() => { load(); }, []);
+  const add = async (e) => {
+    e.preventDefault(); setMsg(null);
+    try { await api('/admin/suppressions', { method: 'POST', body: f }); setF({ value: '', reason: '' }); load(); setMsg({ ok: true, t: 'Contacto retirado en toda la plataforma.' }); }
+    catch (e2) { setMsg({ ok: false, t: e2.message }); }
+  };
+  if (!list) return <Spinner />;
+  return (
+    <>
+      <form className="card stack" onSubmit={add}>
+        <h2>Retirar los datos de contacto de un registro</h2>
+        <p className="small muted measure">Úsalo cuando una empresa o persona pida no ser contactada. Se oculta su teléfono, correo y web en mapas, listas, exportaciones e IA. El retiro sobrevive a reinicios y restauraciones.</p>
+        <div className="grid g2">
+          <label className="f">NIT (sin dígito de verificación) o identificador<input className="input mono" required value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} /></label>
+          <label className="f">Motivo o radicado<input className="input" maxLength={300} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></label>
+        </div>
+        {msg && <div className={`alert ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.t}</div>}
+        <button className="btn primary start">Retirar contacto</button>
+      </form>
+      <div className="tbl-wrap"><table className="tbl"><caption className="sr-only">Contactos retirados</caption><thead><tr><th>Identificador</th><th>Motivo</th><th>Fecha</th></tr></thead><tbody>
+        {list.map((s) => <tr key={s.id}><td className="mono">{s.value}</td><td className="small">{s.reason || '—'}</td><td className="small mono">{fecha(s.created_at)}</td></tr>)}
+        {!list.length && <tr><td colSpan={3} className="empty">Ningún contacto retirado.</td></tr>}
+      </tbody></table></div>
+    </>
+  );
+}
+
+function Aceptaciones() {
+  const [list, setList] = useState(null);
+  useEffect(() => { api('/admin/consents').then(setList); }, []);
+  if (!list) return <Spinner />;
+  const si = (v) => (v ? <span className="tag ok">v{v}</span> : <span className="tag warn">Pendiente</span>);
+  return (
+    <>
+      <p className="small muted measure">Evidencia de la aceptación de términos y de la autorización de datos de cada usuario. Cada registro guarda la versión y una huella (SHA-256) del texto aceptado. Quien tenga algo pendiente lo verá al ingresar y no podrá usar la plataforma hasta aceptarlo.</p>
+      <div className="tbl-wrap"><table className="tbl"><caption className="sr-only">Aceptaciones por usuario</caption><thead><tr><th>Usuario</th><th>Empresa</th><th>Términos</th><th>Autorización de datos</th><th>Comunicaciones comerciales</th></tr></thead><tbody>
+        {list.map((u) => <tr key={u.id}><td>{u.username}</td><td className="small">{u.company || '—'}</td><td>{si(u.terminos)}</td><td>{si(u.datos)}</td><td className="small">{u.publicidad == null ? 'Sin respuesta' : u.publicidad ? 'Autorizó' : 'No autorizó'}</td></tr>)}
+      </tbody></table></div>
+    </>
+  );
+}
+
+function Auditoria() {
+  const [list, setList] = useState(null);
+  const [q, setQ] = useState('');
+  useEffect(() => { api('/admin/audit').then(setList); }, []);
+  if (!list) return <Spinner />;
+  const rows = q ? list.filter((a) => `${a.action} ${a.target} ${a.username}`.toLowerCase().includes(q.toLowerCase())) : list;
+  return (
+    <>
+      <div className="row between">
+        <p className="small muted measure">Últimos 300 eventos: ingresos, fallos, cambios de rol y contraseña, exportaciones, enlaces y acciones administrativas. La IP se guarda recortada y el registro se borra a los 12 meses.</p>
+        <label className="f inline"><span className="sr-only">Filtrar</span><input className="input" type="search" placeholder="Filtrar" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+      </div>
+      <div className="tbl-wrap"><table className="tbl"><caption className="sr-only">Registro de actividad</caption><thead><tr><th>Fecha (UTC)</th><th>Usuario</th><th>Acción</th><th>Objeto</th><th>Red</th></tr></thead><tbody>
+        {rows.map((a) => <tr key={a.id}><td className="small mono">{fecha(a.at)}</td><td className="small">{a.username || '—'}</td><td className="small"><span className="tag">{a.action}</span></td><td className="small mono break">{a.target || ''}{a.detail ? <><br /><span className="muted">{a.detail}</span></> : null}</td><td className="small mono">{a.ip || ''}</td></tr>)}
+      </tbody></table></div>
+    </>
+  );
+}
+
+function Respaldos() {
+  const [s, setS] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => api('/admin/backups').then(setS);
+  useEffect(() => { load(); }, []);
+  const run = async () => { setBusy(true); setMsg(null); try { const r = await api('/admin/backups', { method: 'POST' }); setMsg({ ok: true, t: `Copia creada: ${r.archivo}${r.externo ? ' (también en el almacenamiento externo)' : ''}.` }); load(); } catch (e) { setMsg({ ok: false, t: e.message }); } finally { setBusy(false); } };
+  if (!s) return <Spinner />;
+  return (
+    <div className="grid g2">
+      <div className="card stack">
+        <h2>Estado</h2>
+        <dl className="kv">
+          <dt>Copias cifradas</dt><dd>{s.activo ? 'Activas (AES-256-GCM)' : 'Inactivas: falta BACKUP_KEY'}</dd>
+          <dt>Disco persistente</dt><dd>{s.persistente ? 'Sí' : 'No: la base se borra al reiniciar'}</dd>
+          <dt>Copia fuera del hosting</dt><dd>{s.externo ? 'Configurada' : 'No configurada (BACKUP_S3_*)'}</dd>
+        </dl>
+        {msg && <div className={`alert ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.t}</div>}
+        <button className="btn primary start" onClick={run} disabled={!s.activo || busy}>{busy ? 'Creando…' : 'Crear copia ahora'}</button>
+        <p className="small muted">La restauración se hace desde la terminal del servidor, en una carpeta aparte: <code>node server/backup.js restaurar &lt;archivo&gt; &lt;carpeta&gt;</code>. Al restaurar se vuelven a aplicar las eliminaciones y retiros posteriores a la copia.</p>
+      </div>
+      <div className="card stack">
+        <h2>Copias en el servidor</h2>
+        {s.copias.length ? <ul className="list mono small">{s.copias.map((c) => <li key={c.archivo}><span>{c.archivo}</span><span className="muted">{(c.bytes / 1e6).toFixed(1)} MB</span></li>)}</ul> : <p className="muted small">Aún no hay copias.</p>}
+      </div>
+    </div>
+  );
+}
+
+function Pendientes() {
+  const [list, setList] = useState(null);
+  useEffect(() => { api('/admin/legal-pendientes').then(setList); }, []);
+  if (!list) return <Spinner />;
+  if (!list.length) return <div className="alert ok">Todas las políticas tienen sus datos completos. Revisa el texto con tu abogado antes de cada cambio de versión.</div>;
+  return (
+    <>
+      <p className="small muted measure">Estos datos se muestran como <mark className="pend">[PENDIENTE]</mark> en las políticas públicas. Se completan con variables de entorno del servidor (LEGAL_RAZON_SOCIAL, LEGAL_NIT, LEGAL_DOMICILIO, LEGAL_CORREO_DATOS, etc.), no desde aquí.</p>
+      {list.map((d) => <div key={d.doc} className="card"><h3><a href={`#/legal/${d.doc}`}>{d.titulo}</a></h3><ul className="tight small">{[...new Set(d.pendientes)].map((p) => <li key={p}>{p}</li>)}</ul></div>)}
+    </>
   );
 }

@@ -1,10 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../App.jsx';
 import { Icon } from './Icon.jsx';
 import { fmt, PROFILE_ICONS } from '../api.js';
-import { PLAN_PRECIO } from '../pages/Plan.jsx';
+import { PrecioCorto } from '../pages/Plan.jsx';
 import { useLocal, PROSPECTS, FOLLOWS, addProspect, hasProspect, isFollowing, toggleFollow } from '../local.js';
+
+// Diálogo accesible: lleva el foco adentro, lo mantiene ahí (Tab), cierra con Esc, deja el fondo inerte
+// y devuelve el foco al botón que lo abrió.
+export function Modal({ onClose, label, children, className = '', as: Tag = 'div', ...rest }) {
+  const ref = useRef(null);
+  const close = useRef(onClose); close.current = onClose;
+  useEffect(() => {
+    const el = ref.current, prev = document.activeElement, root = document.getElementById('root');
+    const focusables = () => [...el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+    (el.querySelector('[autofocus]') || focusables()[0] || el).focus();
+    root?.setAttribute('inert', '');
+    const onKey = (e) => {
+      if (e.key === 'Escape' && close.current) { e.stopPropagation(); close.current(); }
+      if (e.key !== 'Tab') return;
+      const f = focusables(); if (!f.length) { e.preventDefault(); return; }
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    };
+    el.addEventListener('keydown', onKey);
+    return () => { el.removeEventListener('keydown', onKey); if (!document.querySelector('.modal-bg ~ .modal-bg')) root?.removeAttribute('inert'); prev?.focus?.(); };
+  }, []);
+  return createPortal(
+    <div className="modal-bg" onMouseDown={(e) => { if (e.target === e.currentTarget && close.current) close.current(); }}>
+      <Tag ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={`card modal ${className}`} {...rest}>{children}</Tag>
+    </div>, document.body);
+}
 
 export function Spinner() { return <div className="row" style={{ justifyContent: 'center', padding: 30 }}><div className="spinner" /></div>; }
 
@@ -13,10 +39,10 @@ export function ContactCTA({ text = 'Activa el plan completo para ver todos los 
   const wa = cfg.contact?.whatsapp ? `https://wa.me/${cfg.contact.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, quiero activar el plan completo de ' + cfg.appName)}` : null;
   return (
     <div className="lock-box">
-      <Icon name="lock" size={22} />
+      <Icon name="lock" size={22} aria-hidden="true" />
       <strong>Contenido del plan completo</strong>
       <span className="muted small">{text}</span>
-      <span className="small"><b className="mono">${PLAN_PRECIO.toLocaleString('es-CO')}</b> COP · pago único, sin mensualidades</span>
+      <PrecioCorto />
       <div className="row" style={{ justifyContent: 'center' }}>
         <a className="btn primary" href="#/plan">Ver qué incluye</a>
         {wa && <a className="btn" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}
@@ -78,9 +104,8 @@ export function WeightsControl({ compact }) {
         </div>
       )}
       <button className="btn sm" onClick={() => setOpen(!open)} aria-expanded={open}><Icon name="sliders" size={16} />Pesos</button>
-      {open && createPortal(
-        <div className="modal-bg" onClick={() => setOpen(false)}>
-          <div className="card modal" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {open && (
+        <Modal onClose={() => setOpen(false)} label={`Pesos del puntaje · ${prof.label}`} className="stack">
             <div className="row" style={{ justifyContent: 'space-between' }}><h2>Puntaje · {prof.label}</h2><button className="btn sm ghost" onClick={() => setOpen(false)}>Cerrar</button></div>
             <p className="muted small" style={{ margin: 0 }}>{prof.desc} Cada factor se convierte en un percentil entre los municipios (0 a 100) y se combina con estos pesos.{prof.segments ? ' Después se aplica un factor de mercado (0,5 a 1) según el volumen de obra nueva del segmento: un municipio sin construcción nueva no puede quedar arriba.' : ''} Cambiar los pesos reordena el ranking y el mapa.</p>
             {Object.entries(prof.factors).map(([k, l]) => (
@@ -91,9 +116,8 @@ export function WeightsControl({ compact }) {
             ))}
             {!paid && <div className="alert small">Ajustar los pesos está disponible en el plan completo.</div>}
             {paid && <button className="btn" onClick={() => setWeights(prof.weights)}>Restablecer pesos por defecto</button>}
-          </div>
-        </div>
-      , document.body)}
+          </Modal>
+      )}
     </div>
   );
 }

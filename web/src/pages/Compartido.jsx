@@ -46,7 +46,7 @@ export default function Compartido({ token }) {
           </div>
         </>
       )}
-      <p className="small muted" style={{ textAlign: 'center' }}>© {new Date().getFullYear()} Talera Colombia Consulting S.A.S. · <a href={TALERA_URL} target="_blank" rel="noreferrer">talera.co</a></p>
+      <p className="small muted" style={{ textAlign: 'center' }}>© {new Date().getFullYear()} Radar Solar · <a href={TALERA_URL} target="_blank" rel="noreferrer">talera.co</a> · <a href="#/legal/privacidad">Privacidad</a> · <a href="#/derechos">Retirar mis datos</a></p>
     </div>
   );
 }

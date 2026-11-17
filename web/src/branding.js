@@ -10,18 +10,19 @@ export const MARCA_VACIA = {
   condiciones: 'Precios en pesos colombianos, IVA incluido cuando aplique. La propuesta final se confirma después de la visita técnica.', validez: 30,
 };
 
-let pedido = null;
+let pedido = null, pedidoDe = null;
 export function useBranding(user) {
   const [b] = useLocal(KEY, null);
   useEffect(() => {
-    if (pedido) return;
+    if (pedido && pedidoDe === user?.id) return;
+    pedidoDe = user?.id;
     pedido = api('/branding').then((srv) => {
       const local = readLocal(KEY, null);
       // Gana la versión más reciente; si el servidor se reinició y perdió la marca, se vuelve a subir la del navegador
       if (srv && (!local?.updated_at || srv.updated_at >= local.updated_at)) writeLocal(KEY, srv);
       else if (!srv && local) api('/branding', { method: 'PUT', body: local }).catch(() => {});
     }).catch(() => {});
-  }, []);
+  }, [user?.id]);
   return { ...MARCA_VACIA, empresa: user?.company || '', ...(b || {}) };
 }
 

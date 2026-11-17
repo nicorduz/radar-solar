@@ -61,3 +61,67 @@ export const getSetting = (k, def) => {
   return r ? JSON.parse(r.value) : def;
 };
 export const setSetting = (k, v) => db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, JSON.stringify(v));
+
+// ---------------- Seguridad y privacidad (migración v3) ----------------
+// Columnas nuevas: se agregan sin tocar los datos existentes
+for (const sql of [
+  'ALTER TABLE users ADD COLUMN mfa_secret TEXT',
+  'ALTER TABLE users ADD COLUMN mfa_enabled INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN mfa_recovery TEXT',
+  'ALTER TABLE users ADD COLUMN must_change_pw INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN pw_changed_at TEXT',
+  'ALTER TABLE users ADD COLUMN plan_activated_at TEXT',
+  'ALTER TABLE users ADD COLUMN plan_amount INTEGER',
+  'ALTER TABLE users ADD COLUMN plan_invoice TEXT',
+  'ALTER TABLE sessions ADD COLUMN created_at TEXT',
+  'ALTER TABLE sessions ADD COLUMN last_seen TEXT',
+  'ALTER TABLE sessions ADD COLUMN mfa INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE sessions ADD COLUMN ua TEXT',
+]) { try { db.exec(sql); } catch { /* ya existe */ } }
+
+db.exec(`
+-- Evidencia de aceptación de términos y autorizaciones (una fila por acción del usuario)
+CREATE TABLE IF NOT EXISTS consents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('terminos','datos','publicidad')),
+  version TEXT NOT NULL,
+  granted INTEGER NOT NULL,
+  text_hash TEXT,
+  ip TEXT, ua TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS consents_user ON consents(user_id, kind, id);
+-- Solicitudes de titulares (consultas y reclamos de la Ley 1581 de 2012)
+CREATE TABLE IF NOT EXISTS rights_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  radicado TEXT UNIQUE NOT NULL,
+  clase TEXT NOT NULL CHECK (clase IN ('consulta','reclamo')),
+  tipo TEXT NOT NULL,
+  nombre TEXT NOT NULL, correo TEXT NOT NULL, relacion TEXT, referencia TEXT, detalle TEXT NOT NULL,
+  user_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'recibida',
+  due_at TEXT NOT NULL, extended INTEGER NOT NULL DEFAULT 0, extension_reason TEXT,
+  response TEXT, assigned_to INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT, closed_at TEXT
+);
+-- Registro de auditoría: accesos, cambios de permisos, exportaciones y eventos de seguridad (sin contraseñas ni tokens)
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  actor_id INTEGER, action TEXT NOT NULL, target TEXT, detail TEXT, ip TEXT
+);
+CREATE INDEX IF NOT EXISTS audit_at ON audit_log(at);
+-- Enlaces de solo lectura: revocables y con vencimiento
+CREATE TABLE IF NOT EXISTS shares (
+  id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, code TEXT NOT NULL, profile TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT NOT NULL, revoked_at TEXT
+);
+-- Contactos retirados por solicitud del titular o de la empresa (se ocultan en toda la plataforma)
+CREATE TABLE IF NOT EXISTS suppressions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT UNIQUE NOT NULL, reason TEXT, request_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Límites de intentos y de consumo (persisten aunque el servidor se reinicie)
+CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL);
+`);

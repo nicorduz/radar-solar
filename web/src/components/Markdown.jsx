@@ -3,7 +3,7 @@ import React from 'react';
 // Muestra texto Markdown (respuestas de la IA) con títulos, listas, tablas, negritas y enlaces.
 // Se convierte a elementos de React, sin HTML crudo, así que no hay riesgo de inyectar código.
 
-const INLINE = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\[[^\]]+\]\((?:https?:\/\/|mailto:|#)[^)\s]+\)|https?:\/\/[^\s)]+|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
+const INLINE = /(\[PENDIENTE:[^\]]+\]|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\[[^\]]+\]\((?:https?:\/\/|mailto:|#)[^)\s]+\)|https?:\/\/[^\s)]+|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
 
 function inline(text, keyBase = 'i') {
   const out = [];
@@ -13,7 +13,8 @@ function inline(text, keyBase = 'i') {
     if (m.index > last) out.push(text.slice(last, m.index));
     const t = m[0];
     const key = `${keyBase}-${k++}`;
-    if (t.startsWith('**') || t.startsWith('__')) out.push(<strong key={key}>{inline(t.slice(2, -2), key)}</strong>);
+    if (t.startsWith('[PENDIENTE:')) out.push(<mark key={key} className="pend">{t}</mark>);
+    else if (t.startsWith('**') || t.startsWith('__')) out.push(<strong key={key}>{inline(t.slice(2, -2), key)}</strong>);
     else if (t.startsWith('`')) out.push(<code key={key}>{t.slice(1, -1)}</code>);
     else if (t.startsWith('[')) {
       const mm = t.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
@@ -30,7 +31,7 @@ function inline(text, keyBase = 'i') {
 const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
 const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
 
-export default function Markdown({ text }) {
+export default function Markdown({ text, doc = false }) {
   const lines = String(text || '').replace(/\r/g, '').split('\n');
   const blocks = [];
   let i = 0, k = 0;
@@ -45,7 +46,7 @@ export default function Markdown({ text }) {
     }
     // Títulos
     const h = l.match(/^\s*(#{1,6})\s+(.*)$/);
-    if (h) { const lvl = Math.min(4, Math.max(3, h[1].length + 1)); blocks.push(React.createElement(`h${lvl}`, { key: k++, className: 'md-h' }, inline(h[2].replace(/#+\s*$/, ''), `h${k}`))); i++; continue; }
+    if (h) { const lvl = doc ? Math.min(4, h[1].length) : Math.min(4, Math.max(3, h[1].length + 1)); blocks.push(React.createElement(`h${lvl}`, { key: k++, className: 'md-h' }, inline(h[2].replace(/#+\s*$/, ''), `h${k}`))); i++; continue; }
     // Línea horizontal
     if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)) { blocks.push(<hr key={k++} />); i++; continue; }
     // Tabla

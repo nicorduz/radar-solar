@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { correoCorporativo } from './security.js';
 import path from 'node:path';
 import { ROOT, STORAGE, config } from './config.js';
 import { db, getSetting } from './db.js';
@@ -29,6 +30,8 @@ export function loadData() {
   store.colegios = col.rows || []; store.colegiosAnio = col.anio;
   const sal = r2('salud.json', { corte: null, rows: [] });
   store.salud = sal.rows || []; store.saludCorte = sal.corte;
+  // Minimización: los correos de servicios gratuitos (gmail, hotmail…) suelen ser de una persona y no se muestran
+  for (const list of [store.empresas, store.ci, store.clientes, store.salud]) for (const x of list) if (x.mail && !correoCorporativo(x.mail)) x.mail = null;
   store.energia = r2('energia.json', {});
   enrichMunicipios();
   store.dpto = aggregateDptos();

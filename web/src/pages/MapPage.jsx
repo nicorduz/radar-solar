@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import maplibregl from '../maplibre.js';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
-import { WeightsControl, ScoreBadge, ContactCTA } from '../components/ui.jsx';
-import { writeLocal, useLocal } from '../local.js';
+import { WeightsControl, ScoreBadge, ContactCTA, Modal } from '../components/ui.jsx';
+import { writeLocal, readLocal, useLocal } from '../local.js';
 import { Icon } from '../components/Icon.jsx';
 import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
 import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
@@ -79,10 +79,10 @@ const TOOLS = [
   ['measure', 'ruler', 'Medir', 'Clic en cada punto del recorrido. Doble clic o "Terminar" para finalizar.'],
   ['hide', 'eyeoff', 'Ocultar puntos', 'Clic en un municipio, planta, subestación, colegio o transformador para quitarlo del mapa. Se guarda con el tablero.'],
 ];
-const loadShapes = () => { try { return JSON.parse(localStorage.getItem('rs_shapes') || '[]'); } catch { return []; } };
-const saveShapes = (s) => { try { localStorage.setItem('rs_shapes', JSON.stringify(s)); } catch { /* sin almacenamiento */ } };
+const loadShapes = () => readLocal('rs_shapes', []);
+const saveShapes = (s) => writeLocal('rs_shapes', s);
 const uid = () => Math.random().toString(36).slice(2, 9);
-const TXT = { fontFamily: 'Inter, system-ui, sans-serif', characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
+const TXT = { fontFamily: "'IBM Plex Sans Variable', system-ui, sans-serif", characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
 
 const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
@@ -592,7 +592,8 @@ export default function MapPage({ focus }) {
 
   return (
     <div className="mapwrap" onClick={(e) => { if (menu && !e.target.closest('.dd')) setMenu(null); }}>
-      <div ref={el} style={{ position: 'absolute', inset: 0 }} />
+      <div ref={el} className="map-canvas" role="region" aria-label="Mapa interactivo de Colombia" aria-describedby="map-alt" />
+      <p id="map-alt" className="sr-only">El mapa no se puede recorrer con el teclado. La misma información está en la lista de mejores zonas de este panel y en el <a href="#/ranking">ranking completo</a>, que se puede ordenar y filtrar.</p>
       <div className="map-top">
         <form className="dd map-search glass" onSubmit={runSearch}>
           <Icon name="search" size={16} />
@@ -634,7 +635,7 @@ export default function MapPage({ focus }) {
                 <label key={k} className={l.paid && !paid ? 'dis' : ''}>
                   <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
                   {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
-                  <span>{l.label}{l.paid && !paid ? ' 🔒' : ''}{l.demo && <span className="soon-tag">Demo</span>}</span>
+                  <span>{l.label}{l.paid && !paid && <><Icon name="lock" size={13} /><span className="sr-only"> (plan completo)</span></>}{l.demo && <span className="soon-tag">Demo</span>}</span>
                 </label>
               ))}
               {on.has('colegios') && paid && zoom < ZOOM_COLEGIOS && <span className="small muted">Acércate al mapa para ver los colegios.</span>}
@@ -763,17 +764,18 @@ export default function MapPage({ focus }) {
       )}
 
       <div className={`map-panel glass ${collapsed ? 'collapsed' : ''}`}>
-        <button className="row" onClick={() => setCollapsed(!collapsed)} style={{ padding: '14px 16px', border: 0, background: 'none', justifyContent: 'space-between', cursor: 'pointer', width: '100%' }} aria-expanded={!collapsed}>
+        <button className="panel-head" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-controls="map-list">
           <h2>{paid ? `Mejores zonas · ${prof.short}` : 'Vista previa'}</h2>
           <span className="small muted">{data ? (paid ? `${fmt(visibles.length)} ${onlyVisible ? 'en la vista' : 'municipios'}` : 'plan de prueba') : 'cargando…'}</span>
         </button>
+        {paid && !collapsed && <a className="small panel-link" href="#/ranking">Ver como tabla completa</a>}
         {data?.mode === 'municipio' && (
           <div className="seg panel-scope" role="group" aria-label="Qué municipios mostrar">
             <button className={onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(true)}>Lo que ves en el mapa</button>
             <button className={!onlyVisible ? 'on' : ''} onClick={() => setOnlyVisible(false)}>Todo el país</button>
           </div>
         )}
-        <div className="list">
+        <div className="list" id="map-list">
           {data?.mode === 'municipio' && !top.length && <p className="small muted" style={{ padding: '4px 16px' }}>No hay municipios en esta parte del mapa. Aléjate o elige "Todo el país".</p>}
           {data?.mode === 'municipio' && top.map((d) => (
             <button key={d.code} className="map-item" onClick={() => { fly(d); }} onDoubleClick={() => go('m', d.code)}>
@@ -815,7 +817,7 @@ export default function MapPage({ focus }) {
             <button className={trafoMode === 'score' ? 'on' : ''} onClick={() => setTrafoMode('score')}>Puntaje con pesos</button>
           </div>
           {trafoMode === 'sem' ? (
-            <div className="sem-legend">{Object.keys(SEM_COLOR).map((k) => <span key={k} className="small"><span className="cap-dot" style={{ background: `rgb(${SEM_COLOR[k].join(',')})` }} />{SEM_TXT[k]}</span>)}</div>
+            <ul className="sem-legend">{Object.keys(SEM_COLOR).map((k) => <li key={k} className="small"><span className={`cap-dot sem-${k}`} style={{ background: `rgb(${SEM_COLOR[k].join(',')})` }} aria-hidden="true" />{SEM_TXT[k]}</li>)}</ul>
           ) : (
             <div className="trafo-w">
               {Object.entries(TRAFO_F).map(([k, l]) => (
@@ -825,26 +827,34 @@ export default function MapPage({ focus }) {
               <button className="btn sm ghost" onClick={() => setTrafoW(TRAFO_W0)}>Pesos por defecto</button>
             </div>
           )}
+          {zoom >= ZOOM_TRAFOS && trafoRows.length > 0 && (
+            <details className="trafo-list">
+              <summary className="small">Ver como lista ({fmt(Math.min(trafoRows.length, 100))}{trafoRows.length > 100 ? ` de ${fmt(trafoRows.length)}` : ''})</summary>
+              <div className="tbl-wrap"><table className="tbl compact">
+                <caption className="sr-only">Transformadores en la vista, de mayor a menor espacio estimado</caption>
+                <thead><tr><th>Transformador</th><th className="num">kVA</th><th className="num">Espacio kW</th><th>Estado</th></tr></thead>
+                <tbody>{[...trafoRows].sort((a, b) => (b.libre || 0) - (a.libre || 0)).slice(0, 100).map((d) => (
+                  <tr key={`${d.op}-${d.id}`}><td className="small"><button type="button" className="link" onClick={() => mapRef.current?.flyTo({ center: [d.lon, d.lat], zoom: Math.max(zoom, 16) })}>{d.id}</button><br /><span className="muted">{d.op}</span></td><td className="num">{fmt(d.kva, 0)}</td><td className="num">{fmt(d.libre, 1)}</td><td className="small"><span className={`cap-dot sem-${d.sem}`} style={{ background: `rgb(${SEM_COLOR[d.sem].join(',')})` }} aria-hidden="true" />{SEM_TXT[d.sem].split(' (')[0]}</td></tr>
+                ))}</tbody>
+              </table></div>
+            </details>
+          )}
         </div>
       )}
       {soon && (
-        <div className="modal-bg" onClick={() => setSoon(false)}>
-          <div className="card soon-card" onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setSoon(false)} label="Transformadores de distribución: qué es este demo" className="soon-card">
             <span className="soon-tag">Demo</span>
             <h3>Transformadores de distribución</h3>
             <p className="small">Cada operador de red debe publicar sus transformadores con la capacidad disponible para autogeneración (Resolución CREG 174 de 2021). Por ahora tenemos la base de {(trafoRes?.operadores || []).map((o) => o.nombre).join(', ') || 'algunos operadores'}; el resto del país viene en camino.</p>
             <p className="small">El espacio para un sistema solar se estima con la regla del 50 %: un transformador admite autogeneración hasta la mitad de su capacidad nominal, menos lo que ya está conectado. Donde el operador publica su propio valor disponible, se usa ese.</p>
             <p className="small muted">Es una guía para priorizar visitas. La disponibilidad real la confirma el operador cuando se radica la solicitud.</p>
             <button className="btn sm" onClick={() => setSoon(false)}>Entendido</button>
-          </div>
-        </div>
+        </Modal>
       )}
       {lockMsg && (
-        <div className="modal-bg" onClick={() => setLockMsg(null)}>
-          <div onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setLockMsg(null)} label="Contenido del plan completo" className="bare">
             <ContactCTA text={lockMsg.layer ? `La capa "${lockMsg.layer}" está en el plan completo.` : `${lockMsg.dpto} tiene ${lockMsg.municipios} municipios evaluados. Desbloquea el detalle por municipio, tarifas y proyectos.`} />
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

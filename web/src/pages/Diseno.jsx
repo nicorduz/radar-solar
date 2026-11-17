@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import maplibregl from '../maplibre.js';
 import { api, fmt, money, cop } from '../api.js';
 import { useApp } from '../App.jsx';
 import { Icon } from '../components/Icon.jsx';

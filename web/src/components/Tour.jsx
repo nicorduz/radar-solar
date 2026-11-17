@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Icon } from './Icon.jsx';
 import { readLocal, writeLocal } from '../local.js';
+import { Modal } from './ui.jsx';
 
 const KEY = 'rs_tour_v1';
 export const openTour = () => window.dispatchEvent(new Event('rs-tour'));
@@ -23,9 +23,8 @@ export default function Tour({ paid, go }) {
   if (!open) return null;
   const close = () => { writeLocal(KEY, true); setOpen(false); };
   const [ic, t, txt, page] = steps[i];
-  return createPortal(
-    <div className="modal-bg" onClick={close}>
-      <div className="card modal tour" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Recorrido guiado">
+  return (
+    <Modal onClose={close} label="Recorrido guiado" className="tour">
         <span className="tour-ic"><Icon name={ic} size={26} /></span>
         <span className="small muted">Paso {i + 1} de {steps.length}</span>
         <h2>{t}</h2>
@@ -40,6 +39,6 @@ export default function Tour({ paid, go }) {
               : <button className="btn sm primary" onClick={() => { close(); go('mapa'); }}>Empezar</button>}
           </span>
         </div>
-      </div>
-    </div>, document.body);
+    </Modal>
+  );
 }
