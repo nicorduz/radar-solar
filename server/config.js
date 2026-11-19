@@ -63,7 +63,7 @@ export const config = {
     matricula: e.LEGAL_MATRICULA || '04008594 de la Cámara de Comercio de Bogotá',
     domicilio: e.LEGAL_DOMICILIO || 'Bogotá D.C., Colombia',
     direccion: e.LEGAL_DIRECCION || 'Carrera 7 B Bis No. 130 B 41, apartamento 407',
-    correoDatos: e.LEGAL_CORREO_DATOS || '', telefono: e.LEGAL_TELEFONO || '',
+    correoDatos: e.LEGAL_CORREO_DATOS || 'ana@talera.co', telefono: e.LEGAL_TELEFONO || '+57 320 309 3037',
     web: e.LEGAL_WEB || 'https://www.talera.co',
   },
   planPrecio: +(e.PLAN_PRECIO_COP || 750000),
