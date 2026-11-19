@@ -1,4 +1,4 @@
-version: 2026-11-17
+version: 2026-11-19
 titulo: Cancelaciones, retracto y devoluciones
 ---
 Esta política explica qué pasa si quieres cancelar, retractarte de la compra o pedir la reversión de un pago. Son tres cosas distintas y se tramitan de forma distinta.
@@ -13,7 +13,7 @@ Esta política explica qué pasa si quieres cancelar, retractarte de la compra o
 
 ## 2. Cancelar o cerrar la cuenta
 
-Como no hay cobros recurrentes, **cancelar no detiene ningún cobro futuro**: significa cerrar tu cuenta. Puedes pedirlo en cualquier momento en **Tus datos**, con el tipo de solicitud "Cerrar mi cuenta". Al cerrarla se aplica lo descrito en los Términos, sección 12.
+Como no hay cobros recurrentes, **cancelar no detiene ningún cobro futuro**: significa cerrar tu cuenta. Puedes pedirlo en cualquier momento en la página **Ejercer tus derechos**, con el tipo de solicitud "Cerrar mi cuenta". Al cerrarla se aplica lo descrito en los Términos, sección 12.
 
 Cerrar la cuenta no genera por sí mismo una devolución del pago, salvo en los casos de las secciones 3 y 4 o cuando {{RAZON_SOCIAL}} descontinúe el servicio. En ese último caso aplica: {{DESCONTINUACION}}
 

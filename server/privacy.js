@@ -17,6 +17,7 @@ const FIELDS = () => ({
   APP: [config.appName],
   RAZON_SOCIAL: [config.legal.razonSocial, 'razón social del prestador (LEGAL_RAZON_SOCIAL)'],
   NIT: [config.legal.nit, 'NIT (LEGAL_NIT)'],
+  MATRICULA: [config.legal.matricula, 'matrícula mercantil (LEGAL_MATRICULA)'],
   DOMICILIO: [config.legal.domicilio, 'ciudad de domicilio (LEGAL_DOMICILIO)'],
   DIRECCION: [config.legal.direccion, 'dirección física (LEGAL_DIRECCION)'],
   CORREO_DATOS: [config.legal.correoDatos, 'correo para datos personales y atención (LEGAL_CORREO_DATOS)'],

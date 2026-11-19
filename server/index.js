@@ -797,7 +797,7 @@ admin.get('/stats', (req, res) => res.json({
   derechos: db.prepare("SELECT COUNT(*) abiertas, SUM(CASE WHEN due_at < date('now','-5 hours') THEN 1 ELSE 0 END) vencidas FROM rights_requests WHERE closed_at IS NULL").get(),
   avisos: [...(config.persistentStorage ? [] : ['El disco del servidor no está marcado como persistente (PERSISTENT_STORAGE=1). En Render Free la base se borra al reiniciar: se pierden usuarios, aceptaciones, solicitudes y auditoría.']),
     ...(config.backup.key ? [] : ['Las copias de seguridad cifradas no están activas (falta BACKUP_KEY).']),
-    ...(config.legal.razonSocial && config.legal.nit && config.legal.correoDatos ? [] : ['Faltan los datos del responsable en las políticas (LEGAL_RAZON_SOCIAL, LEGAL_NIT, LEGAL_CORREO_DATOS…).'])],
+    ...(config.legal.correoDatos && config.legal.telefono ? [] : ['Falta el correo (LEGAL_CORREO_DATOS) y el teléfono (LEGAL_TELEFONO) del canal de datos personales en las políticas.'])],
   docs: db.prepare('SELECT COUNT(*) n FROM documents').get().n,
   projects: db.prepare('SELECT COUNT(*) n FROM projects').get().n,
   ai_today: db.prepare('SELECT COALESCE(SUM(n),0) n FROM ai_usage WHERE day=?').get(new Date().toISOString().slice(0, 10)).n,

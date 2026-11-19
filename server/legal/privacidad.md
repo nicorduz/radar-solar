@@ -1,14 +1,14 @@
-version: 2026-11-17
+version: 2026-11-19
 titulo: Política de tratamiento de datos personales
 ---
 Esta política explica qué datos personales trata {{APP}}, para qué, con quién se comparten, cuánto tiempo se conservan y cómo ejercer tus derechos. Se expide en cumplimiento de la Ley 1581 de 2012 y del Decreto 1074 de 2015 (capítulo 25, que incorporó el Decreto 1377 de 2013).
 
 ## 1. Responsable del tratamiento
 
-- **Responsable:** {{RAZON_SOCIAL}}, NIT {{NIT}}.
+- **Responsable:** {{RAZON_SOCIAL}}, NIT {{NIT}}, matrícula mercantil {{MATRICULA}}.
 - **Domicilio:** {{DOMICILIO}}. **Dirección:** {{DIRECCION}}.
 - **Correo para asuntos de datos personales:** {{CORREO_DATOS}}. **Teléfono:** {{TELEFONO}}.
-- **Canal en línea:** sección **Tus datos** de la plataforma, disponible sin iniciar sesión.
+- **Canal en línea:** página **Ejercer tus derechos** de la plataforma, disponible sin iniciar sesión.
 
 ## 2. Qué datos tratamos, de dónde vienen y para qué
 
@@ -34,7 +34,7 @@ La plataforma reúne registros públicos de empresas, prestadores de salud, sede
 - Se ocultan los correos de servicios gratuitos, porque suelen pertenecer a una persona y no a la empresa.
 - No se incorporan datos de personas naturales comerciantes, profesionales independientes, pacientes ni estudiantes. De los colegios y centros de salud solo se usan datos institucionales: nombre, sector, tamaño y ubicación aproximada.
 - La finalidad es la prospección comercial entre empresas del sector solar.
-- Cualquier persona o empresa puede pedir que se retiren sus datos de contacto en **Tus datos**. El retiro se aplica en toda la plataforma, incluidos el asistente y las descargas.
+- Cualquier persona o empresa puede pedir que se retiren sus datos de contacto en la página **Ejercer tus derechos**. El retiro se aplica en toda la plataforma, incluidos el asistente y las descargas.
 
 ## 4. Datos que guardas en tu navegador
 
@@ -97,7 +97,7 @@ Como titular puedes:
 
 ## 9. Cómo ejercer tus derechos
 
-- **Dónde:** en **Tus datos** (también sin iniciar sesión) o al correo {{CORREO_DATOS}}. Cada solicitud recibe un número de radicado con el que puedes consultar su estado.
+- **Dónde:** en la página **Ejercer tus derechos** (también sin iniciar sesión) o al correo {{CORREO_DATOS}}. Cada solicitud recibe un número de radicado con el que puedes consultar su estado.
 - **Identificación:** no pedimos copia de tu documento de identidad. Para proteger tus datos, verificamos que la solicitud venga del correo o del usuario registrado. Si pides algo sobre datos de una empresa, verificamos que actúas en nombre de ella.
 - **Consultas** (conocer tus datos o cómo se usan): las respondemos en máximo 10 días hábiles. Si no es posible, te avisamos antes del vencimiento y respondemos en máximo 5 días hábiles más.
 - **Reclamos** (corregir, actualizar, suprimir o revocar, o un posible incumplimiento): los respondemos en máximo 15 días hábiles desde el día siguiente a su recibo. Si no es posible, te avisamos antes del vencimiento y respondemos en máximo 8 días hábiles más.
