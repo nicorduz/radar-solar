@@ -1,4 +1,4 @@
-version: 2026-11-17
+version: 2026-11-19
 titulo: Aviso de privacidad
 ---
 **{{RAZON_SOCIAL}}** (NIT {{NIT}}, {{DOMICILIO}}) es responsable de los datos personales que se tratan en {{APP}}.
@@ -7,6 +7,6 @@ titulo: Aviso de privacidad
 
 **Con quién.** Los datos se alojan en servidores de proveedores que actúan como encargados (hosting, inteligencia artificial, mapas), algunos fuera de Colombia. El detalle está en la política.
 
-**Tus derechos.** Puedes conocer, actualizar, rectificar y suprimir tus datos, revocar la autorización, pedir prueba de ella y quejarte ante la SIC. Ejerce tus derechos gratis en la sección **Tus datos** o en {{CORREO_DATOS}}.
+**Tus derechos.** Puedes conocer, actualizar, rectificar y suprimir tus datos, revocar la autorización, pedir prueba de ella y quejarte ante la SIC. Ejerce tus derechos gratis en la página **Ejercer tus derechos** o en {{CORREO_DATOS}}.
 
 **Política completa.** Consulta la Política de tratamiento de datos personales en la plataforma, en la sección **Legal**.

@@ -1,11 +1,11 @@
-version: 2026-11-17
+version: 2026-11-19
 titulo: Términos y condiciones de uso
 ---
 Estos términos regulan el acceso a {{APP}}, una plataforma web de información del mercado solar en Colombia. Para usarla, el titular de la cuenta debe aceptarlos de forma expresa en su primer ingreso y cada vez que cambien.
 
 ## 1. Quién presta el servicio
 
-- **Prestador:** {{RAZON_SOCIAL}}, NIT {{NIT}}, con domicilio en {{DOMICILIO}}.
+- **Prestador:** {{RAZON_SOCIAL}}, NIT {{NIT}}, matrícula mercantil {{MATRICULA}}, con domicilio en {{DOMICILIO}}.
 - **Dirección:** {{DIRECCION}}.
 - **Correo de atención:** {{CORREO_DATOS}}. **Teléfono o WhatsApp:** {{TELEFONO}}.
 - **Sitio web:** {{WEB}}.
@@ -54,7 +54,7 @@ Estas restricciones protegen la operación del servicio, los derechos de tercero
 
 ## 7. Datos de contacto de empresas
 
-Solo se muestran datos de contacto de empresas (personas jurídicas) tomados de registros públicos. No se muestran correos de servicios gratuitos, porque suelen pertenecer a una persona. Quien use estos datos para contactar a una empresa es responsable de hacerlo de acuerdo con la Ley 1581 de 2012, de identificarse, y de atender a quien pida no ser contactado. Las empresas o personas que no quieran aparecer pueden pedir el retiro en **Tus datos**.
+Solo se muestran datos de contacto de empresas (personas jurídicas) tomados de registros públicos. No se muestran correos de servicios gratuitos, porque suelen pertenecer a una persona. Quien use estos datos para contactar a una empresa es responsable de hacerlo de acuerdo con la Ley 1581 de 2012, de identificarse, y de atender a quien pida no ser contactado. Las empresas o personas que no quieran aparecer pueden pedir el retiro en la página **Ejercer tus derechos**.
 
 ## 8. Datos que tú guardas
 
@@ -76,7 +76,7 @@ El software, el diseño, los textos, los índices y la compilación de datos son
 ## 12. Suspensión y terminación
 
 - {{RAZON_SOCIAL}} puede suspender una cuenta por incumplimiento grave de estos términos, por ejemplo extracción masiva o credenciales compartidas. Antes de suspenderla te informará el motivo por el correo o teléfono registrado y te dará oportunidad de explicar, salvo que haya un riesgo de seguridad inmediato.
-- Puedes pedir el cierre de tu cuenta en cualquier momento en **Tus datos**.
+- Puedes pedir el cierre de tu cuenta en cualquier momento en la página **Ejercer tus derechos**.
 - **Al cerrar la cuenta:**
   - se eliminan tu usuario, tus sesiones y "Mi marca";
   - se conserva la evidencia de aceptación de términos y autorizaciones, y los registros de seguridad, durante el plazo indicado en la Política de tratamiento;
@@ -92,4 +92,4 @@ Si estos términos cambian, se publica la nueva versión con su fecha. En tu sig
 
 ## 15. Ley aplicable y reclamaciones
 
-Estos términos se rigen por la ley colombiana. Las peticiones, quejas y reclamos se atienden en el canal de la sección 1. Las solicitudes sobre datos personales se atienden en **Tus datos**, con un número de radicado y seguimiento.
+Estos términos se rigen por la ley colombiana. Las peticiones, quejas y reclamos se atienden en el canal de la sección 1. Las solicitudes sobre datos personales se atienden en la página **Ejercer tus derechos**, con un número de radicado y seguimiento.

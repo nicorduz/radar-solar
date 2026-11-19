@@ -55,9 +55,16 @@ export const config = {
     s3: { endpoint: e.BACKUP_S3_ENDPOINT || '', bucket: e.BACKUP_S3_BUCKET || '', region: e.BACKUP_S3_REGION || 'auto', key: e.BACKUP_S3_ACCESS_KEY || '', secret: e.BACKUP_S3_SECRET_KEY || '', prefix: e.BACKUP_S3_PREFIX || 'radar-solar/' },
   },
   // Responsable del tratamiento y canal de atención (se muestran en las políticas; sin valores inventados)
+  // Datos del prestador según el certificado de existencia y representación legal (Cámara de Comercio de Bogotá,
+  // expedido el 14-10-2026) y el RUT. Las variables LEGAL_* los reemplazan si cambian.
   legal: {
-    razonSocial: e.LEGAL_RAZON_SOCIAL || '', nit: e.LEGAL_NIT || '', domicilio: e.LEGAL_DOMICILIO || '', direccion: e.LEGAL_DIRECCION || '',
-    correoDatos: e.LEGAL_CORREO_DATOS || '', telefono: e.LEGAL_TELEFONO || '', web: e.LEGAL_WEB || '',
+    razonSocial: e.LEGAL_RAZON_SOCIAL || 'TALERA COLOMBIA CONSULTING S.A.S.',
+    nit: e.LEGAL_NIT || '901.985.023-4',
+    matricula: e.LEGAL_MATRICULA || '04008594 de la Cámara de Comercio de Bogotá',
+    domicilio: e.LEGAL_DOMICILIO || 'Bogotá D.C., Colombia',
+    direccion: e.LEGAL_DIRECCION || 'Carrera 7 B Bis No. 130 B 41, apartamento 407',
+    correoDatos: e.LEGAL_CORREO_DATOS || '', telefono: e.LEGAL_TELEFONO || '',
+    web: e.LEGAL_WEB || 'https://www.talera.co',
   },
   planPrecio: +(e.PLAN_PRECIO_COP || 750000),
   planImpuestos: e.PLAN_IMPUESTOS || '',
