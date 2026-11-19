@@ -124,4 +124,10 @@ CREATE TABLE IF NOT EXISTS suppressions (
 );
 -- Límites de intentos y de consumo (persisten aunque el servidor se reinicie)
 CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL);
+-- Solicitudes de recuperación de acceso (olvido de usuario o contraseña). Se borran 180 días después de atendidas.
+CREATE TABLE IF NOT EXISTS access_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  usuario TEXT, nombre TEXT NOT NULL, contacto TEXT NOT NULL, user_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'pendiente', resolved_at TEXT, resolved_by INTEGER
+);
 `);

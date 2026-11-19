@@ -34,7 +34,13 @@ function Usuarios() {
   const [msg, setMsg] = useState(null);
   const [team, setTeam] = useState(null);
   const [teamOut, setTeamOut] = useState(null);
+  const [temporal, setTemporal] = useState(null); // { username, clave }
   const load = () => api('/admin/users').then(setList);
+  const darTemporal = async (u) => {
+    if (!confirm(`¿Generar una contraseña temporal para ${u.username}? La actual deja de funcionar y se cierran sus sesiones.`)) return;
+    try { const r = await api(`/admin/users/${u.id}/temporal`, { method: 'POST' }); setTemporal({ username: u.username, clave: r.temporal }); load(); }
+    catch (e2) { setMsg({ ok: false, t: e2.message }); }
+  };
   const saveTeam = async (e) => {
     e.preventDefault(); setMsg(null);
     try { const r = await api('/admin/users/team', { method: 'POST', body: team }); setTeamOut(r); setTeam(null); load(); }
@@ -59,6 +65,15 @@ function Usuarios() {
         <span className="row" style={{ gap: 6 }}><button className="btn" onClick={() => setTeam({ company: '', n: 3, prefix: '', role: 'paid', profile: 'todos', paid_until: '' })}>Crear equipo</button>
         <button className="btn primary" onClick={() => setEdit({ username: '', password: '', role: 'trial', profile: 'todos', name: '', company: '', phone: '', paid_until: '', active: 1 })}>Crear usuario</button></span>
       </div>
+      <Accesos users={list} onTemporal={(t) => { setTemporal(t); load(); }} />
+      {temporal && (
+        <Modal className="stack" label="Contraseña temporal" onClose={() => setTemporal(null)}>
+          <h2>Contraseña temporal de {temporal.username}</h2>
+          <p className="small">Entrégala por un canal distinto al que usó la persona para pedirla, por ejemplo una llamada si escribió por correo. No se vuelve a mostrar. Al ingresar, la plataforma le pedirá crear una nueva.</p>
+          <p className="mono" style={{ fontSize: 22, letterSpacing: '0.04em' }}>{temporal.clave}</p>
+          <div className="row end"><button className="btn" onClick={() => navigator.clipboard?.writeText(temporal.clave)}>Copiar</button><button className="btn primary" onClick={() => setTemporal(null)}>Listo</button></div>
+        </Modal>
+      )}
       {teamOut && (
         <div className="card stack" role="status">
           <b>Equipo creado. Copia estas claves ahora: no se vuelven a mostrar.</b>
@@ -95,7 +110,7 @@ function Usuarios() {
             <td className="small mono">{u.paid_until || '—'}</td>
             <td className="small mono">{u.last_login?.slice(0, 16) || 'nunca'}{u.must_change_pw ? <><br /><span className="tag warn">Clave temporal</span></> : null}{u.role === 'admin' ? <><br /><span className={`tag ${u.mfa_enabled ? 'ok' : 'warn'}`}>{u.mfa_enabled ? '2 pasos activo' : 'Sin 2 pasos'}</span></> : null}</td>
             <td className="small">{u.active ? 'Activo' : 'Inactivo'}</td>
-            <td><div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}><button className="btn sm" onClick={() => setEdit({ ...u, password: '' })}>Editar</button>{u.id !== user.id && <button className="btn sm danger" onClick={() => del(u)}>Eliminar</button>}</div></td>
+            <td><div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}><button className="btn sm" onClick={() => setEdit({ ...u, password: '' })}>Editar</button>{u.id !== user.id && <button className="btn sm ghost" onClick={() => darTemporal(u)}>Contraseña temporal</button>}{u.id !== user.id && <button className="btn sm danger" onClick={() => del(u)}>Eliminar</button>}</div></td>
           </tr>))}
       </tbody></table></div>
       {edit && (
@@ -527,5 +542,49 @@ function Pendientes() {
       <p className="small muted measure">Estos datos se muestran como <mark className="pend">[PENDIENTE]</mark> en las políticas públicas. Se completan con variables de entorno del servidor (LEGAL_RAZON_SOCIAL, LEGAL_NIT, LEGAL_DOMICILIO, LEGAL_CORREO_DATOS, etc.), no desde aquí.</p>
       {list.map((d) => <div key={d.doc} className="card"><h3><a href={`#/legal/${d.doc}`}>{d.titulo}</a></h3><ul className="tight small">{[...new Set(d.pendientes)].map((p) => <li key={p}>{p}</li>)}</ul></div>)}
     </>
+  );
+}
+
+// Solicitudes de "¿Olvidaste tu usuario o contraseña?" hechas desde la pantalla de ingreso
+function Accesos({ users, onTemporal }) {
+  const [list, setList] = useState(null);
+  const [pick, setPick] = useState({});
+  const [err, setErr] = useState('');
+  const load = () => api('/admin/accesos').then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, []);
+  const pend = (list || []).filter((a) => a.status === 'pendiente');
+  if (!pend.length) return null;
+  const act = async (a, accion) => {
+    setErr('');
+    const user_id = +(pick[a.id] || a.user_id || 0);
+    try {
+      const r = await api(`/admin/accesos/${a.id}`, { method: 'POST', body: { accion, user_id } });
+      if (r.temporal) onTemporal({ username: users.find((u) => u.id === user_id)?.username || a.cuenta, clave: r.temporal });
+      load();
+    } catch (e) { setErr(e.message); }
+  };
+  return (
+    <section className="card stack accent" aria-labelledby="acc-t">
+      <h2 id="acc-t">Solicitudes para recuperar el acceso ({pend.length})</h2>
+      <p className="small muted">Antes de entregar una contraseña temporal, confirma que quien escribe es el dueño de la cuenta: comunícate por el teléfono o correo que tienes registrado, no solo por el que dejó en la solicitud.</p>
+      {err && <div className="alert err" role="alert">{err}</div>}
+      <div className="tbl-wrap"><table className="tbl"><caption className="sr-only">Solicitudes pendientes</caption>
+        <thead><tr><th>Fecha (UTC)</th><th>Nombre</th><th>Contacto</th><th>Cuenta</th><th></th></tr></thead>
+        <tbody>{pend.map((a) => (
+          <tr key={a.id}>
+            <td className="small mono">{a.created_at.slice(0, 16)}</td>
+            <td className="small">{a.nombre}{a.usuario ? <><br /><span className="muted">escribió «{a.usuario}»</span></> : null}</td>
+            <td className="small">{a.contacto}</td>
+            <td><label className="sr-only" htmlFor={`acc-${a.id}`}>Cuenta</label>
+              <select id={`acc-${a.id}`} className="select" value={pick[a.id] ?? a.user_id ?? ''} onChange={(e) => setPick({ ...pick, [a.id]: e.target.value })}>
+                <option value="">Elige la cuenta</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.username}{u.company ? ` · ${u.company}` : ''}</option>)}
+              </select></td>
+            <td><div className="row" style={{ flexWrap: 'nowrap', gap: 6 }}>
+              <button className="btn sm primary" disabled={!(pick[a.id] || a.user_id)} onClick={() => act(a, 'restablecer')}>Dar contraseña temporal</button>
+              <button className="btn sm ghost" onClick={() => act(a, 'descartar')}>Descartar</button></div></td>
+          </tr>))}</tbody>
+      </table></div>
+    </section>
   );
 }

@@ -1,4 +1,4 @@
-version: 2026-11-19
+version: 2026-11-19.2
 titulo: Política de tratamiento de datos personales
 ---
 Esta política explica qué datos personales trata {{APP}}, para qué, con quién se comparten, cuánto tiempo se conservan y cómo ejercer tus derechos. Se expide en cumplimiento de la Ley 1581 de 2012 y del Decreto 1074 de 2015 (capítulo 25, que incorporó el Decreto 1377 de 2013).
@@ -23,6 +23,7 @@ Esta política explica qué datos personales trata {{APP}}, para qué, con quié
 | "Mi marca": logo, empresa, asesor, cargo, teléfono, correo y condiciones comerciales | Los escribes tú | Generar tus propuestas y reportes | Actuamos como encargados de tu empresa |
 | Solicitudes de titulares: nombre, correo, relación con el dato y detalle | Las escribes tú o la persona interesada | Tramitar consultas y reclamos | Obligación legal |
 | Comunicaciones comerciales (solo si las autorizas) | Tu cuenta | Enviarte novedades y ofertas de {{APP}} | Autorización opcional, revocable |
+| Solicitud de recuperación de acceso: nombre, usuario si lo recuerdas y correo o WhatsApp de contacto | Los entregas en «¿Olvidaste tu usuario o contraseña?» | Verificar que la cuenta es tuya y devolverte el acceso con una contraseña temporal | Autorización, que das al enviar la solicitud |
 
 **No pedimos** cédula, dirección de residencia, datos de salud, datos biométricos ni datos de niños, niñas o adolescentes.
 
@@ -65,6 +66,7 @@ No vendemos datos personales ni los cedemos a terceros para su propio uso.
 | Registros de seguridad | 1 año. Se purgan automáticamente. |
 | Conteo de consultas al asistente | 1 año. |
 | Solicitudes de titulares | {{RETENCION_SOLICITUDES}} |
+| Solicitudes de recuperación de acceso | 180 días después de atendidas. Se purgan automáticamente. |
 | Copias de seguridad | {{RETENCION_RESPALDOS}} |
 
 Si una copia de seguridad se restaura, se vuelven a aplicar las eliminaciones y retiros registrados después de la fecha de esa copia, para no reactivar datos suprimidos.
