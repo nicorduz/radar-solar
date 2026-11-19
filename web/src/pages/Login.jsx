@@ -38,10 +38,10 @@ export default function Login({ cfg, onLogin }) {
           <figcaption><span className="sw" />Radiación solar, kWh/m² al día<span className="vals"><span>3,8</span><span>5,7</span></span></figcaption>
         </figure>
         <div className="login-art-inner" aria-hidden="true">
-          <p className="login-claim">Dónde vender energía solar, a quién y con qué argumentos.</p>
+          <p className="login-claim">La inteligencia solar de Colombia, <span className="nowrap">municipio por municipio.</span></p>
           <ul className="login-facts">
             <li><b>1.122</b><span>municipios con puntaje</span></li>
-            <li><b>Tarifas</b><span>por operador y estrato</span></li>
+            <li><b>Mercado</b><span>tarifas, empresas e importaciones</span></li>
             <li><b>Red</b><span>subestaciones y transformadores</span></li>
           </ul>
         </div>

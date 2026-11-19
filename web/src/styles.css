@@ -442,7 +442,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .login-brand { position: relative; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .login-brand img { width: 260px; max-width: 70vw; height: auto; display: block; }
 .login-art-inner { position: relative; max-width: 560px; display: flex; flex-direction: column; gap: 18px; }
-.login-claim { font-size: 48px; line-height: 1.04; font-weight: 620; font-stretch: 90%; letter-spacing: -0.024em; color: #fff; text-wrap: balance; max-width: 13ch; }
+.login-claim { font-size: 48px; line-height: 1.04; font-weight: 620; font-stretch: 90%; letter-spacing: -0.024em; color: #fff; text-wrap: balance; max-width: 17ch; }
+.nowrap { white-space: nowrap; }
 .login-facts { list-style: none; margin: 10px 0 0; padding: 18px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; border-top: 1px solid rgba(255, 255, 255, 0.16); }
 .login-facts li { display: flex; flex-direction: column; gap: 2px; }
 .login-facts b { color: #fff; font-size: 22px; font-weight: 640; font-stretch: var(--narrow); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
