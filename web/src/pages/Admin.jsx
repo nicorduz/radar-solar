@@ -12,10 +12,10 @@ export default function Admin() {
   const [tab, setTab] = useState('usuarios');
   const tabs = { usuarios: 'Usuarios', privacidad: 'Privacidad y seguridad', datos: 'Datos y fuentes', documentos: 'Documentos e IA', proyectos: 'Proyectos', ajustes: 'Ajustes' };
   // La administración exige verificación en dos pasos en esta sesión
-  if (user.mfa_needed) return <div className="page narrow"><header className="page-head"><p className="eyebrow">Administración</p><h1>Un paso más</h1></header><MfaPanel user={user} onDone={refreshUser} /></div>;
+  if (user.mfa_needed) return <div className="page narrow"><header className="page-head"><h1>Verifica que eres tú</h1></header><MfaPanel user={user} onDone={refreshUser} /></div>;
   return (
     <div className="page">
-      <header className="page-head"><p className="eyebrow">Plataforma</p><h1>Administración</h1></header>
+      <header className="page-head"><h1>Administración</h1></header>
       <div className="tabs" role="tablist" aria-label="Secciones de administración">{Object.entries(tabs).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
       {tab === 'usuarios' && <Usuarios />}
       {tab === 'privacidad' && <Privacidad />}

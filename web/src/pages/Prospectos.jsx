@@ -15,9 +15,9 @@ export default function Prospectos() {
     <div className="page" style={{ maxWidth: 1100 }}>
       <div className="page-head">
         <div><h1>Mis prospectos</h1><p className="muted small" style={{ margin: '4px 0 0' }}>Tus zonas, sus novedades y el seguimiento de cada cliente potencial. Se guarda en este navegador: usa "Copia de seguridad" para pasarlo a otro equipo.</p></div>
-        <div className="seg" role="tablist">
-          <button className={tab === 'novedades' ? 'on' : ''} onClick={() => setTab('novedades')}>Novedades de mis zonas</button>
-          <button className={tab === 'prospectos' ? 'on' : ''} onClick={() => setTab('prospectos')}>Prospectos</button>
+        <div className="seg" role="tablist" aria-label="Vista">
+          <button role="tab" aria-selected={tab === 'novedades'} className={tab === 'novedades' ? 'on' : ''} onClick={() => setTab('novedades')}>Novedades de mis zonas</button>
+          <button role="tab" aria-selected={tab === 'prospectos'} className={tab === 'prospectos' ? 'on' : ''} onClick={() => setTab('prospectos')}>Prospectos</button>
         </div>
       </div>
       {tab === 'novedades' ? (paid ? <Novedades go={go} /> : <ContactCTA text="Sigue municipios y recibe las novedades de licitaciones, obras y proyectos en tus zonas. En la versión de prueba puedes probar el tablero de prospectos con hasta 3 clientes." />) : <Tablero paid={paid} />}

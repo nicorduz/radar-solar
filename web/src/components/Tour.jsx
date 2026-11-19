@@ -12,7 +12,7 @@ export default function Tour({ paid, go }) {
   const [i, setI] = useState(0);
   useEffect(() => { const on = () => { setI(0); setOpen(true); }; window.addEventListener('rs-tour', on); return () => window.removeEventListener('rs-tour', on); }, []);
   const steps = [
-    ['sun', 'Bienvenido a Radar Solar', 'Te mostramos dónde vender energía solar en Colombia, a quién y con qué argumentos. Este recorrido toma un minuto.', 'mapa'],
+    ['sun', 'Bienvenido a Radar Solar', 'Reúne lo que necesitas saber del mercado solar de cada municipio para encontrar tu próxima oportunidad, sin importar qué parte de la cadena eres. Este recorrido toma un minuto.', 'mapa'],
     ['map', 'El mapa', 'El color y la altura de cada municipio muestran su puntaje de oportunidad para tu perfil. Busca una dirección o coordenada, dibuja zonas, mide distancias y mira las mejores zonas de lo que tienes en pantalla.', 'mapa'],
     ['list', 'La ficha de cada municipio', 'Toca un municipio para ver por qué tiene ese puntaje, sus tarifas, cortes, clientes, red eléctrica y el retorno de un sistema solar. Desde ahí generas una propuesta en PDF o la compartes por WhatsApp.', 'ranking'],
     ['factory', 'Clientes y competencia', 'Hoteles, empresas grandes e industrias, instaladores y licitaciones públicas, con contacto de empresa. Toca "+ Prospecto" para guardar los que te interesan.', paid ? 'industrias' : 'clientes'],
