@@ -61,7 +61,7 @@ export function PublicShell({ children }) {
 export function LegalLine({ titular }) {
   return (
     <span className="legal-line">
-      <span>© {new Date().getFullYear()} {titular || 'Radar Solar'}. La licencia permite el acceso; no autoriza copiar ni reproducir la plataforma.</span>
+      <span>© {new Date().getFullYear()} {(titular || 'Radar Solar').replace(/\.$/, '')}. La licencia permite el acceso; no autoriza copiar ni reproducir la plataforma.</span>
       <span className="links"><a href="#/legal/terminos">Términos</a><a href="#/legal/privacidad">Privacidad</a><a href="#/legal/cookies">Cookies</a><a href="#/derechos">Mis derechos</a></span>
     </span>
   );

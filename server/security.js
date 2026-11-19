@@ -91,6 +91,7 @@ export function purgeOld() {
   db.prepare("DELETE FROM audit_log WHERE at < datetime('now','-365 days')").run();
   db.prepare('DELETE FROM rate_limits WHERE window_start < ?').run(Math.floor(Date.now() / 1000) - 86400);
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOString());
+  db.prepare("DELETE FROM access_requests WHERE (status <> 'pendiente' AND resolved_at < datetime('now','-180 days')) OR created_at < datetime('now','-365 days')").run();
 }
 
 // ---------------- Errores discretos ----------------

@@ -7,9 +7,9 @@ import { config, ROOT, STORAGE } from './config.js';
 import { db, getSetting, setSetting } from './db.js';
 import {
   parseCookies, loadUser, requireUser, requireAdmin, isPaid, hashPassword, verifyPassword, login, loginMfa, mfaSetup, mfaEnable, mfaVerifySession,
-  destroySession, destroyOtherSessions, listSessions, revokeSession, publicUser, validateUsername, passwordProblem, ensureBootstrapAdmin,
+  destroySession, destroyOtherSessions, listSessions, revokeSession, publicUser, validateUsername, passwordProblem, ensureBootstrapAdmin, resetToTemporary,
 } from './auth.js';
-import { securityHeaders, csrfGuard, limiter, audit, errorHandler, purgeOld, contacto as limpiarContacto, ipOf } from './security.js';
+import { securityHeaders, csrfGuard, limiter, audit, errorHandler, purgeOld, contacto as limpiarContacto, ipOf, hit } from './security.js';
 import { privacyRoutes, deleteUser } from './privacy.js';
 import { startBackups, createBackup, listBackups } from './backup.js';
 import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
@@ -57,6 +57,22 @@ app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact
 
 app.post('/api/login', wrap(login));
 app.post('/api/login/mfa', wrap(loginMfa));
+// Olvido de usuario o contraseña: se registra la solicitud y el administrador devuelve el acceso con una
+// contraseña temporal. La respuesta es siempre la misma, exista o no el usuario (no revela cuentas).
+app.post('/api/recuperar-acceso', (req, res) => {
+  const lim = hit(`recuperar:${ipOf(req)}`, 5, 3600);
+  if (!lim.ok) { res.setHeader('Retry-After', String(lim.retry)); return res.status(429).json({ error: 'Ya enviaste varias solicitudes. Intenta de nuevo en una hora.' }); }
+  const b = req.body || {};
+  const nombre = String(b.nombre || '').trim().slice(0, 120), contacto = String(b.contacto || '').trim().slice(0, 190), usuario = String(b.usuario || '').trim().slice(0, 60);
+  const errores = {};
+  if (nombre.length < 3) errores.nombre = 'Escribe tu nombre.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contacto) && contacto.replace(/\D/g, '').length < 7) errores.contacto = 'Escribe un correo o un número de WhatsApp para responderte.';
+  if (Object.keys(errores).length) return res.status(400).json({ error: 'Revisa los campos marcados.', errores });
+  const u = usuario ? db.prepare('SELECT id FROM users WHERE lower(username)=lower(?)').get(usuario) : null;
+  const r = db.prepare('INSERT INTO access_requests(usuario,nombre,contacto,user_id) VALUES(?,?,?,?)').run(usuario || null, nombre, contacto, u?.id || null);
+  audit(req, 'recuperacion_solicitada', `acceso:${r.lastInsertRowid}`);
+  res.json({ ok: true });
+});
 app.post('/api/logout', (req, res) => { if (req.user) audit(req, 'logout'); destroySession(req, res); res.json({ ok: true }); });
 app.get('/api/me', (req, res) => res.json({ user: req.user ? publicUser(req.user, req.session) : null }));
 // Segundo factor de administradores
@@ -792,7 +808,30 @@ admin.delete('/users/:id', (req, res) => {
 admin.get('/backups', (req, res) => res.json({ activo: !!config.backup.key, persistente: config.persistentStorage, externo: !!config.backup.s3.endpoint, copias: listBackups() }));
 admin.post('/backups', wrap(async (req, res) => res.json(await createBackup('manual'))));
 
+admin.get('/accesos', (req, res) => res.json(db.prepare(`SELECT a.*, u.username AS cuenta FROM access_requests a LEFT JOIN users u ON u.id=a.user_id
+  WHERE a.status='pendiente' OR a.resolved_at > datetime('now','-30 days') ORDER BY a.status='pendiente' DESC, a.id DESC LIMIT 100`).all()));
+admin.post('/accesos/:id', wrap(async (req, res) => {
+  const a = db.prepare('SELECT * FROM access_requests WHERE id=?').get(+req.params.id);
+  if (!a) return res.status(404).json({ error: 'No existe esa solicitud.' });
+  if (a.status !== 'pendiente') return res.status(400).json({ error: 'Esta solicitud ya fue atendida.' });
+  let temp = null, userId = null;
+  if (req.body?.accion === 'restablecer') {
+    userId = +req.body.user_id || a.user_id;
+    if (!userId || !db.prepare('SELECT 1 FROM users WHERE id=?').get(userId)) return res.status(400).json({ error: 'Elige la cuenta a la que corresponde la solicitud.' });
+    temp = await resetToTemporary(userId);
+    audit(req, 'contrasena_temporal', `user:${userId}`, `solicitud ${a.id}`);
+  } else if (req.body?.accion !== 'descartar') return res.status(400).json({ error: 'Acción no válida.' });
+  db.prepare("UPDATE access_requests SET status=?, user_id=COALESCE(?,user_id), resolved_at=datetime('now'), resolved_by=? WHERE id=?").run(temp ? 'restablecida' : 'descartada', userId, req.user.id, a.id);
+  res.json({ ok: true, temporal: temp });
+}));
+admin.post('/users/:id/temporal', wrap(async (req, res) => {
+  const temp = await resetToTemporary(+req.params.id);
+  if (!temp) return res.status(404).json({ error: 'No existe ese usuario.' });
+  audit(req, 'contrasena_temporal', `user:${req.params.id}`);
+  res.json({ temporal: temp });
+}));
 admin.get('/stats', (req, res) => res.json({
+  accesos: db.prepare("SELECT COUNT(*) n FROM access_requests WHERE status='pendiente'").get().n,
   users: db.prepare("SELECT role, COUNT(*) n FROM users GROUP BY role").all(),
   derechos: db.prepare("SELECT COUNT(*) abiertas, SUM(CASE WHEN due_at < date('now','-5 hours') THEN 1 ELSE 0 END) vencidas FROM rights_requests WHERE closed_at IS NULL").get(),
   avisos: [...(config.persistentStorage ? [] : ['El disco del servidor no está marcado como persistente (PERSISTENT_STORAGE=1). En Render Free la base se borra al reiniciar: se pierden usuarios, aceptaciones, solicitudes y auditoría.']),

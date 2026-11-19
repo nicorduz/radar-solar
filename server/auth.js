@@ -101,7 +101,7 @@ export function loadUser(req, _res, next) {
   next();
 }
 // Rutas que un usuario con cambio de contraseña pendiente o MFA pendiente todavía puede usar
-const OPEN = /^\/api\/(me(\/(password|sessions(\/.*)?|consents|plan))?|logout|mfa\/[a-z-]+|legal(\/[a-z]+)?|consents|derechos(\/[a-z]+)?|config)$/;
+const OPEN = /^\/api\/(me(\/(password|sessions(\/.*)?|consents|plan))?|logout|mfa\/[a-z-]+|legal(\/[a-z]+)?|consents|derechos(\/[a-z]+)?|config|recuperar-acceso)$/;
 export const requireUser = (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Inicia sesión' });
   const open = OPEN.test(req.originalUrl.split('?')[0]);
@@ -239,6 +239,18 @@ export async function ensureBootstrapAdmin() {
   } else if (n === 0) {
     console.warn('No hay administradores. Define ADMIN_USER y ADMIN_PASSWORD o usa: npm run admin -- crear <usuario> <contraseña> admin');
   }
+  // Reinicio de emergencia: con ADMIN_RESET=1 el usuario ADMIN_USER vuelve a entrar con ADMIN_PASSWORD.
+  // Se desbloquea, se cierra toda sesión abierta, se reinicia la verificación en dos pasos y se pide
+  // cambiar la contraseña al ingresar. Quien controla las variables del servidor ya controla todo el sistema.
+  if (process.env.ADMIN_RESET === '1' && user && password) {
+    const ex = db.prepare('SELECT id FROM users WHERE username=?').get(user);
+    const h = await hashPassword(password);
+    if (ex) db.prepare("UPDATE users SET pass_hash=?, role='admin', active=1, must_change_pw=1, mfa_enabled=0, mfa_secret=NULL, mfa_recovery=NULL WHERE id=?").run(h, ex.id);
+    else db.prepare("INSERT INTO users(username,pass_hash,role,name,must_change_pw) VALUES(?,?,'admin','Administrador',1)").run(user, h);
+    db.prepare('DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE username=?)').run(user);
+    db.prepare('DELETE FROM rate_limits WHERE key=?').run(`login_acc:${user.toLowerCase()}`);
+    console.warn(`ADMIN_RESET: el administrador "${user}" puede ingresar con ADMIN_PASSWORD y deberá cambiarla. Quita ADMIN_RESET de las variables apenas ingreses.`);
+  }
   // Usuarios de demostración desde la variable SEED_USERS (útil en hostings sin disco persistente,
   // donde la base se borra al reiniciar). Formato: usuario:clave:rol:perfil:empresa;usuario2:...
   for (const item of String(process.env.SEED_USERS || '').split(';').map((x) => x.trim()).filter(Boolean)) {
@@ -257,4 +269,16 @@ export async function ensureBootstrapAdmin() {
     if (u && /^[A-Z2-7]{16,}$/.test(secret || '')) db.prepare("UPDATE users SET mfa_secret=?, mfa_enabled=1 WHERE username=? AND role='admin' AND mfa_enabled=0").run(secret, u);
   }
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOString());
+}
+
+// Contraseña temporal para devolver el acceso (la entrega el administrador por un canal distinto)
+export async function resetToTemporary(userId) {
+  const b = crypto.randomBytes(12).toString('base64url').replace(/[-_]/g, 'x').toLowerCase().slice(0, 16);
+  const temp = b.match(/.{4}/g).join('-');
+  const u = db.prepare('SELECT username FROM users WHERE id=?').get(userId);
+  if (!u) return null;
+  db.prepare('UPDATE users SET pass_hash=?, must_change_pw=1, active=1 WHERE id=?').run(await hashPassword(temp), userId);
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(userId);
+  db.prepare('DELETE FROM rate_limits WHERE key=?').run(`login_acc:${u.username.toLowerCase()}`);
+  return temp;
 }
