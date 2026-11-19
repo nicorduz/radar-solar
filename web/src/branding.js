@@ -44,7 +44,10 @@ export function inkOn(hex) {
 export function readableOnWhite(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return '#231D5D';
   let n = parseInt(m[1], 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  for (let i = 0; i < 8 && inkOn(`#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`) !== '#FFFFFF'; i++) { r = Math.round(r * 0.8); g = Math.round(g * 0.8); b = Math.round(b * 0.8); }
+  // Oscurece el color hasta que el texto pequeño tenga contraste 4,5:1 sobre blanco (WCAG 1.4.3)
+  const lum = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const ratio = () => 1.05 / (0.2126 * lum(r) + 0.7152 * lum(g) + 0.0722 * lum(b) + 0.05);
+  for (let i = 0; i < 20 && ratio() < 4.5; i++) { r = Math.round(r * 0.9); g = Math.round(g * 0.9); b = Math.round(b * 0.9); }
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 

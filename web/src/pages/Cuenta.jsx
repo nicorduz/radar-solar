@@ -23,7 +23,7 @@ export default function Cuenta() {
   return (
     <div className="page narrow stack lg">
       <img className="mobile-only mobile-logo" src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" />
-      <header className="page-head"><p className="eyebrow">Tu cuenta</p><h1>{user.name || user.username}</h1>
+      <header className="page-head"><h1>{user.name || user.username}</h1>
         <p className="lead small">{user.username}{user.company ? ` · ${user.company}` : ''} · <span className={`chip ${paid ? 'on' : ''}`}>{isAdmin ? 'Administrador' : paid ? `Plan completo${user.paid_until ? ' hasta ' + user.paid_until : ''}` : 'Prueba'}</span></p>
       </header>
       {user.plan?.activado && <dl className="kv card"><dt>Plan activado</dt><dd>{user.plan.activado}</dd>{user.plan.factura && <><dt>Factura</dt><dd className="mono">{user.plan.factura}</dd></>}<dt>Retracto y reversión</dt><dd><a href="#/legal/cancelaciones">Condiciones</a></dd></dl>}
@@ -51,7 +51,6 @@ export default function Cuenta() {
       )}
       {!paid && (
         <div className="card stack accent">
-          <p className="eyebrow">Plan completo</p>
           <h2>Acceso completo con un solo pago</h2>
           <PrecioCorto />
           <p className="small muted">Mapa y ranking completos, tarifas y cortes de cada municipio, prestadores turísticos y empresas del sector con contacto empresarial, licitaciones, red eléctrica y asistente con IA.</p>

@@ -74,7 +74,6 @@ export default function Plan() {
   return (
     <div className="page plan">
       <section className="plan-hero" aria-labelledby="plan-t">
-        <p className="eyebrow">Plan completo</p>
         <h1 id="plan-t">Toda la inteligencia de mercado solar de Colombia, con un solo pago.</h1>
         <p className="lead">Sin suscripción ni cobros automáticos. Pagas una vez y recibes acceso completo con tu propio usuario.</p>
         <div className="plan-precio">

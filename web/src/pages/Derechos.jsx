@@ -40,7 +40,6 @@ export default function Derechos({ user }) {
   return (
     <div className="page narrow stack lg">
       <header className="page-head">
-        <p className="eyebrow">Protección de datos personales</p>
         <h1>Ejercer tus derechos</h1>
         <p className="lead">Puedes conocer, actualizar, rectificar o suprimir tus datos, revocar la autorización, pedir prueba de ella o pedir que retiremos los datos de contacto de una empresa o persona que aparezcan en la plataforma. No tiene costo.</p>
       </header>

@@ -23,7 +23,7 @@ export function LegalDoc({ doc, compact = false }) {
   if (!d) return <Spinner />;
   return (
     <article className="legal" aria-labelledby={`doc-${doc}`}>
-      {!compact && <header className="legal-head"><p className="eyebrow">Versión {d.version}</p><h1 id={`doc-${doc}`}>{d.titulo}</h1></header>}
+      {!compact && <header className="legal-head"><h1 id={`doc-${doc}`}>{d.titulo}</h1><p className="small muted">Versión del {d.version}</p></header>}
       {compact && <h2 id={`doc-${doc}`} className="sr-only">{d.titulo}</h2>}
       <Markdown text={d.texto} doc />
     </article>
@@ -35,7 +35,6 @@ export default function Legal({ doc }) {
   return (
     <div className="page legal-page">
       <nav className="legal-nav" aria-label="Documentos legales">
-        <p className="eyebrow">Legal</p>
         <ul>{LEGAL_DOCS.map(([k, l]) => <li key={k}><a href={`#/legal/${k}`} aria-current={k === cur ? 'page' : undefined}>{l}</a></li>)}<li><a href="#/derechos">Ejercer mis derechos</a></li></ul>
       </nav>
       <LegalDoc doc={cur} />

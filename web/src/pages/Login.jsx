@@ -33,8 +33,11 @@ export default function Login({ cfg, onLogin }) {
     <div className="login">
       <section className="login-art">
         <a href="https://www.talera.co/" target="_blank" rel="noreferrer" className="login-brand"><img src="/radar-solar-logo.png" alt="Radar Solar · Powered by Talera" /></a>
+        <figure className="login-map" aria-hidden="true">
+          <img src="/isolineas.svg" alt="" width="560" height="761" />
+          <figcaption><span className="sw" />Radiación solar, kWh/m² al día<span className="vals"><span>3,8</span><span>5,7</span></span></figcaption>
+        </figure>
         <div className="login-art-inner" aria-hidden="true">
-          <p className="eyebrow light">Inteligencia de mercado solar · Colombia</p>
           <p className="login-claim">Dónde vender energía solar, a quién y con qué argumentos.</p>
           <ul className="login-facts">
             <li><b>1.122</b><span>municipios con puntaje</span></li>

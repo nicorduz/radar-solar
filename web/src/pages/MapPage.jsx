@@ -82,7 +82,7 @@ const TOOLS = [
 const loadShapes = () => readLocal('rs_shapes', []);
 const saveShapes = (s) => writeLocal('rs_shapes', s);
 const uid = () => Math.random().toString(36).slice(2, 9);
-const TXT = { fontFamily: "'IBM Plex Sans Variable', system-ui, sans-serif", characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
+const TXT = { fontFamily: "'Archivo Variable', system-ui, sans-serif", characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
 
 const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
@@ -778,11 +778,13 @@ export default function MapPage({ focus }) {
         <div className="list" id="map-list">
           {data?.mode === 'municipio' && !top.length && <p className="small muted" style={{ padding: '4px 16px' }}>No hay municipios en esta parte del mapa. Aléjate o elige "Todo el país".</p>}
           {data?.mode === 'municipio' && top.map((d) => (
-            <button key={d.code} className="map-item" onClick={() => { fly(d); }} onDoubleClick={() => go('m', d.code)}>
-              <span className="mono muted">{d.rank}</span>
-              <span><b>{d.name}</b><br /><span className="small muted">{d.dpto} · {sub(d)}</span></span>
-              <span className="row" style={{ gap: 6 }}><ScoreBadge score={d.score} tier={d.tier} /><a className="small" href={`#/m/${d.code}`} onClick={(e) => e.stopPropagation()}>Ver</a></span>
-            </button>
+            <div key={d.code} className="map-item">
+              <button type="button" className="map-item-main" onClick={() => { fly(d); }} onDoubleClick={() => go('m', d.code)}>
+                <span className="muted num">{d.rank}</span>
+                <span><b>{d.name}</b><br /><span className="small muted">{d.dpto} · {sub(d)}</span><span className="sr-only"> (ubicar en el mapa)</span></span>
+              </button>
+              <span className="row" style={{ gap: 6 }}><ScoreBadge score={d.score} tier={d.tier} /><a className="small tap" href={`#/m/${d.code}`}>Ver<span className="sr-only"> ficha de {d.name}</span></a></span>
+            </div>
           ))}
           {dpto && (
             <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
