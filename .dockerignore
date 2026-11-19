@@ -3,3 +3,6 @@ web/dist
 storage
 .env
 *.log
+.claude
+.impeccable
+.taste-skill

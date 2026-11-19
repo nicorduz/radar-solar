@@ -5,3 +5,8 @@ storage
 *.log
 .DS_Store
 Thumbs.db
+
+# Archivos de trabajo de las skills de diseño
+.impeccable/config.local.json
+.impeccable-live/
+.taste-skill/
