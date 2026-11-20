@@ -85,6 +85,7 @@ export default function Login({ cfg, onLogin }) {
           {mfa && <button type="button" className="btn ghost" onClick={() => { setMfa(false); setCode(''); setErr(''); }}>Volver</button>}
           {mfa && <p className="small muted">¿Perdiste el teléfono y los códigos de recuperación? Quien administra el servidor puede reiniciar la verificación en dos pasos.</p>}
           {!mfa && <button type="button" className="link start small" onClick={() => { setErr(''); setRec({ nombre: '', usuario: u, contacto: '' }); }}>¿Olvidaste tu usuario o contraseña?</button>}
+          <p className="small muted"><a href="#/">Conoce Radar Solar</a>: qué es, para quién sirve y cómo se usa.</p>
           <p className="small muted">Las cuentas las crea el administrador. {contacto ? <>Solicita la tuya {contacto}.</> : 'Pide la tuya al administrador.'}</p>
           <p className="small muted">Al ingresar por primera vez te pediremos aceptar los <a href="#/legal/terminos">términos de uso</a> y autorizar el tratamiento de los datos de tu cuenta según la <a href="#/legal/privacidad">política de privacidad</a>.</p>
         </form>

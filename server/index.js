@@ -55,6 +55,16 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 // ---------------- Sesión ----------------
 app.get('/api/config', (req, res) => res.json({ appName: config.appName, contact: config.contact, ai: aiInfo().configured, sat: { tiles: config.satTiles, attribution: config.satAttribution }, plan: { precio: config.planPrecio, impuestos: config.planImpuestos, vigencia: process.env.LEGAL_VIGENCIA_PLAN || null }, titular: config.legal.razonSocial || null, pw_min: 15 }));
 
+// Página de inicio pública: solo conteos y la descripción de cada perfil (ningún dato pagado)
+app.get('/api/landing', (req, res) => {
+  const m = store.meta || {};
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json({
+    totals: { municipios: store.municipios.length, ci: store.ci.length, empresas: store.empresas.length, clientes: store.clientes.length, colegios: store.colegios.length, salud: store.salud.length, secop: m.secop_n ?? store.secop.length, subs: m.red_n?.subs ?? null },
+    perfiles: Object.entries(PROFILES).map(([id, P]) => ({ id, label: P.label, desc: P.desc })),
+  });
+});
+
 app.post('/api/login', wrap(login));
 app.post('/api/login/mfa', wrap(loginMfa));
 // Olvido de usuario o contraseña: se registra la solicitud y el administrador devuelve el acceso con una
@@ -490,7 +500,9 @@ app.get('/api/solar/horario', requireUser, wrap(async (req, res) => {
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
 app.get('/api/red', requireUser, (req, res) => {
   const r = store.red;
-  res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
+  // Autogeneración (AGPE): los operadores reportan cada sistema por municipio, sin coordenadas; se agrupa en el centro del municipio
+  const agpe = isPaid(req) ? store.municipios.filter((m) => m.agpe_n > 0 && m.lat != null).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.agpe_n, solar: m.agpe_solar || 0, kw: Math.round(m.agpe_kw || 0) })) : [];
+  res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], agpe, capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
 });
 app.get('/api/red/mt', requireUser, (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ locked: true });

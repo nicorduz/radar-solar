@@ -17,7 +17,8 @@ export function securityHeaders(req, res, next) {
     // React aplica estilos en línea (atributo style); no se permiten <script> en línea
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${[...new Set(tiles)].join(' ')}`,
-    `connect-src 'self' ${[...new Set(tiles)].join(' ')}`,
+    // data: permite que el mapa cargue sus íconos (deck.gl los descarga con fetch)
+    `connect-src 'self' data: ${[...new Set(tiles)].join(' ')}`,
     "font-src 'self' data:",
     "worker-src 'self' blob:",
     "child-src blob:",
