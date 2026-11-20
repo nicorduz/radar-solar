@@ -27,6 +27,7 @@ const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false };
 
 const LAYERS = {
   solar: { label: 'Plantas solares', img: ICON_SOLAR, paid: true },
+  agpe: { label: 'Autogeneración en techos y empresas (por municipio)', swatch: '#FFB84D', paid: true },
   upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true },
   subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
   lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
@@ -37,7 +38,7 @@ const LAYERS = {
   salud: { label: 'Hospitales y centros de salud (por municipio)', swatch: '#FF6B8A', paid: true },
   trafos: { label: 'Transformadores de distribución (demo)', swatch: 'linear-gradient(90deg,#4FB286,#F2C38A,#E2675B)', paid: true, demo: true },
 };
-const DEFAULT_LAYERS = { instalador: [], proveedor: [], desarrollador: ['lineas', 'solar', 'upme', 'capacidad'], servicios: ['solar'], respaldo: ['zni'] };
+const DEFAULT_LAYERS = { instalador: ['agpe'], proveedor: ['agpe', 'solar'], desarrollador: ['lineas', 'solar', 'upme', 'capacidad'], servicios: ['solar', 'agpe'], respaldo: ['zni'] };
 const ZOOM_COLEGIOS = 9;
 // Color de la capacidad de conexión: rojo = casi nada, ámbar = poca, verde = 10 MW o más
 const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);
@@ -56,7 +57,7 @@ function trafoScore(d, w) {
 const espacioColor = (p) => (p >= 0.7 ? [79, 178, 134] : p >= 0.4 ? [242, 195, 138] : [226, 103, 91]);
 // Clave de un punto para poder ocultarlo en un tablero
 const HKEY = {
-  muni: (d) => d.code, solar: (d) => `${d.n}|${d.lat}`, upme: (d) => d.id, subs: (d) => d.n, zni: (d) => d.n, capacidad: (d) => d.n,
+  muni: (d) => d.code, agpe: (d) => d.code, solar: (d) => `${d.n}|${d.lat}`, upme: (d) => d.id, subs: (d) => d.n, zni: (d) => d.n, capacidad: (d) => d.n,
   colegios: (d) => d.id, salud: (d) => d.code, trafo: (d) => `${d.op}|${d.id}`, 'trafo-muni': (d) => d.code,
 };
 const layerKind = (id) => (id.startsWith('muni-') ? 'muni' : id);
@@ -464,6 +465,12 @@ export default function MapPage({ focus }) {
     if (on.has('subs') && red?.subs?.length) {
       layers.push(new IconLayer({ id: 'subs', data: vis('subs', red.subs), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
     }
+    if (on.has('agpe') && red?.agpe?.length) {
+      layers.push(new ScatterplotLayer({
+        id: 'agpe', data: vis('agpe', red.agpe.filter((d) => inDpto(d.code))), getPosition: (d) => [d.lon - 0.02, d.lat + 0.02], radiusUnits: 'pixels',
+        getRadius: (d) => Math.min(22, 3 + Math.sqrt(d.n) * 1.1), getFillColor: [255, 184, 77, 175], stroked: true, getLineColor: [255, 255, 255, 210], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true,
+      }));
+    }
     if (on.has('upme') && red?.upme?.length) {
       layers.push(new IconLayer({ id: 'upme', data: vis('upme', red.upme), getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
     }
@@ -561,6 +568,7 @@ export default function MapPage({ focus }) {
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
+        else if (layer.id === 'agpe') html = `<b>${d.name}</b>, ${d.dpto}<br/>${fmt(d.n)} sistemas de autogeneración${d.solar ? ` (${fmt(d.solar)} solares)` : ''}<br/>${fmt(d.kw)} kW instalados<br/><span style="color:#B3BCDA">Ubicación aproximada: centro del municipio.<br/>Incluye solo lo que reportan los operadores de red.</span>`;
         else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
         else if (layer.id === 'trafo') html = `<b>Transformador ${d.id}</b> · ${d.op}<br/>${fmt(d.kva, 1)} kVA · límite para autogeneración ${fmt(d.lim, 1)} kW<br/>${d.gd != null ? `Generación conectada: ${fmt(d.gd, 1)} kW<br/>` : ''}${d.disp != null ? `Disponible según el operador: ${fmt(d.disp, 1)} kW<br/>` : ''}Espacio estimado: <b>${fmt(d.libre, 1)} kW</b>${d.sem === 'sd' ? ' (máximo)' : ''}<br/>${d.us != null ? `${fmt(d.us)} usuarios conectados<br/>` : ''}${d.circ ? `Circuito ${d.circ}<br/>` : ''}Puntaje ${Math.round(d.score * 100)}/100<br/><span style="color:#B3BCDA">${SEM_TXT[d.sem]}. Demo indicativo.</span>`;
         else if (layer.id === 'trafo-muni') html = `<b>${d.name}</b> · ${d.dpto}<br/>${fmt(d.n)} transformadores · ${fmt(d.kva)} kVA<br/>${fmt(d.espacio * 100)} % con espacio para 3 kW o más<br/><span style="color:#B3BCDA">Clic para acercarte y verlos uno por uno</span>`;

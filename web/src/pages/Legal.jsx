@@ -48,7 +48,7 @@ export function PublicShell({ children }) {
     <div className="public">
       <header className="public-bar">
         <a href="#/" className="brand-mark"><img src="/icon.svg" alt="" width="28" height="28" /><span>Radar Solar</span></a>
-        <a href="#/" className="btn ghost sm">Ingresar</a>
+        <a href="#/ingresar" className="btn ghost sm">Ingresar</a>
       </header>
       <main id="main" className="public-main" tabIndex={-1}>{children}</main>
       <footer className="public-foot"><LegalLine /></footer>

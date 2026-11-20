@@ -15,6 +15,7 @@ import Mercado from './pages/Mercado.jsx';
 import { ProfileSwitch } from './components/ui.jsx';
 import Legal, { LegalLine, PublicShell } from './pages/Legal.jsx';
 import Derechos from './pages/Derechos.jsx';
+import Landing from './pages/Landing.jsx';
 import { ConsentScreen, ForcePassword } from './components/Gates.jsx';
 import Plan, { PoweredBy } from './pages/Plan.jsx';
 import Industrias from './pages/Industrias.jsx';
@@ -135,7 +136,12 @@ export default function App() {
   if (!user && (route.view === 'legal' || route.view === 'terminos')) return <PublicShell><Legal doc={route.arg || 'terminos'} /></PublicShell>;
   if (!user && route.view === 'derechos') return <PublicShell><Derechos /></PublicShell>;
   if (user === undefined) return <div className="boot" role="status" aria-label="Cargando"><div className="spinner" /></div>;
-  if (!user) return <Login cfg={cfg} onLogin={(u) => { setUser(u); setGate(null); }} />;
+  // Sin sesión: la raíz muestra la página de inicio; cualquier otra sección pide ingresar
+  if (!user) {
+    const raw = window.location.hash.replace(/^#\/?/, '');
+    if (!raw || raw === 'inicio') return <Landing cfg={cfg} />;
+    return <Login cfg={cfg} onLogin={(u) => { setUser(u); setGate(null); if (route.view === 'ingresar') window.location.hash = '#/mapa'; }} />;
+  }
   // Bloqueos que exige el servidor antes de usar la plataforma
   if (gate === 'must_change_pw') return <>{liveRegion}<ForcePassword user={user} onDone={refreshUser} onLogout={logout} /></>;
   if (gate === 'consent_required' && !['legal', 'derechos'].includes(route.view)) return <>{liveRegion}<ConsentScreen onDone={() => { setGate(null); refreshUser(); }} onLogout={logout} /></>;
