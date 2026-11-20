@@ -8,7 +8,7 @@ import { WeightsControl, ScoreBadge, ContactCTA, Modal } from '../components/ui.
 import { writeLocal, readLocal, useLocal } from '../local.js';
 import { Icon } from '../components/Icon.jsx';
 import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
-import { METRIC_ICON, ICON_SOLAR, ICON_SOLAR_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
+import { METRIC_ICON, GEN_ICON, GEN_ICON_PRUEBAS, ICON_UPME, ICON_SUB, ICON_ZNI, COLOMBIA, COLOMBIA_MASK } from '../components/mapIcons.js';
 
 const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 // Rampa azul Talera → naranja Talera (bajo → alto)
@@ -25,10 +25,22 @@ const elevOf = (t) => 2500 + Math.pow(t, 1.4) * 70000;
 // Los íconos se dibujan siempre encima (sin recortarse contra el plano del mapa en 3D)
 const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false };
 
+// Plantas de generación por tecnología (combustible principal reportado a XM)
+const GEN = [
+  ['solar', 'Solar', 'Solares'], ['hidro', 'Hidráulica', 'Hidráulicas'], ['gas', 'Gas natural', 'A gas natural'], ['carbon', 'Carbón', 'A carbón'],
+  ['liquidos', 'Diésel y fuel oil', 'A diésel y fuel oil'], ['eolica', 'Eólica', 'Eólicas'], ['biomasa', 'Biomasa y biogás', 'De biomasa y biogás'],
+];
+const GEN_KEYS = GEN.map(([k]) => k);
+// Nombres en mayúsculas de XM y la UPME, en tipo oración ("SAN JUAN DEL CESAR" → "San Juan del Cesar")
+const MENORES = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e', 'en']);
+const cap = (x) => String(x || '').toLowerCase().replace(/\p{L}+/gu, (w, i) => (i > 0 && MENORES.has(w) ? w : w[0].toUpperCase() + w.slice(1)));
+// Combustible específico cuando agrega algo a la tecnología (bagazo, ACPM, mezcla gas y carbón…)
+const combTxt = (d) => (d.comb && !/^(RAD SOLAR|AGUA|VIENTO|GAS|CARBON)$/.test(d.comb) ? ` (${/^ACPM$/.test(d.comb) ? 'ACPM' : cap(d.comb)})` : '');
+const GEN_NAME = Object.fromEntries(GEN.map(([k, n]) => [k, n]));
 const LAYERS = {
-  solar: { label: 'Plantas solares', img: ICON_SOLAR, paid: true },
+  ...Object.fromEntries(GEN.map(([k, , l], i) => [k, { label: l, img: GEN_ICON[k], paid: true, group: i === 0 ? 'Plantas de generación' : null, gen: true }])),
   agpe: { label: 'Autogeneración en techos y empresas (por municipio)', swatch: '#FFB84D', paid: true },
-  upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true },
+  upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true, group: 'Red, proyectos y demanda' },
   subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
   lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
   mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
@@ -38,7 +50,7 @@ const LAYERS = {
   salud: { label: 'Hospitales y centros de salud (por municipio)', swatch: '#FF6B8A', paid: true },
   trafos: { label: 'Transformadores de distribución (demo)', swatch: 'linear-gradient(90deg,#4FB286,#F2C38A,#E2675B)', paid: true, demo: true },
 };
-const DEFAULT_LAYERS = { instalador: ['agpe'], proveedor: ['agpe', 'solar'], desarrollador: ['lineas', 'solar', 'upme', 'capacidad'], servicios: ['solar', 'agpe'], respaldo: ['zni'] };
+const DEFAULT_LAYERS = { instalador: ['agpe'], proveedor: ['agpe', 'solar'], desarrollador: ['lineas', ...GEN_KEYS, 'upme', 'capacidad'], servicios: ['solar', 'agpe'], respaldo: ['zni'] };
 const ZOOM_COLEGIOS = 9;
 // Color de la capacidad de conexión: rojo = casi nada, ámbar = poca, verde = 10 MW o más
 const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);
@@ -57,7 +69,7 @@ function trafoScore(d, w) {
 const espacioColor = (p) => (p >= 0.7 ? [79, 178, 134] : p >= 0.4 ? [242, 195, 138] : [226, 103, 91]);
 // Clave de un punto para poder ocultarlo en un tablero
 const HKEY = {
-  muni: (d) => d.code, agpe: (d) => d.code, solar: (d) => `${d.n}|${d.lat}`, upme: (d) => d.id, subs: (d) => d.n, zni: (d) => d.n, capacidad: (d) => d.n,
+  muni: (d) => d.code, agpe: (d) => d.code, ...Object.fromEntries(GEN_KEYS.map((k) => [k, (d) => `${d.n}|${d.lat}`])), upme: (d) => d.id, subs: (d) => d.n, zni: (d) => d.n, capacidad: (d) => d.n,
   colegios: (d) => d.id, salud: (d) => d.code, trafo: (d) => `${d.op}|${d.id}`, 'trafo-muni': (d) => d.code,
 };
 const layerKind = (id) => (id.startsWith('muni-') ? 'muni' : id);
@@ -86,6 +98,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const TXT = { fontFamily: "'Archivo Variable', system-ui, sans-serif", characterSet: 'auto', sizeUnits: 'pixels', background: true, getBackgroundColor: [16, 14, 42, 225], backgroundPadding: [6, 3], getColor: [244, 246, 251, 255], parameters: { depthCompare: 'always', depthWriteEnabled: false } };
 
 const icon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: false });
+const genIcon = (url) => ({ url, width: 128, height: 128, anchorY: 64, mask: false });
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
 
 export default function MapPage({ focus }) {
@@ -183,6 +196,7 @@ export default function MapPage({ focus }) {
     api('/map' + qs(scoreParams)).then(setData).catch(() => setData({ items: [] }));
   }, [JSON.stringify(scoreParams)]);
 
+  const genN = useMemo(() => { const o = {}; for (const p of red?.plantas || []) if (p.estado !== 'Inactiva') o[p.tipo] = (o[p.tipo] || 0) + 1; return o; }, [red]);
   useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
   useEffect(() => { api('/geo/dptos').then(setGeoD).catch(() => setGeoD(null)); }, []);
@@ -317,6 +331,7 @@ export default function MapPage({ focus }) {
   };
 
   const dpto = data?.mode === 'dpto';
+  const genOn = paid ? GEN_KEYS.filter((k) => on.has(k)) : [];
   const inDpto = (code) => !dptoSel || String(code || '').slice(0, 2) === dptoSel;
   const hid = useMemo(() => new Set(hidden), [hidden]);
   const vis = (kind, arr) => (hid.size ? arr.filter((d) => !hid.has(`${kind}:${HKEY[kind](d)}`)) : arr);
@@ -468,17 +483,24 @@ export default function MapPage({ focus }) {
     if (on.has('agpe') && red?.agpe?.length) {
       layers.push(new ScatterplotLayer({
         id: 'agpe', data: vis('agpe', red.agpe.filter((d) => inDpto(d.code))), getPosition: (d) => [d.lon - 0.02, d.lat + 0.02], radiusUnits: 'pixels',
-        getRadius: (d) => Math.min(22, 3 + Math.sqrt(d.n) * 1.1), getFillColor: [255, 184, 77, 175], stroked: true, getLineColor: [255, 255, 255, 210], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true,
+        getRadius: (d) => Math.min(22, 3 + Math.sqrt(Math.max(d.n, d.px)) * 1.1), getFillColor: [255, 184, 77, 175], stroked: true, getLineColor: [255, 255, 255, 210], lineWidthUnits: 'pixels', getLineWidth: 1, parameters: ON_TOP, pickable: true,
       }));
     }
     if (on.has('upme') && red?.upme?.length) {
       layers.push(new IconLayer({ id: 'upme', data: vis('upme', red.upme), getPosition: (d) => [d.lon + 0.03, d.lat + 0.03], getIcon: () => icon(ICON_UPME), sizeUnits: 'pixels', getSize: (d) => Math.min(56, 20 + Math.sqrt(d.mw || 1) * 2), parameters: ON_TOP, pickable: true }));
     }
-    if (on.has('solar') && red?.plantas?.length) {
-      layers.push(new IconLayer({
-        id: 'solar', data: vis('solar', red.plantas.filter((p) => p.tipo === 'solar')), getPosition: (d) => [d.lon, d.lat],
-        getIcon: (d) => icon(d.estado === 'Operación' ? ICON_SOLAR : ICON_SOLAR_PRUEBAS), sizeUnits: 'pixels', getSize: (d) => Math.min(60, 18 + Math.sqrt(d.mw || 1) * 2.4), parameters: ON_TOP, pickable: true,
-      }));
+    if (red?.plantas?.length) {
+      // Una capa por tecnología; las grandes primero para que las pequeñas queden encima
+      for (const k of GEN_KEYS) {
+        if (!on.has(k)) continue;
+        const data = vis(k, red.plantas.filter((p) => p.tipo === k && inDpto(p.code))).sort((a, b) => b.mw - a.mw);
+        layers.push(new IconLayer({
+          id: k, data, getPosition: (d) => [d.lon, d.lat], sizeUnits: 'pixels', parameters: ON_TOP, pickable: true,
+          getIcon: (d) => genIcon(d.estado === 'Pruebas' ? GEN_ICON_PRUEBAS[k] : GEN_ICON[k]),
+          getSize: (d) => Math.min(46, 15 + Math.sqrt(d.mw || 0.1) * 1.6),
+          getColor: (d) => [255, 255, 255, d.estado === 'Inactiva' ? 90 : 255],
+        }));
+      }
     }
     if (on.has('salud') && salud?.length) {
       layers.push(new ScatterplotLayer({
@@ -566,9 +588,9 @@ export default function MapPage({ focus }) {
         if (!d || !layer) return null;
         let html;
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
-        else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
-        else if (layer.id === 'solar') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.estado}${d.kv ? ' · ' + d.kv + ' kV' : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${d.mun || ''}, ${d.dpto || ''}</span>`;
-        else if (layer.id === 'agpe') html = `<b>${d.name}</b>, ${d.dpto}<br/>${fmt(d.n)} sistemas de autogeneración${d.solar ? ` (${fmt(d.solar)} solares)` : ''}<br/>${fmt(d.kw)} kW instalados<br/><span style="color:#B3BCDA">Ubicación aproximada: centro del municipio.<br/>Incluye solo lo que reportan los operadores de red.</span>`;
+        else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.sistema ? ' · ' + (d.sistema === 'STN' ? 'transmisión nacional' : 'transmisión regional') : ''}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op || ''}</span>`;
+        else if (GEN_NAME[layer.id]) html = `<b>${d.n}</b><br/>${GEN_NAME[d.tipo]}${combTxt(d)} · <b>${fmt(d.mw, d.mw < 10 ? 2 : 1)} MW</b><br/>${d.estado}${d.desde ? ' desde ' + d.desde.slice(0, 4) : ''}${d.kv ? ' · ' + d.kv + ' kV' : ''}${d.clas && d.clas !== 'NORMAL' ? ' · ' + cap(d.clas) : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${cap(d.mun || '')}, ${cap(d.dpto || '')}</span>`;
+        else if (layer.id === 'agpe') html = `<b>${d.name}</b>, ${d.dpto}<br/>${d.n ? `${fmt(d.n)} sistemas de autogeneración${d.solar ? ` (${fmt(d.solar)} solares)` : ''}, ${fmt(d.kw)} kW (SUI)<br/>` : ''}${d.px ? `${fmt(d.px)} registrados con nombre en PARATEC, ${fmt(d.px_kw)} kW<br/>` : ''}<span style="color:#B3BCDA">Ubicación aproximada: centro del municipio.<br/>Incluye solo lo que reportan los operadores de red.</span>`;
         else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
         else if (layer.id === 'trafo') html = `<b>Transformador ${d.id}</b> · ${d.op}<br/>${fmt(d.kva, 1)} kVA · límite para autogeneración ${fmt(d.lim, 1)} kW<br/>${d.gd != null ? `Generación conectada: ${fmt(d.gd, 1)} kW<br/>` : ''}${d.disp != null ? `Disponible según el operador: ${fmt(d.disp, 1)} kW<br/>` : ''}Espacio estimado: <b>${fmt(d.libre, 1)} kW</b>${d.sem === 'sd' ? ' (máximo)' : ''}<br/>${d.us != null ? `${fmt(d.us)} usuarios conectados<br/>` : ''}${d.circ ? `Circuito ${d.circ}<br/>` : ''}Puntaje ${Math.round(d.score * 100)}/100<br/><span style="color:#B3BCDA">${SEM_TXT[d.sem]}. Demo indicativo.</span>`;
         else if (layer.id === 'trafo-muni') html = `<b>${d.name}</b> · ${d.dpto}<br/>${fmt(d.n)} transformadores · ${fmt(d.kva)} kVA<br/>${fmt(d.espacio * 100)} % con espacio para 3 kW o más<br/><span style="color:#B3BCDA">Clic para acercarte y verlos uno por uno</span>`;
@@ -639,13 +661,15 @@ export default function MapPage({ focus }) {
           </button>
           {menu === 'layers' && (
             <div className="glass dd-menu layers" role="menu">
-              {Object.entries(LAYERS).map(([k, l]) => (
-                <label key={k} className={l.paid && !paid ? 'dis' : ''}>
+              {Object.entries(LAYERS).map(([k, l]) => (<React.Fragment key={k}>
+                {l.group && <b className="small layer-group">{l.group}</b>}
+                <label className={l.paid && !paid ? 'dis' : ''}>
                   <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} />
                   {l.img ? <img src={l.img} alt="" width="22" height="22" /> : <span className="sw" style={{ background: l.swatch }} />}
-                  <span>{l.label}{l.paid && !paid && <><Icon name="lock" size={13} /><span className="sr-only"> (plan completo)</span></>}{l.demo && <span className="soon-tag">Demo</span>}</span>
+                  <span>{l.label}{l.gen && genN[k] ? <span className="muted"> · {fmt(genN[k])}</span> : null}{l.paid && !paid && <><Icon name="lock" size={13} /><span className="sr-only"> (plan completo)</span></>}{l.demo && <span className="soon-tag">Demo</span>}</span>
                 </label>
-              ))}
+              </React.Fragment>))}
+              {genOn.length > 0 && <span className="small muted">Tamaño = capacidad. Borde punteado = en pruebas; tenue = inactiva.</span>}
               {on.has('colegios') && paid && zoom < ZOOM_COLEGIOS && <span className="small muted">Acércate al mapa para ver los colegios.</span>}
               {on.has('colegios') && paid && zoom >= ZOOM_COLEGIOS && colegios?.total > colegios?.rows?.length && <span className="small muted">Se muestran los {fmt(colegios.rows.length)} colegios más grandes de {fmt(colegios.total)} en la vista.</span>}
               {on.has('capacidad') && <span className="small muted">Capacidad indicativa para conectar generación; verde = 10 MW o más, rojo = casi nada.</span>}
@@ -763,11 +787,18 @@ export default function MapPage({ focus }) {
         </div>
       )}
 
-      {showKey !== 'nada' && (
+      {(showKey !== 'nada' || genOn.length > 0) && (
         <div className="legend glass">
+          {genOn.length > 0 && (
+            <ul className="gen-legend" aria-label="Plantas de generación en el mapa">
+              {genOn.map((k) => <li key={k}><img src={GEN_ICON[k]} alt="" width="18" height="18" />{GEN_NAME[k]} <span className="muted">{fmt(genN[k] || 0)}</span></li>)}
+            </ul>
+          )}
+          {showKey !== 'nada' && <>
           <span className="row" style={{ gap: 6 }}>{iconMode && <img src={METRIC_ICON[showKey]} alt="" width="16" height="16" />}{M.label}: {M.invert ? 'lejos → cerca' : 'bajo → alto'}</span>
           <div className="ramp" />
           <span className="muted">{dpto ? 'Puntaje por departamento' : iconMode ? `${is3d ? 'Altura, tamaño' : 'Tamaño'} y color = valor · todos los municipios` : `${is3d ? 'Altura' : 'Tamaño'} y color = puntaje · ${prof.short}`}</span>
+          </>}
         </div>
       )}
 

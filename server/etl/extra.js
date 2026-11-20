@@ -203,18 +203,76 @@ export function clientesTuristicos(rows, munis) {
   }).filter(Boolean).sort((a, b) => b.hab - a.hab);
 }
 
-// ---------------- Red de transmisión, subestaciones y plantas (XM Paratec) ----------------
-export function applyRed(munis, subsRaw, plantsRaw, linesRaw, findMuni, log) {
+// ---------------- Red de transmisión, subestaciones y plantas (UPME y XM Paratec) ----------------
+// Tecnología de cada planta según el combustible principal que reporta XM
+export const TECNOLOGIAS = {
+  solar: 'Solar', hidro: 'Hidráulica', eolica: 'Eólica', gas: 'Gas natural', carbon: 'Carbón', liquidos: 'Diésel y fuel oil', biomasa: 'Biomasa y biogás',
+};
+export function tecnologia(comb, tipo) {
+  const c = String(comb || '').toUpperCase(), t = String(tipo || '').toUpperCase();
+  if (/SOLAR/.test(c) || /SOLAR/.test(t)) return 'solar';
+  if (/AGUA/.test(c) || /HIDR/.test(t)) return 'hidro';
+  if (/VIENTO/.test(c) || /E[OÓ]LIC/.test(t)) return 'eolica';
+  if (/CARB[OÓ]N/.test(c)) return 'carbon';
+  if (/BAGAZO|BIOMASA|BIOGAS|CASCARILLA|PALMA/.test(c)) return 'biomasa';
+  if (/ACPM|DIESEL|COMBUST|CRUDO|FUEL|JET|QUEROSENO/.test(c)) return 'liquidos';
+  if (/GAS/.test(c)) return 'gas';
+  return /T[EÉ]RMIC/.test(t) ? 'gas' : 'otra';
+}
+const ESTADO = { 'OPERACIÓN': 'Operación', OPERACION: 'Operación', PRUEBAS: 'Pruebas', INACTIVO: 'Inactiva' };
+const nkey = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+export function applyRed(munis, subsRaw, plantsRaw, linesRaw, findMuni, log, upmePlantas, upmeSubs) {
+  // Subestaciones: PARATEC (XM) + capa de subestaciones construidas de la UPME. Si están a menos de 1,5 km se toman como la misma.
   const subs = (subsRaw?.data || []).filter((s) => s.latitude && s.longitude).map((s) => ({
     n: s.elementName, lat: s.latitude, lon: s.longitude, kv: s.voltages, op: s.operatorCompanyName, sub: s.subArea, dpto: s.department,
-    kvmax: Math.max(...String(s.voltages).match(/\d+(\.\d+)?/g).map(Number)), desde: (s.fpoDate || '').slice(0, 4),
+    kvmax: Math.max(...String(s.voltages).match(/\d+(\.\d+)?/g).map(Number)), desde: (s.fpoDate || '').slice(0, 4), src: 'XM',
   }));
-  const plantas = (plantsRaw?.data || []).filter((p) => p.lat && p.lng).map((p) => ({
-    n: p.elementName, tipo: p.type, lat: p.lat, lon: p.lng, mw: p.netEffectiveCapacity || p.ratedPower || 0, estado: p.elementStateName,
-    op: p.operatorCompanyName, kv: p.connectionVoltage, dpto: p.department, mun: p.municipality, desde: (p.fpoDate || '').slice(0, 10) || null,
-    code: findMuni(p.department, p.municipality),
-  }));
+  // La UPME publica una fila por nivel de tensión: se agrupan por nombre base y cercanía (5 km).
+  const base = (n) => nkey(String(n).replace(/\(.*?\)/g, ' ').replace(/\s-\s?.*$/, ' ').replace(/\d+([.,]\d+)?\s*kv/gi, ' '));
+  const grupos = [];
+  for (const u of upmeSubs?.items || []) {
+    const g = grupos.find((x) => x.k === base(u.n) && km(x.lat, x.lon, u.lat, u.lon) <= 5);
+    if (g) { if (u.kv && !g.kvs.includes(u.kv)) g.kvs.push(u.kv); g.sistema = g.sistema === 'STN' || u.sistema === 'STN' ? 'STN' : g.sistema; continue; }
+    grupos.push({ ...u, k: base(u.n), n: u.n.replace(/\s*\d+([.,]\d+)?\s*kV\s*$/i, ''), kvs: u.kv ? [u.kv] : [] });
+  }
+  let subsUpme = 0, subsUnidas = 0;
+  for (const u of grupos) {
+    const kvs = u.kvs.sort((x, y) => y - x);
+    const w1 = (k) => k.split(' ')[0];
+    const near = subs.filter((s) => s.src !== 'UPME').map((s) => ({ s, d: Math.min(km(s.lat, s.lon, u.lat, u.lon), km(s.lat0 ?? s.lat, s.lon0 ?? s.lon, u.lat, u.lon)), k: base(s.n) }))
+      .filter(({ d, k }) => d <= 1.5 || (k === u.k && d <= 40) || (w1(k) === w1(u.k) && w1(k).length >= 4 && d <= 6))
+      .sort((x, y) => (y.k === u.k) - (x.k === u.k) || x.d - y.d)[0]?.s;
+    if (near) {
+      // Coordenadas del geoportal de la UPME; nombre, operador y tensiones de XM
+      if (near.lat0 == null) Object.assign(near, { lat0: near.lat, lon0: near.lon, lat: u.lat, lon: u.lon });
+      Object.assign(near, { sistema: u.sistema, prop: u.prop, src: 'XM y UPME', kvmax: Math.max(near.kvmax, ...kvs, 0) });
+      subsUnidas++; continue;
+    }
+    subs.push({ n: u.n, lat: u.lat, lon: u.lon, kv: kvs.map((k) => `${k} kV`).join(' / '), op: u.prop, dpto: u.dpto, mun: u.mun, kvmax: kvs[0] || 0, desde: /^\d{4}/.test(u.desde || '') ? u.desde.slice(0, 4) : '', sistema: u.sistema, src: 'UPME' });
+    subsUpme++;
+  }
+  // Plantas: capa "proyectos de generación XM" del geoportal de la UPME (todas las tecnologías). Sin ella, PARATEC.
+  const paratec = new Map((plantsRaw?.data || []).map((p) => [nkey(p.elementName), p]));
+  let plantas;
+  if (upmePlantas?.items?.length) {
+    plantas = upmePlantas.items.map((p) => {
+      const x = paratec.get(nkey(p.n));
+      const code = munis.has(p.code) ? p.code : findMuni(p.dpto, p.mun);
+      return {
+        n: p.n, tipo: tecnologia(p.comb, p.tipo), comb: p.comb, lat: p.lat, lon: p.lon, mw: p.mw || x?.netEffectiveCapacity || 0, estado: ESTADO[p.estado] || p.estado,
+        op: p.agente, kv: x?.connectionVoltage || null, dpto: p.dpto, mun: p.mun, desde: p.desde, clas: p.clas, despacho: p.despacho, sic: p.sic, code,
+      };
+    });
+  } else {
+    plantas = (plantsRaw?.data || []).filter((p) => p.lat && p.lng).map((p) => ({
+      n: p.elementName, tipo: tecnologia('', p.type), lat: p.lat, lon: p.lng, mw: p.netEffectiveCapacity || p.ratedPower || 0, estado: p.elementStateName,
+      op: p.operatorCompanyName, kv: p.connectionVoltage, dpto: p.department, mun: p.municipality, desde: (p.fpoDate || '').slice(0, 10) || null,
+      code: findMuni(p.department, p.municipality),
+    }));
+  }
   const lineas = (linesRaw?.data || []).map((l) => ({ n: l.properties.nameLine, kv: l.properties.energy, op: l.properties.operator, c: l.geometry.coordinates }));
+  const activas = plantas.filter((p) => p.estado !== 'Inactiva');
   for (const m of munis.values()) {
     if (m.lat == null) continue;
     let best = null, n30 = 0, kv30 = 0;
@@ -224,13 +282,36 @@ export function applyRed(munis, subsRaw, plantsRaw, linesRaw, findMuni, log) {
       if (d <= 30) { n30++; kv30 = Math.max(kv30, s.kvmax); }
     }
     if (best) { m.sub_km = +best.d.toFixed(1); m.sub_n = best.s.n; m.sub_kv = best.s.kv; m.sub_op = best.s.op; m.subs30 = n30; m.kv30 = kv30 || null; }
-    let solar30 = 0, solar30mw = 0;
-    for (const p of plantas) if (p.tipo === 'solar' && km(m.lat, m.lon, p.lat, p.lon) <= 30) { solar30++; solar30mw += p.mw; }
-    m.solar30 = solar30; m.solar30_mw = Math.round(solar30mw);
+    let solar30 = 0, solar30mw = 0, gen30 = 0, gen30mw = 0;
+    for (const p of activas) {
+      if (km(m.lat, m.lon, p.lat, p.lon) > 30) continue;
+      gen30++; gen30mw += p.mw;
+      if (p.tipo === 'solar') { solar30++; solar30mw += p.mw; }
+    }
+    m.solar30 = solar30; m.solar30_mw = Math.round(solar30mw); m.gen30 = gen30; m.gen30_mw = Math.round(gen30mw);
   }
-  for (const p of plantas) if (p.code && munis.has(p.code) && p.tipo === 'solar') { const m = munis.get(p.code); m.solar_n = (m.solar_n || 0) + 1; m.solar_mw = +((m.solar_mw || 0) + p.mw).toFixed(1); }
-  log.push(`red XM Paratec: ${lineas.length} líneas, ${subs.length} subestaciones, ${plantas.length} plantas`);
-  return { subs, plantas, lineas };
+  for (const p of activas) if (p.code && munis.has(p.code) && p.tipo === 'solar') { const m = munis.get(p.code); m.solar_n = (m.solar_n || 0) + 1; m.solar_mw = +((m.solar_mw || 0) + p.mw).toFixed(1); }
+  const porTipo = {};
+  for (const p of plantas) { const t = (porTipo[p.tipo] ||= { n: 0, mw: 0 }); t.n++; t.mw = +(t.mw + p.mw).toFixed(1); }
+  log.push(`red: ${lineas.length} líneas; ${subs.length} subestaciones (${subsUnidas} XM y UPME, ${subsUpme} solo UPME); ${plantas.length} plantas ${JSON.stringify(porTipo)}`);
+  for (const s of subs) { delete s.lat0; delete s.lon0; }
+  return { subs, plantas, lineas, porTipo };
+}
+
+// ---------------- Autogeneradores con nombre (PARATEC, XM) ----------------
+// Cada AGPE registrado como recurso en el mercado, con municipio. No trae coordenadas.
+export function applyAgpeParatec(munis, raw, findMuni, log) {
+  if (!raw?.items?.length) return [];
+  const out = [];
+  for (const a of raw.items) {
+    const code = findMuni(a.dpto, a.mun);
+    out.push({ ...a, code });
+    const m = code && munis.get(code); if (!m) continue;
+    m.agpe_px_n = (m.agpe_px_n || 0) + 1;
+    m.agpe_px_mw = +((m.agpe_px_mw || 0) + (a.mw || 0)).toFixed(4);
+  }
+  log.push(`AGPE PARATEC ${raw.fecha}: ${out.length} (${out.filter((a) => a.code).length} con municipio)`);
+  return out;
 }
 
 // ---------------- Zonas no interconectadas (IPSE) ----------------

@@ -194,7 +194,9 @@ app.get('/api/municipio/:code', requireUser, (req, res) => {
     clientes: store.clientes.filter((c) => c.code === m.code).slice(0, isPaid(req) ? 15 : 1).map((c) => (isPaid(req) ? limpiarContacto(c) : { ...c, tel: null, mail: null, dir: null })),
     clientes_n: store.clientes.filter((c) => c.code === m.code).length,
     ...localInstallers(m, isPaid(req)),
-    plantas: store.red.plantas.filter((p) => p.tipo === 'solar' && m.lat && kmBetween(m, p) <= 30).sort((a, b) => b.mw - a.mw).slice(0, 12),
+    plantas: store.red.plantas.filter((p) => p.estado !== 'Inactiva' && m.lat && kmBetween(m, p) <= 30).sort((a, b) => b.mw - a.mw).slice(0, 15),
+    agpe_lista: (store.red.agpe_lista || []).filter((a) => a.code === m.code).sort((a, b) => b.mw - a.mw).slice(0, isPaid(req) ? 40 : 0),
+    agpe_px_fecha: store.meta.agpe_px_fecha,
     upme: (store.red.upme || []).filter((p) => p.code === m.code || (p.lat && m.lat && kmBetween(m, p) <= 30)).map((p) => ({ ...p, km: p.code === m.code ? 0 : Math.round(kmBetween(m, p)) })).sort((a, b) => a.km - b.km),
     dna_serie: store.meta.dna_subareas?.['SUBAREA ' + m.subarea]?.mes || null,
     agpe_zona: m.agpe_zone ? store.meta.agpe_zonas?.[m.agpe_zone] : null,
@@ -501,7 +503,7 @@ app.get('/api/solar/horario', requireUser, wrap(async (req, res) => {
 app.get('/api/red', requireUser, (req, res) => {
   const r = store.red;
   // Autogeneración (AGPE): los operadores reportan cada sistema por municipio, sin coordenadas; se agrupa en el centro del municipio
-  const agpe = isPaid(req) ? store.municipios.filter((m) => m.agpe_n > 0 && m.lat != null).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.agpe_n, solar: m.agpe_solar || 0, kw: Math.round(m.agpe_kw || 0) })) : [];
+  const agpe = isPaid(req) ? store.municipios.filter((m) => (m.agpe_n > 0 || m.agpe_px_n > 0) && m.lat != null).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.agpe_n || 0, solar: m.agpe_solar || 0, kw: Math.round(m.agpe_kw || 0), px: m.agpe_px_n || 0, px_kw: Math.round((m.agpe_px_mw || 0) * 1000) })) : [];
   res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], agpe, capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
 });
 app.get('/api/red/mt', requireUser, (req, res) => {
@@ -514,7 +516,7 @@ app.get('/api/red/mt', requireUser, (req, res) => {
 // Mercado: autogeneradores por mercado (XM), precio de bolsa, contingencias por subárea y plantas
 app.get('/api/mercado', requireUser, (req, res) => {
   const m = store.meta;
-  const plantas = store.red.plantas.filter((p) => p.tipo === 'solar');
+  const plantas = store.red.plantas.filter((p) => p.tipo === 'solar' && p.estado !== 'Inactiva');
   const base = {
     agpe_fecha: m.agpe_xm_fecha, dna_periodo: m.dna_periodo,
     agpe_zonas: Object.entries(m.agpe_zonas || {}).map(([zona, z]) => ({ zona, ...z })).sort((a, b) => b.n - a.n),
@@ -523,7 +525,7 @@ app.get('/api/mercado', requireUser, (req, res) => {
     upme_corte: m.upme_corte, upme_n: m.upme_n || 0,
     upme_mw: Math.round((store.red.upme || []).reduce((a, p) => a + (p.mw || 0), 0)),
     upme_solar_mw: Math.round((store.red.upme || []).filter((p) => /SOLAR/i.test(p.tipo)).reduce((a, p) => a + (p.mw || 0), 0)),
-    solar: { n: plantas.length, mw: Math.round(plantas.reduce((a, p) => a + p.mw, 0)), operacion: plantas.filter((p) => p.estado === 'Operación').length, pruebas: plantas.filter((p) => p.estado !== 'Operación').length },
+    solar: { n: plantas.length, mw: Math.round(plantas.reduce((a, p) => a + p.mw, 0)), operacion: plantas.filter((p) => p.estado === 'Operación').length, pruebas: plantas.filter((p) => p.estado === 'Pruebas').length },
   };
   const upme = [...(store.red.upme || [])].sort((a, b) => (b.inscrito || '').localeCompare(a.inscrito || ''));
   // Calidad del servicio por operador (con el nombre que usa la app) e importaciones de paneles y baterías
