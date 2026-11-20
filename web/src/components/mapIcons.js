@@ -49,6 +49,39 @@ export const ICON_UPME = panel3d('none', '#A8C5FF', 'stroke-dasharray="4 3"');
 export const ICON_SUB = svg(`<g fill="none" stroke="#E8EEFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6 22 58M32 6l10 52M16 20h32M12 34h40M25 42l14 10M39 42 25 52"/></g>`);
 export const ICON_ZNI = svg(`<circle cx="32" cy="32" r="26" fill="#3B1F4F" stroke="#E0A8F0" stroke-width="4"/><path d="M36 12 20 36h12l-3 16 16-24H33l3-16Z" fill="#E0A8F0"/><path d="M14 50 50 14" stroke="#E0A8F0" stroke-width="4" stroke-linecap="round"/>`);
 
+// Plantas de generación: una insignia por tecnología (color + figura), legible desde 14 px.
+// Se dibujan a 128 px para que se vean nítidas en pantallas de alta densidad.
+const svg128 = (body) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 64 64">${body}</svg>`)}`;
+const GLYPH = {
+  // Panel inclinado con celdas y un sol
+  solar: (c) => `<circle cx="41" cy="20" r="5" fill="${c}"/><path d="M15 43 21 27h24l-6 16Z" fill="${c}"/><path d="M19 35h23M23 27l-3 16M31 27l-3 16M39 27l-3 16" stroke="#F6B40E" stroke-width="1.6"/><path d="M27 43v5M33 43v5M24 48h12" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`,
+  // Gota con ola: agua embalsada
+  hidro: (c) => `<path d="M32 13c-7 10-12 16-12 22a12 12 0 0 0 24 0c0-6-5-12-12-22Z" fill="${c}"/><path d="M23 37c3-2 5-2 8 0s5 2 9 0" fill="none" stroke="#2F8CF0" stroke-width="2.6" stroke-linecap="round"/>`,
+  // Aerogenerador de tres aspas
+  eolica: (c) => `<path d="M32 30v19" stroke="${c}" stroke-width="3.2" stroke-linecap="round"/><path d="M26 49h12" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/><path d="M32 29 30 12c3-1 5 1 4 4Z" fill="${c}"/><path d="M32 29l15 8c-1 3-4 3-6 1Z" fill="${c}"/><path d="M32 29l-15 8c-1-3 1-5 4-5Z" fill="${c}"/><circle cx="32" cy="29" r="3.2" fill="${c}" stroke="#1E9C8C" stroke-width="1.4"/>`,
+  // Llama
+  gas: (c) => `<path d="M33 12c1 8 11 11 11 22a12 12 0 0 1-24 0c0-6 3-9 6-12 0 5 2 7 5 7-2-7-1-12 2-17Z" fill="${c}"/><path d="M32 47a5 5 0 0 1-5-5c0-3 2-5 4-7 0 3 2 4 3 4 2 2 3 3 3 4a5 5 0 0 1-5 4Z" fill="#FF6A2B"/>`,
+  // Chimenea con humo sobre un montón de carbón
+  carbon: (c) => `<path d="M38 14c3-3 8-2 9 1 3 0 4 3 2 5h-9c-3 0-4-4-2-6Z" fill="${c}" opacity="0.75"/><path d="M38 22h6v14h-6Z" fill="${c}"/><path d="M14 48 20 38l6 3 5-6 7 5 6-2 6 10Z" fill="${c}"/><path d="M20 38l2 10M31 35l1 13M38 40l-2 8" stroke="#4A4F5C" stroke-width="1.4"/>`,
+  // Barril
+  liquidos: (c) => `<rect x="21" y="17" width="22" height="32" rx="2" fill="${c}"/><ellipse cx="32" cy="17" rx="11" ry="3" fill="${c}"/><path d="M21 26h22M21 40h22" stroke="#9C6B3F" stroke-width="2.4"/><path d="M32 30c-2 3-3 4-3 6a3 3 0 0 0 6 0c0-2-1-3-3-6Z" fill="#9C6B3F"/>`,
+  // Hoja
+  biomasa: (c) => `<path d="M18 46c0-16 10-28 30-30 0 18-10 30-26 30Z" fill="${c}"/><path d="M18 48c6-10 13-18 22-24" stroke="#3E9A70" stroke-width="2.4" stroke-linecap="round" fill="none"/>`,
+  otra: (c) => `<path d="M36 12 22 34h10l-3 18 14-24H33l3-16Z" fill="${c}"/>`,
+};
+export const GEN_COLOR = {
+  solar: '#F6B40E', hidro: '#2F8CF0', eolica: '#2FB8A6', gas: '#FF6A2B', carbon: '#4A4F5C', liquidos: '#9C6B3F', biomasa: '#4FB286', otra: '#8A7CF0',
+};
+export const GEN_LABEL = { solar: 'Solar', hidro: 'Hidráulica', eolica: 'Eólica', gas: 'Gas natural', carbon: 'Carbón', liquidos: 'Diésel y fuel oil', biomasa: 'Biomasa y biogás', otra: 'Otra' };
+const GLYPH_INK = { solar: '#3A2600' };
+const badge = (t, pruebas) => svg128(`
+<ellipse cx="32" cy="60" rx="13" ry="2.6" fill="#000" opacity="0.4"/>
+<circle cx="32" cy="32" r="27" fill="${GEN_COLOR[t]}" stroke="${t === 'carbon' ? '#D7DCE6' : '#FFFFFF'}" stroke-width="3.4" ${pruebas ? 'stroke-dasharray="6 4.5"' : ''}/>
+<circle cx="32" cy="32" r="23" fill="none" stroke="#000" stroke-opacity="0.18" stroke-width="1"/>
+${GLYPH[t](GLYPH_INK[t] || '#FFFFFF')}`);
+export const GEN_ICON = Object.fromEntries(Object.keys(GEN_COLOR).map((t) => [t, badge(t, false)]));
+export const GEN_ICON_PRUEBAS = Object.fromEntries(Object.keys(GEN_COLOR).map((t) => [t, badge(t, true)]));
+
 // Contorno de Colombia (Natural Earth 1:50m, simplificado) y máscara para oscurecer los países vecinos
 export const COLOMBIA = [[-71.32,11.86],[-71.96,11.67],[-72.25,11.2],[-72.45,11.11],[-72.69,10.84],[-72.87,10.49],[-73.01,9.79],[-73.37,9.19],[-73.06,9.26],[-72.96,9.14],[-72.8,9.11],[-72.67,8.63],[-72.39,8.29],[-72.36,8.09],[-72.45,7.97],[-72.47,7.52],[-72.39,7.42],[-72.21,7.37],[-72.01,7.03],[-71.13,6.99],[-70.74,7.09],[-70.13,6.95],[-69.43,6.12],[-68.94,6.2],[-68.47,6.16],[-67.86,6.29],[-67.48,6.18],[-67.47,5.93],[-67.82,5.27],[-67.86,4.51],[-67.66,3.86],[-67.31,3.42],[-67.86,2.79],[-67.62,2.79],[-67.21,2.39],[-66.88,1.22],[-67.08,1.19],[-67.12,1.7],[-67.4,2.12],[-67.56,2.07],[-67.94,1.75],[-68.19,1.99],[-68.26,1.85],[-68.18,1.72],[-69.54,1.77],[-69.85,1.71],[-69.85,1.06],[-69.31,1.05],[-69.16,0.86],[-69.15,0.66],[-69.28,0.63],[-69.47,0.73],[-70.05,0.58],[-70.07,-0.14],[-69.63,-0.51],[-69.61,-0.76],[-69.4,-1.19],[-69.97,-4.24],[-70.34,-3.81],[-70.53,-3.87],[-70.74,-3.78],[-70.06,-2.7],[-70.91,-2.22],[-71.11,-2.25],[-71.4,-2.33],[-71.75,-2.15],[-72.22,-2.4],[-72.94,-2.39],[-73.15,-2.28],[-73.2,-1.83],[-73.5,-1.69],[-73.52,-1.45],[-73.66,-1.25],[-74.25,-0.97],[-74.42,-0.58],[-74.8,-0.2],[-75.78,0.09],[-76.27,0.44],[-76.39,0.4],[-76.49,0.24],[-77.4,0.39],[-77.47,0.64],[-77.65,0.72],[-77.7,0.84],[-77.83,0.83],[-78.31,1.05],[-79.03,1.62],[-78.79,1.85],[-78.58,1.77],[-78.59,2.36],[-78.42,2.48],[-78.07,2.51],[-77.81,2.72],[-77.67,2.88],[-77.69,3.04],[-77.56,3.08],[-77.36,3.35],[-77.08,3.91],[-77.26,3.89],[-77.28,4.06],[-77.36,3.94],[-77.41,4.25],[-77.52,4.21],[-77.35,4.4],[-77.29,4.72],[-77.37,5.32],[-77.53,5.54],[-77.25,5.78],[-77.47,6.18],[-77.37,6.58],[-77.9,7.23],[-77.74,7.54],[-77.76,7.7],[-77.54,7.57],[-77.35,7.71],[-77.35,7.84],[-77.2,7.97],[-77.48,8.5],[-77.39,8.64],[-76.85,8.09],[-76.9,7.94],[-76.79,7.93],[-76.77,8.31],[-76.92,8.57],[-76.28,8.99],[-76.03,9.37],[-75.64,9.45],[-75.68,9.73],[-75.54,10.21],[-75.71,10.14],[-75.45,10.61],[-74.84,11.11],[-74.33,11.0],[-74.52,10.86],[-74.4,10.77],[-74.14,11.32],[-73.31,11.3],[-72.72,11.71],[-72.28,11.89],[-72.14,12.19],[-71.71,12.42],[-71.49,12.43],[-71.26,12.34],[-71.14,12.05],[-71.32,11.86]];
 export const COLOMBIA_MASK = {

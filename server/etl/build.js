@@ -8,7 +8,7 @@ import { ORS, DEPT_DEFAULT_OR, MUNI_OR_OVERRIDE, CIIU_CATS, matchOrKey } from '.
 import { parseUpme } from './upme.js';
 import { buildCI } from './ci.js';
 import { parseSuiPrecios } from './sui_precios.js';
-import { dptoIndex, applySuiPrecios, applyAgpeXm, applyDna, precioBolsa, applyTurismo, clientesTuristicos, applyRed, applyZni } from './extra.js';
+import { dptoIndex, applySuiPrecios, applyAgpeXm, applyDna, precioBolsa, applyTurismo, clientesTuristicos, applyRed, applyZni, applyAgpeParatec } from './extra.js';
 
 const norm = (s = '') => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
   .replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -315,7 +315,10 @@ export async function build(rawDir, outDir) {
   const bolsa = precioBolsa(xmOp);
   const clientes = clientesTuristicos(readJSON(rawDir, 'rnt_alojamientos.json') || [], munis);
   applyTurismo(munis, readJSON(rawDir, 'rnt_agg.json'), clientes, log);
-  const red = applyRed(munis, readJSON(rawDir, 'paratec_subestaciones.json'), readJSON(rawDir, 'paratec_plantas.json'), readJSON(rawDir, 'paratec_lineas.json'), findMuni, log);
+  const red = applyRed(munis, readJSON(rawDir, 'paratec_subestaciones.json'), readJSON(rawDir, 'paratec_plantas.json'), readJSON(rawDir, 'paratec_lineas.json'), findMuni, log,
+    readJSON(rawDir, 'upme_plantas.json'), readJSON(rawDir, 'upme_subestaciones.json'));
+  const agpePx = readJSON(rawDir, 'paratec_agpe.json');
+  const agpeLista = applyAgpeParatec(munis, agpePx, findMuni, log);
   const zni = applyZni(munis, readJSON(rawDir, 'zni.json'), readJSON(rawDir, 'centros_poblados.json'), log);
 
   // ---------- Registro de proyectos de generación (UPME) ----------
@@ -385,7 +388,8 @@ export async function build(rawDir, outDir) {
     tarifas, log, segundos: Math.round((Date.now() - t0) / 1000),
     sui_periodo: suiPeriodo, agpe_zonas: agpeZonas, agpe_xm_fecha: readJSON(rawDir, 'xm_agpe.json')?.fecha || null,
     dna_periodo: dna?.periodo || null, dna_subareas: dna?.subareas || null, bolsa,
-    red_n: { lineas: red.lineas.length, subs: red.subs.length, plantas: red.plantas.length }, zni_n: zni.length, clientes_n: clientes.length, upme_corte: upmeCorte, upme_n: upme.length,
+    red_n: { lineas: red.lineas.length, subs: red.subs.length, plantas: red.plantas.length }, plantas_tipo: red.porTipo, red_upme_fecha: readJSON(rawDir, 'upme_plantas.json')?.consulta || null,
+    agpe_px_fecha: agpePx?.fecha || null, agpe_px_n: agpeLista.length, zni_n: zni.length, clientes_n: clientes.length, upme_corte: upmeCorte, upme_n: upme.length,
   };
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'municipios.json'), JSON.stringify([...munis.values()]));
@@ -397,7 +401,7 @@ export async function build(rawDir, outDir) {
   const ci = buildCI(rawDir, [...munis.values()]);
   fs.writeFileSync(path.join(outDir, 'ci.json'), JSON.stringify(ci));
   log.push(`empresas grandes C&I: ${ci.empresas.length}`);
-  fs.writeFileSync(path.join(outDir, 'red.json'), JSON.stringify({ ...red, zni, upme }));
+  fs.writeFileSync(path.join(outDir, 'red.json'), JSON.stringify({ ...red, porTipo: undefined, zni, upme, agpe_lista: agpeLista }));
   if (fs.existsSync(path.join(rawDir, 'red_mt_gridfinder.json'))) fs.copyFileSync(path.join(rawDir, 'red_mt_gridfinder.json'), path.join(outDir, 'red_mt.json'));
   fs.writeFileSync(path.join(outDir, 'meta.json'), JSON.stringify(meta, null, 1));
   return meta;

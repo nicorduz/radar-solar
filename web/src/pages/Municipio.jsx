@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, qs, fmt, money, cop } from '../api.js';
+import { GEN_ICON, GEN_LABEL } from '../components/mapIcons.js';
 import { useApp } from '../App.jsx';
 import { ScoreBadge, Stat, Bars, Spinner, ContactCTA, Spark, PrivacyNote, Contact, Section, Fuente, ProspectButton, FollowButton, waShare } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
@@ -152,10 +153,17 @@ export default function Municipio({ code }) {
         <span className="k">Subestación más cercana</span><span className="v">{m.sub_n ? `${m.sub_n} · ${m.sub_kv} · ${subTxt}` : 's/d'}</span>
         <span className="k">Subestaciones a menos de 30 km</span><span className="v">{fmt(m.subs30 || 0)} (máx. {fmt(m.kv30 || 0)} kV)</span>
         <span className="k">Plantas solares a menos de 30 km</span><span className="v">{fmt(m.solar30 || 0)} · {fmt(m.solar30_mw || 0)} MW</span>
+        {m.gen30 != null && <><span className="k">Plantas de todas las tecnologías a 30 km</span><span className="v">{fmt(m.gen30)} · {fmt(m.gen30_mw || 0)} MW</span></>}
       </div>
       {m.plantas?.length > 0 && (
-        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Planta solar</th><th className="num">MW</th><th>Estado</th></tr></thead><tbody>
-          {m.plantas.map((p) => <tr key={p.n}><td className="name">{p.n}<br /><span className="small muted">{p.mun}</span></td><td className="num">{fmt(p.mw, 1)}</td><td className="small">{p.estado}</td></tr>)}
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Planta a menos de 30 km</th><th>Tecnología</th><th className="num">MW</th><th>Estado</th></tr></thead><tbody>
+          {m.plantas.map((p) => <tr key={`${p.n}|${p.lat}`}><td className="name">{p.n}<br /><span className="small muted">{p.mun}</span></td><td className="small"><span className="row" style={{ gap: 6 }}>{GEN_ICON[p.tipo] && <img src={GEN_ICON[p.tipo]} alt="" width="18" height="18" />}{GEN_LABEL[p.tipo] || p.tipo}</span></td><td className="num">{fmt(p.mw, p.mw < 10 ? 2 : 1)}</td><td className="small">{p.estado}</td></tr>)}
+        </tbody></table></div>
+      )}
+      {m.agpe_lista?.length > 0 && (
+        <div className="tbl-wrap"><table className="tbl"><caption className="small muted" style={{ textAlign: 'left', captionSide: 'top', paddingBottom: 6 }}>Autogeneradores registrados en PARATEC en {m.name}{m.agpe_px_n > m.agpe_lista.length ? ` (los ${m.agpe_lista.length} más grandes de ${fmt(m.agpe_px_n)})` : ''}, corte {m.agpe_px_fecha}</caption>
+          <thead><tr><th>Autogenerador</th><th className="num">kW</th><th>En operación desde</th></tr></thead><tbody>
+          {m.agpe_lista.map((a, i) => <tr key={`${a.n}|${i}`}><td className="name">{a.n.replace(/^AGPE\s+/i, '')}<br /><span className="small muted">{a.tipo} · {a.op}</span></td><td className="num">{fmt(a.mw * 1000, a.mw < 0.1 ? 1 : 0)}</td><td className="small">{a.desde?.slice(0, 7) || 's/d'}</td></tr>)}
         </tbody></table></div>
       )}
       {m.upme?.length > 0 && (

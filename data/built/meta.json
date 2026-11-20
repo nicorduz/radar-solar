@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "generado": "2026-10-27T11:03:54.816Z",
+ "generado": "2026-11-20T07:47:42.703Z",
  "elic_corte": "2026-08",
  "snr_corte": "2026-08",
  "secop_n": 6746,
@@ -473,10 +473,12 @@
   "autogeneradores XM 2026-10-27: 31577 en 26 mercados",
   "demanda no atendida XM: 19 subáreas, 2025-10-25 a 2026-10-25",
   "turismo RNT: 4189 grupos municipio-categoría",
-  "red XM Paratec: 811 líneas, 443 subestaciones, 503 plantas",
+  "red: 811 líneas; 488 subestaciones (381 XM y UPME, 45 solo UPME); 701 plantas {\"hidro\":{\"n\":172,\"mw\":14474.6},\"biomasa\":{\"n\":23,\"mw\":206},\"solar\":{\"n\":398,\"mw\":3754.8},\"carbon\":{\"n\":23,\"mw\":1745},\"gas\":{\"n\":68,\"mw\":4288.8},\"eolica\":{\"n\":4,\"mw\":59.4},\"liquidos\":{\"n\":13,\"mw\":706.5}}",
+  "AGPE PARATEC 20 de noviembre de 2026: 1934 (1896 con municipio)",
   "zonas no interconectadas IPSE: 144 localidades",
   "registro UPME (30 de septiembre de 2026): 52 proyectos, 52 ubicados",
-  "empresas: 51985 (con contacto SECOP 4212, con contratos solares 273)"
+  "empresas: 51985 (con contacto SECOP 4212, con contratos solares 273)",
+  "empresas grandes C&I: 10000"
  ],
  "segundos": 1,
  "sui_periodo": "2026 (9 meses)",
@@ -1801,9 +1803,42 @@
  ],
  "red_n": {
   "lineas": 811,
-  "subs": 443,
-  "plantas": 503
+  "subs": 488,
+  "plantas": 701
  },
+ "plantas_tipo": {
+  "hidro": {
+   "n": 172,
+   "mw": 14474.6
+  },
+  "biomasa": {
+   "n": 23,
+   "mw": 206
+  },
+  "solar": {
+   "n": 398,
+   "mw": 3754.8
+  },
+  "carbon": {
+   "n": 23,
+   "mw": 1745
+  },
+  "gas": {
+   "n": 68,
+   "mw": 4288.8
+  },
+  "eolica": {
+   "n": 4,
+   "mw": 59.4
+  },
+  "liquidos": {
+   "n": 13,
+   "mw": 706.5
+  }
+ },
+ "red_upme_fecha": "2026-11-20",
+ "agpe_px_fecha": "20 de noviembre de 2026",
+ "agpe_px_n": 1934,
  "zni_n": 144,
  "clientes_n": 27082,
  "upme_corte": "30 de septiembre de 2026",
