@@ -140,6 +140,7 @@ export default function App() {
   if (!user) {
     const raw = window.location.hash.replace(/^#\/?/, '');
     if (!raw || raw === 'inicio') return <Landing cfg={cfg} />;
+    if (route.view === 'para') return <Landing cfg={cfg} perfil={route.arg} />;
     return <Login cfg={cfg} onLogin={(u) => { setUser(u); setGate(null); if (route.view === 'ingresar') window.location.hash = '#/mapa'; }} />;
   }
   // Bloqueos que exige el servidor antes de usar la plataforma
