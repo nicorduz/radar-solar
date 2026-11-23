@@ -24,14 +24,15 @@ function Sec({ id, abierta, setAbierta, titulo, resumen, children }) {
 }
 
 // Trámites en la columna derecha del diseño: figura, zona y secciones
-export default function RutaRegulatoria({ d, set, kwAc, punto, paid }) {
-  const sug = figuraSugerida(kwAc);
+export default function RutaRegulatoria({ d, set, kwAc, punto, paid, inversionista }) {
+  // El inversionista piensa en un proyecto que vende energía a la red, no en autoconsumo
+  const sug = inversionista && !(kwAc > 0 && kwAc <= 1000) ? 'proyecto' : figuraSugerida(kwAc);
   const fig = d.figura || sug;
   const F = FIGURAS[fig];
   const exc = d.excedentes !== false;
   const [z, setZ] = useState(null);
   const [err, setErr] = useState(null);
-  const [abierta, setAbierta] = useState('falta');
+  const [abierta, setAbierta] = useState(inversionista ? 'red' : 'falta');
   const key = punto ? `${punto[0].toFixed(3)},${punto[1].toFixed(3)}` : '';
   useEffect(() => {
     if (!punto) return;

@@ -51,13 +51,16 @@ export default function Clientes({ code }) {
   const [f, setF] = useState({ q: '', dpto: '', cat: '', minHab: '', code: code || '', orden: 'op' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [intento, setIntento] = useState(0);
   useEffect(() => { setF((x) => ({ ...x, code: code || '' })); }, [code]);
   useEffect(() => { setPage(0); }, [f]);
   useEffect(() => {
     setData(null);
-    const t = setTimeout(() => api('/clientes' + qs({ ...f, page })).then(setData), 200);
+    setErr(null);
+    const t = setTimeout(() => api('/clientes' + qs({ ...f, page })).then(setData).catch((e) => setErr(e.message || 'No se pudo cargar')), 200);
     return () => clearTimeout(t);
-  }, [f, page]);
+  }, [f, page, intento]);
   const csv = () => csvDownload('clientes-turismo.csv', ['establecimiento', 'categoria', 'tipo', 'municipio', 'departamento', 'habitaciones', 'camas', 'empleados', 'direccion', 'telefono', 'correo', 'tarifa_kwh'],
     data.rows.map((c) => [c.n, c.cat, c.sub, c.mun, c.dpto, c.hab, c.camas, c.emp, c.dir, c.tel, c.mail, c.tarifa]));
 
@@ -81,7 +84,7 @@ export default function Clientes({ code }) {
       )}
       {data && <CuandoSeVa zona={data.zona} lugar={f.code || f.dpto ? 'zona' : 'pais'} />}
       <Segmentos segmentos={data?.segmentos} titulo={`Cómo abordar ${f.code ? 'este municipio' : f.dpto ? f.dpto : 'el turismo del país'}`} />
-      {!data ? <Spinner /> : (
+      {err ? <div className="alert err" role="alert">{err}. <button className="btn sm" onClick={() => setIntento((x) => x + 1)}>Reintentar</button></div> : !data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
             <table className="tbl op-tbl"><thead><tr><th className="num">Oportunidad</th><th>Establecimiento</th><th>Municipio</th><th className="num">Habitaciones</th><th className="num hs">Tarifa $/kWh</th><th>Contacto</th><th></th></tr></thead>

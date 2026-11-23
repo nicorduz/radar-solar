@@ -36,7 +36,7 @@ const migrar = (x) => {
 
 // Pestaña Diseño: edificio en imagen satelital, paneles, consumo, batería, costos, finanzas y reporte en PDF
 export default function Diseno() {
-  const { cfg, paid, user, go } = useApp();
+  const { cfg, paid, user, go, profile } = useApp();
   const marca = useBranding(user);
   const [d, setD] = useState(() => { const x = { ...NUEVO(), ...migrar(readLocal('rs_diseno_actual', null) || {}) }; return { ...x, activo: x.activo || x.techos[0].id, c: { ...COSTOS_BASE, ...x.c }, f: { ...FIN, ...x.f } }; });
   const set = (k, v) => setD((x) => ({ ...x, [k]: v }));
@@ -51,7 +51,7 @@ export default function Diseno() {
   const [is3d, setIs3d] = useState(false);
   const [sitio, setSitio] = useState(null);
   const [horas, setHoras] = useState({});
-  const [tab, setTab] = useState('edificio');
+  const [tab, setTab] = useState(profile === 'desarrollador' ? 'tramites' : 'edificio');
   const [q, setQ] = useState('');
   const [nuevoPanel, setNuevoPanel] = useState(null);
   const [nuevaBat, setNuevaBat] = useState(null);
@@ -252,7 +252,7 @@ export default function Diseno() {
               {[['edificio', 'Edificio'], ['paneles', 'Paneles'], ['consumo', 'Consumo'], ['bateria', 'Batería'], ['costos', 'Costos'], ['finanzas', 'Finanzas'], ['tramites', 'Trámites']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
             </div>
 
-            {tab === 'tramites' && <RutaRegulatoria d={d} set={set} kwAc={kwAc} punto={c0 || centroMapa} paid={paid} />}
+            {tab === 'tramites' && <RutaRegulatoria d={d} set={set} kwAc={kwAc} punto={c0 || centroMapa} paid={paid} inversionista={profile === 'desarrollador'} />}
             {tab === 'edificio' && (
               <div className="card dz-sec">
                 <div className="grid dz-g">

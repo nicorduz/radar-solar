@@ -24,7 +24,7 @@ export default function Propuesta({ arg }) {
   const [m, setM] = useState(null);
   const [err, setErr] = useState(null);
   const [f, setF] = useState({
-    tipo: zona ? 'zona' : profile === 'instalador' || profile === 'respaldo' ? 'comercial' : 'zona',
+    tipo: zona ? 'zona' : profile === 'instalador' ? 'comercial' : 'zona',
     para: '', cliente: 'hogar', kwp: 6, intro: '', notas: '',
   });
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));

@@ -28,7 +28,9 @@ function contexto() {
   return ctxCache;
 }
 
-const fmt = (n, d = 0) => (n == null ? 's/d' : Number(n).toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d }));
+// Formateadores reutilizados: crear uno por llamada (toLocaleString) era lo que volvía lenta la página
+const NF = [0, 1, 2].map((d) => new Intl.NumberFormat('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d }));
+const fmt = (n, d = 0) => (n == null ? 's/d' : NF[d].format(Number(n)));
 
 export function oportunidadColegio(c) {
   const z = contexto().mun.get(c.code) || {};
@@ -206,4 +208,28 @@ export function segmentosHotel(rows) {
     mk('fds', 'Alojamientos donde los cortes caen en fines de semana y festivos', 'Solar con baterías: el argumento es no perder huéspedes en los puentes.', (c) => c.op.f.fds >= 0.3),
     mk('parques', 'Parques temáticos, de ecoturismo y agroturismo', 'Consumo de día y en fines de semana, justo cuando produce el sol.', (c) => PARQUE.test(c.sub || '')),
   ];
+}
+
+// Caché del cálculo por registro: se calcula una vez y se reutiliza en cada consulta
+const CACHE = new WeakMap();
+const FN = { colegios: oportunidadColegio, salud: oportunidadSalud, hotel: oportunidadHotel };
+export function op(tipo, c) {
+  let v = CACHE.get(c);
+  if (!v) { v = FN[tipo](c); CACHE.set(c, v); }
+  return v;
+}
+// Calienta la caché al arrancar, por lotes para no bloquear las consultas mientras tanto
+export function precalentar(log = () => {}) {
+  const t0 = Date.now();
+  const colas = [['colegios', store.colegios || []], ['salud', store.salud || []], ['hotel', store.clientes || []]];
+  let i = 0, j = 0;
+  const paso = () => {
+    const fin = Date.now() + 40;
+    while (i < colas.length && Date.now() < fin) {
+      const [tipo, rows] = colas[i];
+      if (j < rows.length) { op(tipo, rows[j++]); } else { i++; j = 0; }
+    }
+    if (i < colas.length) setImmediate(paso); else log(`oportunidad precalculada en ${Date.now() - t0} ms`);
+  };
+  setImmediate(paso);
 }

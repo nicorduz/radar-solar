@@ -255,7 +255,7 @@ export async function ensureBootstrapAdmin() {
   // donde la base se borra al reiniciar). Formato: usuario:clave:rol:perfil:empresa;usuario2:...
   for (const item of String(process.env.SEED_USERS || '').split(';').map((x) => x.trim()).filter(Boolean)) {
     const [u, p, role = 'trial', profile = 'todos', company = ''] = item.split(':').map((x) => x.trim());
-    if (!u || !p || p.length < 8 || !['trial', 'paid', 'admin'].includes(role) || !['todos', 'instalador', 'proveedor', 'desarrollador', 'servicios', 'respaldo'].includes(profile)) {
+    if (!u || !p || p.length < 8 || !['trial', 'paid', 'admin'].includes(role) || !['todos', 'instalador', 'proveedor', 'desarrollador', 'servicios', 'demanda'].includes(profile)) {
       console.warn(`SEED_USERS: se omite "${u || '?'}" (revisa usuario, clave, rol y perfil)`); continue;
     }
     if (db.prepare('SELECT 1 FROM users WHERE username=?').get(u)) continue;

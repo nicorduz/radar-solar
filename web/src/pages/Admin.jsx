@@ -5,7 +5,7 @@ import { Spinner, Modal } from '../components/ui.jsx';
 import MfaPanel from '../components/Mfa.jsx';
 
 const ROLES = { trial: 'Prueba', paid: 'Pago', admin: 'Administrador' };
-const PERFILES = { todos: 'Todos los perfiles', instalador: 'Instalador solar', proveedor: 'Proveedor de equipos', desarrollador: 'Desarrollador o inversionista', servicios: 'Mantenimiento y servicios (O&M)', respaldo: 'Baterías y respaldo' };
+const PERFILES = { todos: 'Todos los perfiles', instalador: 'Instalador solar', proveedor: 'Proveedor de equipos', desarrollador: 'Desarrollador (inversionista)', servicios: 'Mantenimiento y servicios (O&M)', demanda: 'Respuesta a la demanda' };
 
 export default function Admin() {
   const { user, refreshUser } = useApp();

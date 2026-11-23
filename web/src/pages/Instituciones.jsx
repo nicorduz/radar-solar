@@ -5,6 +5,14 @@ import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton, Scor
 
 import { tier, PorQue, Segmentos, sistemaTxt } from '../components/Oportunidad.jsx';
 
+const SALUD_TIPO = { hospital: 'Hospital o clínica', centro: 'Centro o puesto de salud', ips: 'IPS' };
+
+// El enlace trae el tipo y, si viene de una ficha, el municipio: 'salud-11001', 'colegios-05001', 'salud' o '11001'
+function parseArg(arg) {
+  const m = /^(colegios|salud)?-?(\d{5})?$/.exec(arg || '') || [];
+  return { tipo: m[1] || 'colegios', code: m[2] || '' };
+}
+
 // Colegios y sedes de salud como clientes institucionales (techos grandes y consumo de día)
 export default function Instituciones({ arg }) {
   const { paid, meta } = useApp();
@@ -13,13 +21,16 @@ export default function Instituciones({ arg }) {
   const [f, setF] = useState({ q: '', dpto: '', sector: '', zona: '', clase: '', minMat: '', code: init.code, orden: 'op' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [intento, setIntento] = useState(0);
   useEffect(() => { const a = parseArg(arg); setTipo(a.tipo); setF((x) => ({ ...x, code: a.code })); }, [arg]);
   useEffect(() => { setPage(0); }, [f, tipo]);
   useEffect(() => {
     setData(null);
-    const t = setTimeout(() => api('/instituciones' + qs({ tipo, ...f, page })).then(setData).catch(() => setData({ rows: [], total: 0 })), 200);
+    setErr(null);
+    const t = setTimeout(() => api('/instituciones' + qs({ tipo, ...f, page })).then(setData).catch((e) => setErr(e.message || 'No se pudo cargar')), 200);
     return () => clearTimeout(t);
-  }, [f, page, tipo]);
+  }, [f, page, tipo, intento]);
   const salud = tipo === 'salud';
   const csv = () => (salud
     ? csvDownload('sedes-salud.csv', ['sede', 'prestador', 'nit', 'tipo', 'naturaleza', 'municipio', 'departamento', 'direccion', 'telefono', 'correo'], data.rows.map((x) => [x.n, x.pr, x.nit, SALUD_TIPO[x.tipo], x.nat, x.mun, x.dpto, x.dir, x.tel, x.mail]))
@@ -51,7 +62,7 @@ export default function Instituciones({ arg }) {
         </div>
       )}
       <Segmentos segmentos={data?.segmentos} titulo={`Cómo abordar ${f.code ? 'este municipio' : f.dpto ? f.dpto : 'este listado'}`} />
-      {!data ? <Spinner /> : (
+      {err ? <div className="alert err" role="alert">{err}. <button className="btn sm" onClick={() => setIntento((x) => x + 1)}>Reintentar</button></div> : !data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
             {salud ? (

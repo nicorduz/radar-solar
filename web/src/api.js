@@ -53,10 +53,12 @@ export const METRICS = {
   dna_dias: { label: 'Días con cortes al año', short: 'Días corte', get: (d) => d.dna_dias, f: (v) => fmt(v), unit: 'días' },
   saidi: { label: 'Horas sin luz al año (SAIDI del operador)', short: 'SAIDI', get: (d) => d.saidi, f: (v) => fmt(v, 1), unit: 'h/año' },
   cap_mw: { label: 'Capacidad de conexión a 30 km (MW, UPME)', short: 'Cap. conexión', get: (d) => d.cap_mw, f: (v) => fmt(v, 1), unit: 'MW', log: true },
+  nores12_m2: { label: 'Obra no residencial 12 meses (m²)', short: 'Obra no res.', get: (d) => d.nores12_m2, f: (v) => fmt(v), unit: 'm²', log: true },
+  ci_alta: { label: 'Empresas grandes de consumo alto', short: 'Empresas consumo alto', get: (d) => d.ci_alta, f: (v) => fmt(v), unit: 'empresas', log: true },
   solar30_mw: { label: 'MW solares a 30 km', short: 'MW solar 30 km', get: (d) => d.solar30_mw, f: (v) => fmt(v), unit: 'MW', log: true },
 };
 
-export const PROFILE_ICONS = { instalador: 'home', proveedor: 'box', desarrollador: 'bolt', servicios: 'wrench', respaldo: 'battery' };
+export const PROFILE_ICONS = { instalador: 'home', proveedor: 'box', desarrollador: 'bolt', servicios: 'wrench', demanda: 'chart' };
 
 // Las celdas que empiezan con = + - @ (o tabulador) se marcan como texto para que Excel no las ejecute como fórmula
 const celda = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
