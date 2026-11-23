@@ -14,6 +14,7 @@ import { privacyRoutes, deleteUser } from './privacy.js';
 import { startBackups, createBackup, listBackups } from './backup.js';
 import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
+import { oportunidadColegio, oportunidadSalud, segmentos } from './oportunidad.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
 
@@ -282,10 +283,16 @@ app.get('/api/instituciones', requireUser, (req, res) => {
     rows = [...rows].sort((a, b) => ord[a.tipo] - ord[b.tipo] || (b.nit ? 1 : 0) - (a.nit ? 1 : 0));
   }
   if (q) { const n = norm(q); rows = rows.filter((c) => norm(`${c.n} ${c.est || ''} ${c.pr || ''}`).includes(n) || c.nit === q); }
+  // Oportunidad: puntaje, razones y cómo abordar cada institución; por defecto se ordena por oportunidad
+  const opf = tipo === 'salud' ? oportunidadSalud : oportunidadColegio;
+  rows = rows.map((c) => ({ ...c, op: opf(c) }));
+  if (req.query.orden !== 'tam') rows.sort((a, b) => b.op.score - a.op.score);
+  const segs = segmentos(tipo, rows);
+  const vista = (c) => { const { f, ...op } = c.op; return { ...COL_VIEW(c), op }; };
   const page = Math.max(0, +req.query.page || 0);
   const anio = tipo === 'salud' ? store.saludCorte : store.colegiosAnio;
-  if (!isPaid(req)) return res.json({ tipo, anio, total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...COL_VIEW(c), tel: null, mail: null })), locked: true });
-  res.json({ tipo, anio, total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(COL_VIEW), locked: false });
+  if (!isPaid(req)) return res.json({ tipo, anio, total: rows.length, segmentos: segs.map((x) => ({ ...x, ejemplos: [] })), rows: rows.slice(0, 1).map((c) => ({ ...vista(c), tel: null, mail: null })), locked: true });
+  res.json({ tipo, anio, total: rows.length, segmentos: segs, rows: rows.slice(page * 50, page * 50 + 50).map(vista), locked: false });
 });
 // Capas del mapa: colegios dentro de la vista (solo con zoom) y sedes de salud agrupadas por municipio
 app.get('/api/capas/colegios', requireUser, (req, res) => {

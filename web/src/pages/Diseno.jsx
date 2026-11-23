@@ -7,7 +7,7 @@ import { Stat } from '../components/ui.jsx';
 import { satStyle } from '../components/MapSnapshot.jsx';
 import { PANELES, BATERIAS, MARCAS_PANEL, MARCAS_BATERIA, POTENCIAS_PANEL, medidaTipica, CAPACIDADES_BAT } from '../components/equipos.js';
 import ReporteSolar from '../components/ReporteSolar.jsx';
-import RutaRegulatoria, { FiguraPicker } from '../components/RutaRegulatoria.jsx';
+import RutaRegulatoria from '../components/RutaRegulatoria.jsx';
 import { useBranding } from '../branding.js';
 import { acomodar, aspectAlineado, polyArea, centro, simular, facturar, capex, finanzas, PERFILES_SEMANA, PERFILES_HORA, COSTOS_BASE } from '../components/solarDesign.js';
 import { parseCoords, geocode } from '../components/mapTools.js';
@@ -252,7 +252,7 @@ export default function Diseno() {
               {[['edificio', 'Edificio'], ['paneles', 'Paneles'], ['consumo', 'Consumo'], ['bateria', 'Batería'], ['costos', 'Costos'], ['finanzas', 'Finanzas'], ['tramites', 'Trámites']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
             </div>
 
-            {tab === 'tramites' && <FiguraPicker d={d} set={set} kwAc={kwAc} />}
+            {tab === 'tramites' && <RutaRegulatoria d={d} set={set} kwAc={kwAc} punto={c0 || centroMapa} paid={paid} />}
             {tab === 'edificio' && (
               <div className="card dz-sec">
                 <div className="grid dz-g">
@@ -417,8 +417,7 @@ export default function Diseno() {
         </div>
       )}
 
-      {!reporte && tab === 'tramites' && <RutaRegulatoria d={d} set={set} kwAc={kwAc} punto={c0 || centroMapa} paid={paid} />}
-      {!reporte && tab !== 'tramites' && <Resultados {...{ listo, techos, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, batKwh, respaldoH, d, sitio, cargando: techos.length && !listasHoras }} onProspecto={() => { const e = conBat && conBat.fin.neto > sinBat.fin.neto ? conBat : sinBat; addProspect({ tipo: 'otro', ref: 'dis-' + (d.id || Date.now()), nombre: d.cliente || 'Cliente de diseño', mun: sitio?.muni?.name, valor: Math.round(e.cap.total), detalle: `Diseño ${fmt(kwp, 1)} kWp${conBat ? ` + ${fmt(batKwh, 1)} kWh` : ''}` }); setMsg('Agregado a Mis prospectos.'); }} />}
+      {!reporte && <Resultados {...{ listo, techos, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, batKwh, respaldoH, d, sitio, cargando: techos.length && !listasHoras }} onProspecto={() => { const e = conBat && conBat.fin.neto > sinBat.fin.neto ? conBat : sinBat; addProspect({ tipo: 'otro', ref: 'dis-' + (d.id || Date.now()), nombre: d.cliente || 'Cliente de diseño', mun: sitio?.muni?.name, valor: Math.round(e.cap.total), detalle: `Diseño ${fmt(kwp, 1)} kWp${conBat ? ` + ${fmt(batKwh, 1)} kWh` : ''}` }); setMsg('Agregado a Mis prospectos.'); }} />}
 
       {reporte && listo && (
         <>
