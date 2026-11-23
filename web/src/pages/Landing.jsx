@@ -1,73 +1,76 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { LegalLine } from './Legal.jsx';
+import { RDDiagrama, RD_EJEMPLOS, RD_PASOS, RD_TALERA, RD_FAQ } from '../components/RespuestaDemanda.jsx';
 
 // Páginas de inicio públicas. La raíz pregunta qué hace el visitante y lleva a la página de su perfil
-// (#/para/<perfil>); "todo" es la página del acceso completo con los cinco perfiles.
+// (#/para/<perfil>); "todo" es la página del acceso completo; "demanda" es un servicio de Talera.
 // Las capturas son de la plataforma real (web/public/producto); los conteos vienen de /api/landing.
 
-const ORDEN = ['instalador', 'proveedor', 'desarrollador', 'servicios', 'respaldo', 'todo'];
+const ORDEN = ['instalador', 'proveedor', 'desarrollador', 'servicios', 'demanda', 'todo'];
 
 const C = {
   todo: {
     nombre: 'Todo en uno', corto: 'Todo en uno', quien: 'empresas que hacen varias cosas en la cadena',
     h1: 'Inteligencia de mercado solar para Colombia',
-    lead: 'Tarifas, sol, red eléctrica, empresas y proyectos de los {M} municipios, en un mapa que se ajusta a tu negocio: instalación, venta de equipos, desarrollo de proyectos, mantenimiento o baterías.',
-    hero: 'mapa',
+    lead: 'Tarifas, sol, red eléctrica, empresas, trámites y proyectos de los {M} municipios, sobre un mapa 3D del país que se ajusta a tu negocio: instalación, venta de equipos, desarrollo de proyectos o mantenimiento.',
+    hero: 'mapa-3d',
     pasos: [
       ['Elige qué vendes', 'El puntaje de cada municipio se calcula para tu negocio. Con el acceso completo cambias de perfil cuando quieras y ajustas el peso de cada factor.', 'ranking', 'Ranking de municipios con su tarifa, vivienda nueva, turismo, cortes, radiación y puntaje'],
-      ['Encuentra las zonas en el mapa', 'Cada municipio con su puntaje, y encima las subestaciones, las líneas, las plantas solares, la autogeneración y los proyectos registrados. Dibuja zonas, mide y guarda tableros.', 'mapa', 'Mapa de Colombia con el puntaje por municipio, la autogeneración y la lista de mejores zonas'],
-      ['Entiende cada municipio', 'Tarifa por estrato, cortes, vivienda nueva, turismo y radiación solar, con el porqué del puntaje en una sola ficha.', 'municipio', 'Ficha de Barranquilla con tarifa, vivienda nueva, cortes, turismo y los factores del puntaje'],
-      ['Encuentra a quién venderle', 'Licitaciones públicas, empresas grandes, hoteles, colegios y centros de salud de cada zona. El contacto se muestra solo cuando es de una empresa.', 'licitaciones', 'Lista de licitaciones públicas solares con entidad, fecha, estado y precio'],
+      ['Mira el país en 3D', 'El relieve real de Colombia con las líneas de transmisión por tensión, las subestaciones y cada planta con el modelo de su tecnología: solar, hidráulica, gas, carbón, eólica y biomasa.', 'mapa-3d', 'Mapa 3D de la cordillera con líneas de transmisión por tensión, subestaciones y plantas de generación como modelos'],
+      ['Encuentra a quién venderle', 'Colegios, hospitales, hoteles y empresas ordenados por oportunidad, con el porqué, el sistema sugerido y cómo entrar a cada uno.', 'colegios', 'Colegios ordenados por oportunidad, con razones, sistema sugerido y cómo abordarlos'],
+      ['Planea el trámite', 'Para cada forma de conectarse, los documentos que te faltan, con quién hablar y el proceso con los plazos de la CREG, con el operador de red de la zona.', 'tramites', 'Panel de trámites con la lista de documentos, el operador de red y los plazos'],
+      ['Sigue el mercado', 'Dónde crece la autogeneración, quién la está conectando, el precio de bolsa y los proyectos registrados.', 'tendencias', 'Sistemas nuevos de autogeneración por departamento, con su cambio y las empresas que los conectan'],
       ['Calcula y propone', 'Retorno, crédito y beneficios tributarios de la Ley 1715. Diseña el sistema sobre la imagen satelital y entrega la propuesta en PDF con tu marca.', 'calculadora', 'Calculadora financiera con inversión, retorno, ahorro y flujo de caja a 25 años'],
     ],
     nums: ['municipios', 'ci', 'empresas', 'clientes', 'colegios', 'salud', 'secop', 'subs'],
-    incl: ['Los cinco perfiles en una sola cuenta, con su puntaje, sus capas y su menú', 'Mapa, ranking y ficha de los {M} municipios', 'Red eléctrica: subestaciones, líneas, capacidad de conexión y plantas', 'Empresas, hoteles, colegios, salud y licitaciones con contacto empresarial', 'Diseño solar, calculadora financiera y propuestas en PDF con tu marca', 'Mercado: autogeneración, precio de bolsa, proyectos e importaciones', 'Asistente con IA para argumentos y mensajes'],
+    incl: ['Todos los perfiles en una sola cuenta, con su puntaje, sus capas y su menú', 'Mapa 3D con relieve, satélite, líneas por tensión y plantas por tecnología', 'Ranking y ficha de los {M} municipios', 'Colegios, salud, hoteles y empresas ordenados por oportunidad, con cómo abordarlos', 'Trámites por forma de conexión: documentos, entidades y plazos', 'Diseño solar, calculadora y propuestas en PDF con tu marca', 'Mercado: dónde crece la autogeneración, precio de bolsa, proyectos e importaciones', 'Asistente con IA para argumentos y mensajes'],
   },
   instalador: {
     nombre: 'Instalador solar', corto: 'Instalador', quien: 'instaladores',
     h1: 'Encuentra dónde vender sistemas solares en Colombia',
-    lead: 'Los municipios con tarifa alta, obra nueva de estrato alto, calor, turismo y cortes de energía, con los hogares, hoteles, colegios y empresas a quienes venderles, y la propuesta lista en PDF.',
+    lead: 'Los municipios con tarifa alta, obra nueva, calor, turismo y cortes; los colegios, hospitales, hoteles y empresas ordenados por oportunidad; los trámites de conexión paso a paso, y la propuesta lista en PDF.',
     hero: 'mapa',
     pasos: [
       ['Mira dónde está la demanda', 'Un puntaje por municipio para hogares, conjuntos o comercio, según la tarifa, la vivienda nueva, el consumo, el clima y los cortes. Tú ajustas los pesos.', 'ranking', 'Ranking de municipios para instaladores con tarifa, vivienda nueva, turismo, cortes, radiación y puntaje'],
       ['Ubica las zonas en el mapa', 'Las mejores zonas cerca de ti y la autogeneración que ya está instalada en cada municipio. Dibuja tu zona de trabajo y guárdala.', 'mapa', 'Mapa de Colombia con el puntaje para instaladores y la autogeneración por municipio'],
       ['Entiende cada municipio', 'Tarifa por estrato, vivienda nueva de los últimos 12 meses, cortes, turismo y radiación, con el porqué del puntaje.', 'municipio', 'Ficha de Barranquilla con tarifa, vivienda nueva, cortes y turismo'],
-      ['Encuentra clientes', 'Hoteles, colegios, centros de salud, empresas grandes y licitaciones públicas de cada zona, con su contacto empresarial.', 'licitaciones', 'Lista de licitaciones públicas solares con entidad, fecha, estado y precio'],
+      ['Elige a quién venderle', 'Colegios, hospitales, hoteles y empresas ordenados por oportunidad: por qué te conviene cada uno, el sistema que necesita, el ahorro y cómo entrar.', 'colegios', 'Colegios ordenados por oportunidad, con razones, sistema sugerido, ahorro y cómo abordarlos'],
+      ['Tramita la conexión', 'Lo que te falta, con quién hablas y el proceso con los plazos de la CREG para un sistema de hasta 100 kW, de hasta 1 MW, colectivo o remoto.', 'tramites', 'Panel de trámites con la lista de documentos, el operador de red y los plazos'],
       ['Calcula y entrega la propuesta', 'Diseña sobre la imagen satelital, calcula el retorno y la cuota del crédito, y entrega la propuesta en PDF con tu marca.', 'calculadora', 'Calculadora financiera con inversión, retorno, ahorro y flujo de caja a 25 años'],
     ],
     nums: ['municipios', 'clientes', 'colegios', 'salud', 'ci', 'secop'],
-    incl: ['Ranking por segmento: hogares, conjuntos y comercio', 'Ficha de cada municipio con tarifa, cortes, vivienda nueva y sol', 'Hoteles, colegios, salud y empresas grandes con contacto empresarial', 'Licitaciones públicas solares', 'Diseño sobre satélite, calculadora y propuesta en PDF con tu marca', 'Seguimiento de zonas y prospectos'],
+    incl: ['Ranking por segmento: hogares, conjuntos y comercio', 'Ficha de cada municipio con tarifa, cortes, vivienda nueva y sol', 'Colegios, salud, hoteles y empresas ordenados por oportunidad, con cómo abordarlos', 'Trámites de conexión por forma de autogeneración, con documentos y plazos', 'Licitaciones públicas solares', 'Diseño sobre satélite, calculadora y propuesta en PDF con tu marca', 'Seguimiento de zonas y prospectos'],
   },
   proveedor: {
     nombre: 'Proveedor de equipos', corto: 'Proveedor', quien: 'proveedores y distribuidores de equipos',
     h1: 'Encuentra dónde están los instaladores que compran equipos',
-    lead: 'Dónde hay más instaladores activos, más sistemas conectados y más obra nueva, y menos mayoristas compitiendo. Con las empresas del sector, la autogeneración por municipio y las importaciones de paneles y baterías.',
+    lead: 'Dónde crece y dónde cae la autogeneración, qué empresas la están conectando y dónde hay menos mayoristas compitiendo. Con las empresas del sector y las importaciones de paneles y baterías.',
     hero: 'mapa-proveedor',
     pasos: [
       ['Mira dónde está tu mercado', 'Un puntaje por municipio según instaladores en la zona, autogeneración conectada, contratistas con contratos solares, obra nueva y mayoristas por instalador.', 'ranking-proveedor', 'Ranking de municipios para proveedores con instaladores, autogeneración, vivienda nueva, tarifa y puntaje'],
       ['Ve la autogeneración en el mapa', 'Los sistemas de autogeneración reportados en cada municipio y las plantas solares, para saber dónde se está instalando.', 'mapa-proveedor', 'Mapa para proveedores con autogeneración por municipio y plantas solares'],
       ['Entiende cada zona', 'Instaladores, autogeneradores y vivienda nueva del municipio, y el porqué de su puntaje.', 'ficha-proveedor', 'Ficha de un municipio con instaladores, autogeneradores, vivienda nueva y los factores del puntaje para proveedores'],
-      ['Sigue el mercado', 'Autogeneración por operador, plantas solares, precio de bolsa e importaciones de paneles y baterías: cuántos entran, a qué precio y a qué departamentos.', 'mercado', 'Panel de mercado con autogeneradores, plantas solares, precio de bolsa y proyectos registrados'],
+      ['Mira dónde crece la demanda', 'Sistemas nuevos de autogeneración por departamento y municipio frente al año anterior, de qué tamaño y qué empresas los están conectando: tus compradores.', 'tendencias', 'Sistemas nuevos de autogeneración por departamento, con su cambio y las empresas que los conectan'],
       ['Encuentra a tus clientes', 'Las empresas del sector con su municipio y contacto empresarial, y quién gana las licitaciones públicas solares.', 'licitaciones', 'Lista de licitaciones públicas solares con entidad, fecha y estado'],
     ],
     nums: ['empresas', 'municipios', 'secop', 'ci'],
-    incl: ['Ranking de zonas para distribución de equipos', 'Empresas del sector: instaladores y mayoristas, con contacto empresarial', 'Autogeneración por municipio y por operador', 'Importaciones de paneles y baterías: volumen, precio, origen y destino', 'Licitaciones públicas y quién las gana', 'Asistente con IA para argumentos de venta'],
+    incl: ['Ranking de zonas para distribución de equipos', 'Dónde crece la autogeneración y quién la conecta, mes a mes', 'Empresas del sector: instaladores y mayoristas, con contacto empresarial', 'Importaciones de paneles y baterías: volumen, precio, origen y destino', 'Licitaciones públicas y quién las gana', 'Asistente con IA para argumentos de venta'],
   },
   desarrollador: {
     nombre: 'Desarrollador o inversionista', corto: 'Desarrollador', quien: 'desarrolladores, inversionistas y vehículos de propósito especial (SPV)',
     h1: 'Encuentra dónde desarrollar proyectos solares en Colombia',
     lead: 'Granjas solares y autogeneración remota: radiación, cercanía y tensión de subestaciones, capacidad indicativa de conexión, tarifa comercial, contingencias de red y saturación de plantas, municipio por municipio.',
-    hero: 'mapa-desarrollador',
+    hero: 'mapa-3d',
     pasos: [
       ['Compara sitios', 'Un puntaje por municipio con radiación, cercanía a subestación, tensión disponible, tarifa comercial, contingencias y plantas cercanas. Filtra por distancia, radiación y tensión.', 'ranking-desarrollador', 'Ranking para desarrolladores con radiación, distancia a subestación, capacidad de conexión, MW cercanos y tarifa comercial'],
-      ['Mira la red en el mapa', 'Líneas de transmisión, subestaciones con su capacidad indicativa de conexión, plantas en operación y proyectos registrados.', 'mapa-desarrollador', 'Mapa con líneas de transmisión, subestaciones con capacidad de conexión, plantas solares y proyectos'],
+      ['Mira la red en 3D', 'El relieve del país con las líneas por tensión, las torres y los cables, las subestaciones y las plantas de cada tecnología, más la capacidad indicativa de conexión.', 'mapa-torres', 'Mapa 3D con torres y cables de transmisión sobre la cordillera'],
       ['Revisa cada municipio', 'Radiación, subestación más cercana, tensión, capacidad de conexión y tarifa comercial, con el porqué del puntaje.', 'ficha-desarrollador', 'Ficha de un municipio con radiación, subestación, capacidad de conexión y tarifa comercial'],
-      ['Sigue el mercado', 'Precio de bolsa, plantas solares en operación, proyectos registrados y autogeneración por operador.', 'mercado', 'Panel de mercado con precio de bolsa, plantas solares y proyectos registrados'],
+      ['Entiende la conexión', 'Capacidad de las barras cercanas, proyectos que compiten por la misma red, el régimen de asignación vigente, los ciclos, las garantías y los modelos que pide el CND.', 'tramites-proyecto', 'Panel de conexión para un proyecto de más de 1 MW con capacidad, subestaciones y proyectos cercanos'],
       ['Haz los números', 'Retorno, valor presente, TIR y beneficios tributarios de la Ley 1715 como primera estimación.', 'calculadora', 'Calculadora financiera con inversión, TIR, valor presente y flujo de caja'],
     ],
     nums: ['municipios', 'subs', 'secop'],
-    incl: ['Ranking de sitios con filtros de distancia, radiación y tensión', 'Subestaciones con capacidad indicativa de conexión y líneas de transmisión', 'Plantas en operación y proyectos de generación registrados', 'Precio de bolsa y mercado de autogeneración', 'Calculadora financiera con TIR y beneficios tributarios', 'Estimaciones claras: no reemplazan el concepto de conexión ni los estudios'],
+    incl: ['Ranking de sitios con filtros de distancia, radiación y tensión', 'Mapa 3D con relieve, líneas por tensión, subestaciones y plantas', 'Ruta de conexión: capacidad cercana, cola de proyectos, ciclos, garantías y modelos', 'Plantas en operación y proyectos de generación registrados', 'Precio de bolsa y mercado de autogeneración', 'Calculadora financiera con TIR y beneficios tributarios', 'Estimaciones claras: no reemplazan el concepto de conexión ni los estudios'],
   },
   servicios: {
     nombre: 'Mantenimiento y servicios (O&M)', corto: 'O&M', quien: 'empresas de mantenimiento y servicios',
@@ -76,7 +79,7 @@ const C = {
     hero: 'mapa-servicios',
     pasos: [
       ['Mira dónde está el trabajo', 'Un puntaje por municipio según autogeneración instalada, plantas solares cercanas, proyectos en camino, empresas por sistema, fallas de red y clima.', 'ranking-servicios', 'Ranking para mantenimiento con autogeneración, MW solares cercanos, proyectos e instaladores'],
-      ['Ubica plantas y sistemas', 'Las plantas solares en operación y la autogeneración de cada municipio en el mapa.', 'mapa-servicios', 'Mapa con plantas solares y autogeneración por municipio'],
+      ['Ubica plantas y sistemas', 'Las plantas en operación de cada tecnología, en 3D sobre el relieve, y la autogeneración de cada municipio.', 'mapa-3d', 'Mapa 3D con plantas de generación por tecnología, subestaciones y líneas'],
       ['Entiende cada zona', 'Autogeneradores, MW solares a 30 km, proyectos nuevos e instaladores del municipio, con el porqué del puntaje.', 'ficha-servicios', 'Ficha de un municipio con autogeneradores, MW solares cercanos y proyectos nuevos'],
       ['Sigue el mercado', 'Autogeneración por operador, plantas solares y proyectos registrados.', 'mercado', 'Panel de mercado con autogeneradores, plantas solares y proyectos'],
       ['Encuentra contratos', 'Licitaciones públicas de mantenimiento y operación de sistemas solares.', 'licitaciones', 'Lista de licitaciones públicas solares, incluidas de mantenimiento'],
@@ -84,26 +87,21 @@ const C = {
     nums: ['municipios', 'secop', 'empresas'],
     incl: ['Ranking de zonas para mantenimiento y operación', 'Plantas solares en operación y autogeneración por municipio', 'Proyectos nuevos en camino', 'Licitaciones de mantenimiento', 'Empresas del sector con contacto empresarial', 'Seguimiento de zonas y prospectos'],
   },
-  respaldo: {
-    nombre: 'Baterías y respaldo', corto: 'Baterías', quien: 'empresas de baterías y sistemas híbridos',
-    h1: 'Encuentra dónde se necesitan baterías y respaldo',
-    lead: 'Dónde se va más la luz y la energía es cara: hogares, hoteles y comercios que necesitan baterías o sistemas híbridos, y las localidades sin red.',
-    hero: 'mapa-respaldo',
-    pasos: [
-      ['Mira dónde se va la luz', 'Un puntaje por municipio según cortes de energía, horas sin luz al año, días con cortes, tarifa, hoteles y comercio.', 'ranking-respaldo', 'Ranking para baterías con cortes, horas sin luz, tarifa, turismo y puntaje'],
-      ['Ubica las zonas sin red', 'Las localidades no interconectadas y los municipios con más cortes en el mapa.', 'mapa-respaldo', 'Mapa con el puntaje para baterías y las localidades no interconectadas'],
-      ['Entiende cada municipio', 'Cortes, horas sin luz del operador, tarifa y turismo, con el porqué del puntaje.', 'ficha-respaldo', 'Ficha de un municipio con cortes de energía, horas sin luz, tarifa y turismo'],
-      ['Encuentra clientes', 'Hoteles, comercios, colegios y centros de salud de las zonas con más cortes, con contacto empresarial.', 'municipio', 'Ficha de Barranquilla con cortes de energía y turismo'],
-      ['Calcula y propone', 'Compara el sistema con y sin baterías, calcula el retorno y entrega la propuesta en PDF.', 'calculadora', 'Calculadora financiera con inversión, retorno y flujo de caja'],
-    ],
-    nums: ['municipios', 'clientes', 'salud', 'colegios'],
-    incl: ['Ranking de zonas por cortes de energía y tarifa', 'Horas sin luz y número de cortes por operador', 'Localidades no interconectadas en el mapa', 'Hoteles, comercio, colegios y salud con contacto empresarial', 'Diseño con y sin baterías y propuesta en PDF', 'Seguimiento de zonas y prospectos'],
+  demanda: {
+    servicio: true,
+    nombre: 'Respuesta a la demanda', corto: 'Respuesta a la demanda', quien: 'industrias, cadenas comerciales y edificios',
+    h1: 'Gana dinero por bajar tu consumo cuando la energía está cara',
+    lead: 'Desde junio de 2026 la CREG tiene un programa permanente que le paga a las empresas por reducir su consumo en las horas en que la bolsa está alta. Talera modela tu operación y estructura tu participación, en bolsa o con demanda desconectable voluntaria.',
+    pasos: [],
+    nums: [],
+    incl: [],
   },
 };
 
 const NUMS = { municipios: 'municipios con puntaje', ci: 'empresas grandes con sector e ingresos', empresas: 'empresas del sector solar', clientes: 'prestadores turísticos', colegios: 'sedes educativas', salud: 'sedes de salud', secop: 'licitaciones públicas solares', subs: 'subestaciones' };
 const fmt = (n) => (n == null ? '—' : Math.round(n).toLocaleString('es-CO'));
 const cop = (n) => '$' + Math.round(n).toLocaleString('es-CO');
+const NUM_TXT = { 4: 'cuatro', 5: 'cinco', 6: 'seis', 7: 'siete' };
 const scrollTo = (id) => (e) => { e.preventDefault(); document.getElementById(id)?.scrollIntoView(); };
 
 function useContacto(cfg) {
@@ -143,7 +141,8 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
   const M = fmt(t.municipios || 1122);
   const fill = (s) => s.replace('{M}', M);
   const contacto = useContacto(cfg);
-  const soy = perfil === 'todo' ? '' : ` Trabajo como ${K.nombre.toLowerCase()}.`;
+  const soy = perfil === 'todo' || K.servicio ? '' : ` Trabajo como ${K.nombre.toLowerCase()}.`;
+  const hablarRD = contacto('Hola, quiero saber cuánto puede ganar mi empresa con respuesta a la demanda.', 'Respuesta a la demanda con Talera');
   const prueba = contacto(`Hola, quiero una cuenta de prueba de Radar Solar.${soy}`, 'Cuenta de prueba de Radar Solar');
   const cotizar = contacto(`Hola, quiero cotizar el plan ${perfil === 'todo' ? 'completo (todo en uno)' : `para ${K.nombre.toLowerCase()}`} de Radar Solar.`, 'Plan de Radar Solar');
   const pasoIds = K.pasos.map((_, i) => `p${i}`);
@@ -159,8 +158,13 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
         <a href="#/" className="brand-mark" aria-label="Radar Solar, inicio"><img src="/icon.svg" alt="" width="28" height="28" /><span>Radar Solar</span></a>
         <nav aria-label="Secciones">
           <a href="#como" onClick={scrollTo('como')}>Cómo funciona</a>
-          <a href="#perfiles" onClick={scrollTo('perfiles')}>Perfiles</a>
-          <a href="#plan" onClick={scrollTo('plan')}>Plan</a>
+          {K.servicio ? <>
+            <a href="#ganar" onClick={scrollTo('ganar')}>Cuánto se gana</a>
+            <a href="#talera" onClick={scrollTo('talera')}>Qué hace Talera</a>
+          </> : <>
+            <a href="#perfiles" onClick={scrollTo('perfiles')}>Perfiles</a>
+            <a href="#plan" onClick={scrollTo('plan')}>Plan</a>
+          </>}
           <a href="#preguntas" onClick={scrollTo('preguntas')}>Preguntas</a>
         </nav>
         <a className="btn sm lp-login" href="#/ingresar">Ingresar</a>
@@ -170,7 +174,7 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
         <section className="lp-hero" aria-labelledby="lp-h1">
           <div className="lp-hero-map" aria-hidden="true"><img src="/isolineas.svg" alt="" /></div>
           <div className="lp-wrap lp-hero-copy">
-            {!raiz && <p className="lp-for">Radar Solar para {K.quien}</p>}
+            {!raiz && <p className="lp-for">{K.servicio ? 'Talera' : 'Radar Solar'} para {K.quien}</p>}
             <h1 id="lp-h1" className={raiz ? "" : "long"}>{raiz ? C.todo.h1 : K.h1}</h1>
             <p className="lp-lead">{fill(raiz ? C.todo.lead : K.lead)}</p>
             {raiz ? (
@@ -178,14 +182,16 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
                 <p id="lp-choose-t" className="lp-choose-t">¿Qué haces en el sector solar?</p>
                 <ul>
                   {ORDEN.map((id) => (
-                    <li key={id}><a href={`#/para/${id}`} className={id === 'todo' ? 'all' : ''}><b>{C[id].nombre}</b><span>{id === 'todo' ? 'Los cinco perfiles en una sola cuenta' : C[id].h1.replace(/ en Colombia$/, '')}</span></a></li>
+                    <li key={id}><a href={`#/para/${id}`} className={id === 'todo' ? 'all' : C[id].servicio ? 'srv' : ''}><b>{C[id].nombre}</b><span>{id === 'todo' ? 'Todos los perfiles en una sola cuenta' : C[id].h1.replace(/ en Colombia$/, '')}</span>{C[id].servicio && <i>Servicio de Talera</i>}</a></li>
                   ))}
                 </ul>
               </div>
             ) : (
               <>
                 <div className="lp-actions">
-                  <a className="btn primary lg" href={prueba} target="_blank" rel="noreferrer">Pedir una cuenta de prueba</a>
+                  {K.servicio
+                    ? <a className="btn primary lg" href={hablarRD} target="_blank" rel="noreferrer">Hablar con Talera</a>
+                    : <a className="btn primary lg" href={prueba} target="_blank" rel="noreferrer">Pedir una cuenta de prueba</a>}
                   <a className="btn lg lp-ghost" href="#como" onClick={scrollTo('como')}>Ver cómo funciona</a>
                 </div>
                 <nav className="lp-switch" aria-label="Otros perfiles">
@@ -194,19 +200,58 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
                 </nav>
               </>
             )}
-            <p className="lp-fine">Plan completo: {cop(precio)} COP, pago único. Sin suscripción ni cobros automáticos.</p>
+            {!K.servicio && <p className="lp-fine">Plan completo: {cop(precio)} COP, pago único. Sin suscripción ni cobros automáticos.</p>}
           </div>
-          <div className="lp-wrap">
+          {K.servicio ? (
+            <div className="lp-wrap"><div className="lp-frame lp-hero-frame rd-hero"><RDDiagrama /></div></div>
+          ) : <div className="lp-wrap">
             <figure className="lp-frame lp-hero-frame">
               <div className="lp-frame-bar" aria-hidden="true"><span>radar solar · mapa{perfil !== 'todo' ? ` · ${K.corto.toLowerCase()}` : ''}</span></div>
-              <img src={`/producto/${K.hero}.webp`} alt={`La plataforma: mapa de Colombia con el puntaje de oportunidad de cada municipio para ${K.quien} y la lista de las mejores zonas`} width="1600" height="1000" fetchpriority="high" />
+              <img src={`/producto/${K.hero}.webp`} alt={K.hero === 'mapa-3d' ? 'La plataforma: mapa 3D de Colombia con el relieve, las líneas de transmisión por tensión, las subestaciones y las plantas de generación' : `La plataforma: mapa de Colombia con el puntaje de oportunidad de cada municipio para ${K.quien} y la lista de las mejores zonas`} width="1600" height="1000" fetchpriority="high" />
             </figure>
-          </div>
+          </div>}
         </section>
 
+        {K.servicio && <>
+          <section id="como" className="lp-sec" aria-labelledby="como-t">
+            <div className="lp-wrap">
+              <h2 id="como-t">Cómo funciona</h2>
+              <p className="lp-sub">Te pagan por la energía que dejas de consumir frente a tu consumo típico, en las horas en que el sistema la necesita. No tienes que parar tu operación: basta con mover lo que se puede mover.</p>
+              <ol className="rd-pasos">{RD_PASOS.map(([t, x]) => <li key={t}><b>{t}</b><span>{x}</span></li>)}</ol>
+            </div>
+          </section>
+          <section id="ganar" className="lp-sec lp-dark rd-ganar" aria-labelledby="ganar-t">
+            <div className="lp-wrap">
+              <h2 id="ganar-t">Cuánto se puede ganar</h2>
+              <p className="lp-sub">Ejemplos de lo que reciben empresas típicas al mes cuando la energía está cara. Entre mayo y octubre de 2026 el precio de bolsa promedió más de $500 por kWh.</p>
+              <ul className="rd-ej">
+                {RD_EJEMPLOS.map((e) => <li key={e.quien}><span className="rd-ej-q">{e.quien}</span><b>{e.rango}</b><span className="rd-ej-m">al mes</span><p>{e.que}</p><p className="rd-ej-s">{e.sup}</p></li>)}
+              </ul>
+              <p className="rd-nota">Antes de la comisión del representante. Tu cifra depende de tu curva de carga, de lo que puedes mover y de tu línea base: Talera la calcula con tus datos de medición.</p>
+              <a className="btn primary lg" href={hablarRD} target="_blank" rel="noreferrer">Calcular cuánto puede ganar mi empresa</a>
+            </div>
+          </section>
+          <section id="talera" className="lp-sec" aria-labelledby="talera-t">
+            <div className="lp-wrap">
+              <h2 id="talera-t">Lo que hace Talera</h2>
+              <p className="lp-sub">Modelamos tu operación y estructuramos tu participación de principio a fin, para que ofertes lo que de verdad puedes cumplir.</p>
+              <ul className="rd-srv">{RD_TALERA.map(([t, x]) => <li key={t}><b>{t}</b><span>{x}</span></li>)}</ul>
+              <div className="rd-req">
+                <h3>Qué necesitas</h3>
+                <ul>
+                  <li>Consumo que se pueda reducir de 1 MWh en una hora, solo o sumando varias sedes.</li>
+                  <li>Un medidor que cumpla el Código de Medida, como una frontera comercial.</li>
+                  <li>Un consumo estable: entre más predecible, más precisa tu línea base.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </>}
+
+        {!K.servicio && <>
         <section id="como" className="lp-sec" aria-labelledby="como-t">
           <div className="lp-wrap">
-            <h2 id="como-t">Cómo funciona{perfil !== 'todo' ? ` para ${K.corto === 'O&M' ? 'mantenimiento' : K.quien.split(',')[0]}` : ''}, en cinco pasos</h2>
+            <h2 id="como-t">Cómo funciona{perfil !== 'todo' ? ` para ${K.corto === 'O&M' ? 'mantenimiento' : K.quien.split(',')[0]}` : ''}, en {NUM_TXT[K.pasos.length] || K.pasos.length} pasos</h2>
             <div className="lp-steps">
               <div className="lp-step-list" role="tablist" aria-label="Pasos" aria-orientation="vertical">
                 {K.pasos.map((p, i) => (
@@ -228,14 +273,14 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
 
         <section id="perfiles" className="lp-sec lp-dark" aria-labelledby="pq-t">
           <div className="lp-wrap">
-            <h2 id="pq-t">{perfil === 'todo' ? 'Un mismo mapa, cinco negocios' : 'Otros negocios, el mismo mapa'}</h2>
-            <p className="lp-sub">Cada perfil calcula su propio puntaje, ordena el menú a su manera y abre primero las capas que necesita. Con el acceso completo usas los cinco.</p>
+            <h2 id="pq-t">{perfil === 'todo' ? 'Un mismo mapa para cada negocio' : 'Otros negocios, el mismo mapa'}</h2>
+            <p className="lp-sub">Cada perfil calcula su propio puntaje, ordena el menú a su manera y abre primero las capas que necesita. Con el acceso completo los usas todos. Respuesta a la demanda es un servicio de Talera.</p>
             <ul className="lp-prof-list">
               {ORDEN.filter((id) => id !== 'todo').map((id) => (
                 <li key={id} className={id === perfil ? 'on' : ''}>
                   <a href={`#/para/${id}`} aria-current={id === perfil ? 'page' : undefined}>
                     <b>{C[id].nombre}</b>
-                    <span>{desc(id) || C[id].lead}</span>
+                    <span>{C[id].servicio ? 'Talera modela y estructura tu participación en respuesta a la demanda y demanda desconectable voluntaria.' : desc(id) || C[id].lead}</span>
                   </a>
                 </li>
               ))}
@@ -271,18 +316,21 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
           </div>
         </section>
 
+        </>}
+
         <section id="preguntas" className="lp-sec" aria-labelledby="faq-t">
           <div className="lp-wrap lp-faq-wrap">
             <h2 id="faq-t">Preguntas frecuentes</h2>
-            <div className="lp-faq">
+            {K.servicio ? <div className="lp-faq">{RD_FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div> : <div className="lp-faq">
               <details><summary>¿Necesito instalar algo?</summary><p>No. Funciona en el navegador del computador y del celular.</p></details>
               <details><summary>¿Puedo probarla antes de pagar?</summary><p>Sí. Con una cuenta de prueba ves el mapa, el ranking y una muestra de cada sección. Pídela por WhatsApp o correo y la creamos para ti.</p></details>
-              <details><summary>¿Qué diferencia hay entre un perfil y el todo en uno?</summary><p>Con un perfil la plataforma calcula el puntaje y ordena todo para ese negocio. Con el todo en uno cambias entre los cinco perfiles cuando quieras, por ejemplo si instalas y también vendes equipos.</p></details>
+              <details><summary>¿Qué diferencia hay entre un perfil y el todo en uno?</summary><p>Con un perfil la plataforma calcula el puntaje y ordena todo para ese negocio. Con el todo en uno cambias entre todos los perfiles cuando quieras, por ejemplo si instalas y también vendes equipos.</p></details>
+              <details><summary>¿Qué es la respuesta a la demanda?</summary><p>Un programa permanente de la CREG (Resolución 101 111 de 2026) que paga a las empresas por reducir su consumo en las horas en que la energía está cara. Talera modela tu operación y estructura tu participación. <a href="#/para/demanda">Ver cómo funciona</a>.</p></details>
               <details><summary>¿De dónde salen los datos?</summary><p>De registros públicos del Estado colombiano y de fuentes abiertas, con su fecha de corte. Los puntajes, la generación y el retorno son estimaciones de la plataforma; no reemplazan un estudio técnico ni la solicitud de conexión ante el operador de red. <a href="#/legal/fuentes">Más detalle</a>.</p></details>
               <details><summary>¿Cuánto dura el acceso?</summary><p>{cfg.plan?.vigencia ? `${cfg.plan.vigencia}.` : 'Según los términos de uso vigentes al momento de la compra.'} No hay renovación automática. <a href="#/legal/terminos">Términos de uso</a>.</p></details>
               <details><summary>¿Sirve para todo mi equipo?</summary><p>Sí. Cada vendedor o ingeniero entra con su propio usuario y su propia contraseña.</p></details>
               <details><summary>¿Qué hacen con mis datos?</summary><p>Solo los de tu cuenta, para prestarte el servicio. Tus prospectos y diseños se guardan en tu navegador. <a href="#/legal/privacidad">Política de tratamiento de datos</a>.</p></details>
-            </div>
+            </div>}
           </div>
         </section>
       </main>
@@ -297,7 +345,7 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
             <a className="btn" href="#/ingresar">Ingresar a la plataforma</a>
           </div>
           <LegalLine titular={cfg.titular} />
-          <p className="lp-credit">Capturas de la plataforma con datos públicos. Mapas base © OpenStreetMap y © CARTO.</p>
+          <p className="lp-credit">Capturas de la plataforma con datos públicos. Mapas base © OpenStreetMap y © CARTO; imágenes y base del relieve © Esri; relieve: Terrain Tiles (AWS).</p>
         </div>
       </footer>
     </div>

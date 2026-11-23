@@ -1,7 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { api, qs, fmt, csvDownload } from '../api.js';
 import { useApp } from '../App.jsx';
-import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton } from '../components/ui.jsx';
+import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton, ScoreBadge } from '../components/ui.jsx';
+
+const tier = (s) => (s >= 80 ? 'caliente' : s >= 65 ? 'tibio' : 'frio');
+const millones = (v) => (v == null ? null : `$${(v / 1e6).toLocaleString('es-CO', { maximumFractionDigits: v < 1e8 ? 1 : 0 })} M`);
+// Por qué y cómo entrar: debajo del nombre de cada institución
+function PorQue({ op, extra }) {
+  if (!op) return null;
+  return (
+    <div className="op-why">
+      <ul>{op.razones.map((r) => <li key={r}>{r}</li>)}</ul>
+      <p><b>Cómo entrar:</b> {op.via}</p>
+      {extra && <p className="muted">{extra}</p>}
+    </div>
+  );
+}
 
 const SALUD_TIPO = { hospital: 'Hospital o clínica', centro: 'Centro o puesto de salud', ips: 'IPS' };
 // El argumento de la ruta puede traer el tipo y el municipio: "salud-05001" o "colegios-05001"
@@ -15,7 +29,7 @@ export default function Instituciones({ arg }) {
   const { paid, meta } = useApp();
   const init = parseArg(arg);
   const [tipo, setTipo] = useState(init.tipo);
-  const [f, setF] = useState({ q: '', dpto: '', sector: '', zona: '', clase: '', minMat: '', code: init.code });
+  const [f, setF] = useState({ q: '', dpto: '', sector: '', zona: '', clase: '', minMat: '', code: init.code, orden: 'op' });
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
   useEffect(() => { const a = parseArg(arg); setTipo(a.tipo); setF((x) => ({ ...x, code: a.code })); }, [arg]);
@@ -50,18 +64,35 @@ export default function Instituciones({ arg }) {
               <select className="select" style={{ maxWidth: 150 }} value={f.zona} onChange={(e) => setF({ ...f, zona: e.target.value })} aria-label="Zona"><option value="">Urbana y rural</option><option value="U">Urbana</option><option value="R">Rural</option></select>
               <select className="select" style={{ maxWidth: 200 }} value={f.minMat} onChange={(e) => setF({ ...f, minMat: e.target.value })} aria-label="Tamaño"><option value="">Cualquier tamaño</option><option value="300">300 o más estudiantes</option><option value="1000">1.000 o más</option><option value="2000">2.000 o más</option></select>
             </>}
+          <select className="select" style={{ maxWidth: 260 }} value={f.orden} onChange={(e) => setF({ ...f, orden: e.target.value })} aria-label="Ordenar"><option value="op">Mejor oportunidad primero</option><option value="tam">{salud ? 'Por tipo de sede' : 'Más estudiantes primero'}</option></select>
           {f.code && <button className="chip on" style={{ cursor: 'pointer' }} onClick={() => setF({ ...f, code: '' })}>Municipio {f.code} ✕</button>}
           {data?.rows?.length > 0 && <button className="btn sm" onClick={csv}>Descargar CSV</button>}
         </div>
+      )}
+      {data?.segmentos?.length > 0 && (
+        <section className="op-segs" aria-labelledby="op-segs-t">
+          <h2 id="op-segs-t">Cómo abordar {f.code ? 'este municipio' : f.dpto ? f.dpto : 'este listado'}</h2>
+          <ul>
+            {data.segmentos.map((g) => (
+              <li key={g.id}>
+                <b className="op-seg-n">{fmt(g.n)}</b>
+                <span className="op-seg-t">{g.titulo}</span>
+                <span className="small">{g.como}</span>
+                {g.ejemplos.length > 0 && <span className="small muted">Por ejemplo: {g.ejemplos.join(', ')}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
             {salud ? (
-              <table className="tbl"><thead><tr><th>Sede de salud</th><th>Municipio</th><th>Tipo</th><th>Contacto</th><th></th></tr></thead>
+              <table className="tbl op-tbl"><thead><tr><th className="num">Oportunidad</th><th>Sede de salud</th><th>Municipio</th><th>Tipo</th><th>Contacto</th><th></th></tr></thead>
                 <tbody>{data.rows.map((x) => (
                   <tr key={x.id}>
-                    <td className="name">{x.n}<br /><span className="small muted">{x.pr !== x.n ? `${x.pr} · ` : ''}{x.nat}{x.ese ? ' · ESE' : ''}{x.dir ? ` · ${x.dir}` : ''}</span></td>
+                    <td className="num"><ScoreBadge score={x.op?.score} tier={tier(x.op?.score)} /></td>
+                    <td className="name">{x.n}<br /><span className="small muted">{x.pr !== x.n ? `${x.pr} · ` : ''}{x.nat}{x.ese ? ' · ESE' : ''}{x.dir ? ` · ${x.dir}` : ''}</span><PorQue op={x.op} /></td>
                     <td className="small"><a href={`#/m/${x.code}`}>{x.mun}</a><br /><span className="muted">{x.dpto}</span></td>
                     <td className="small">{SALUD_TIPO[x.tipo]}</td>
                     <td className="small">{x.nit ? <Contact tel={x.tel} mail={x.mail} /> : <span className="muted">Sin NIT de empresa: sin contacto</span>}</td>
@@ -69,10 +100,11 @@ export default function Instituciones({ arg }) {
                   </tr>))}</tbody>
               </table>
             ) : (
-              <table className="tbl"><thead><tr><th>Colegio y sede</th><th>Municipio</th><th className="num">Estudiantes</th><th className="hs">Sector</th><th></th></tr></thead>
+              <table className="tbl op-tbl"><thead><tr><th className="num">Oportunidad</th><th>Colegio y sede</th><th>Municipio</th><th className="num">Estudiantes</th><th className="hs">Sector</th><th></th></tr></thead>
                 <tbody>{data.rows.map((c) => (
                   <tr key={c.id}>
-                    <td className="name">{c.est}<br /><span className="small muted">Sede {c.n}{c.p ? ' (principal)' : ''}{c.dir ? ` · ${c.dir}` : ''}</span></td>
+                    <td className="num"><ScoreBadge score={c.op?.score} tier={tier(c.op?.score)} /></td>
+                    <td className="name">{c.est}<br /><span className="small muted">Sede {c.n}{c.p ? ' (principal)' : ''}{c.dir ? ` · ${c.dir}` : ''}</span><PorQue op={c.op} extra={c.op ? `Sistema sugerido: unos ${fmt(c.op.kwp)} kWp${c.op.ahorro ? `, ahorro cercano a ${millones(c.op.ahorro)} al año` : ''}.` : null} /></td>
                     <td className="small"><a href={`#/m/${c.code}`}>{c.mun}</a><br /><span className="muted">{c.dpto}</span></td>
                     <td className="num">{fmt(c.mat)}</td>
                     <td className="small hs">{c.sec === 'O' ? 'Oficial' : 'Privado'} · {c.z === 'R' ? 'rural' : 'urbana'}</td>
@@ -80,9 +112,10 @@ export default function Instituciones({ arg }) {
                   </tr>))}</tbody>
               </table>
             )}
-            {data.locked && <LockedRows cols={5} n={8} text={`Hay ${fmt(data.total)} ${salud ? 'sedes de salud' : 'sedes educativas'} con municipio, tamaño y contacto en el plan completo.`} />}
+            {data.locked && <LockedRows cols={6} n={8} text={`Hay ${fmt(data.total)} ${salud ? 'sedes de salud' : 'sedes educativas'} con municipio, tamaño y contacto en el plan completo.`} />}
           </div>
           {paid && <div className="row"><button className="btn sm" disabled={!page} onClick={() => setPage(page - 1)}>Anterior</button><span className="small muted">{fmt(data.total)} {salud ? 'sedes de salud' : 'sedes educativas'} · página {page + 1}</span><button className="btn sm" disabled={(page + 1) * 50 >= data.total} onClick={() => setPage(page + 1)}>Siguiente</button></div>}
+          <p className="small muted" style={{ margin: 0, maxWidth: '86ch' }}>La oportunidad combina {salud ? 'el tipo de sede (los hospitales consumen las 24 horas), los cortes de la zona, la tarifa, el sol, si es pública o privada y si tiene contacto' : 'el tamaño del colegio, la tarifa de la zona, el sol, los cortes, si el sistema necesita estudio de conexión y si es oficial o privado'}. {salud ? '' : 'El consumo se estima con 3 kWh por estudiante al mes en zona urbana y 2 en rural, y el sistema sugerido cubre el 70 % de ese consumo: ajústalo con la factura en Diseño solar.'}</p>
           {!salud && <p className="small muted" style={{ margin: 0 }}>Matrícula del año {data.anio || meta.cortes.colegios}. La dirección y el teléfono del colegio se confirman con la secretaría de educación del municipio.</p>}
           <Fuente>{salud ? `MinSalud, Registro Especial de Prestadores de Servicios de Salud (REPS), corte ${data.anio || meta.cortes.salud}. Se excluyen profesionales independientes y transporte de pacientes; el tipo (hospital, centro de salud, IPS) se deduce del nombre.` : `MEN, sedes educativas de preescolar, básica y media (datos.gov.co), año ${data.anio || meta.cortes.colegios}. Coordenadas con precisión aproximada de 1 km.`}</Fuente>
           <PrivacyNote />

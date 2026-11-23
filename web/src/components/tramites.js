@@ -36,12 +36,13 @@ const N = {
 const pasoDisponibilidad = ['Consultar la disponibilidad de la red', 'Tú, en la web del operador de red', 'El mismo día',
   'Cada operador publica un mapa por circuito y transformador, actualizado entre el día 1 y el 5 de cada mes: verde hasta 30 %, amarillo 30 a 40 %, naranja 40 a 50 % y rojo más de 50 % de la capacidad ya ocupada por autogeneración. Guarda el archivo de la consulta: es el documento E.'];
 const pasoIncentivos = ['Pedir el certificado de beneficios tributarios', 'UPME, en su plataforma', 'Hasta 30 días hábiles',
-  'Deducción del 50 % en renta, exclusión de IVA, exención de aranceles y depreciación acelerada (Ley 1715 de 2014 y Ley 2099 de 2021). Se radica entre el 1 de febrero y el 15 de diciembre; la UPME puede pedir información una vez (un mes para responder). Para la exclusión de IVA conviene tenerlo antes de comprar los equipos: confírmalo con tu contador.'];
+  'Deducción del 50 % en renta, exclusión de IVA, exención de aranceles y depreciación acelerada (Ley 1715 de 2014 y Ley 2099 de 2021). Se radica entre el 1 de febrero y el 15 de diciembre; la UPME puede pedir información una vez (un mes para responder). Para la exclusión de IVA conviene tenerlo antes de comprar los equipos.'];
 const pasoVisita = ['Pedir la entrada en operación', 'Operador de red', 'Visita en máximo 5 días hábiles',
   'Se pide en el sistema en línea. El operador avisa la fecha con 2 días hábiles y la primera visita no tiene costo. Si no puede conectar, debe subir un informe que explique por qué.'];
 
 export const FIGURAS = {
   agpe_peq: {
+    tiempo: (exc) => (exc ? '12 a 30 días hábiles' : '5 a 12 días hábiles'),
     nombre: 'Autogeneración hasta 100 kW', corto: 'AGPE ≤ 100 kW',
     para: 'Hogares, comercios y empresas que consumen la energía en el mismo predio.',
     limites: [
@@ -75,6 +76,7 @@ export const FIGURAS = {
     normas: ['c174', 'c087', 'u563'],
   },
   agpe_med: {
+    tiempo: (exc) => (exc ? '40 días hábiles más el estudio' : 'Unos 12 días hábiles'),
     nombre: 'Autogeneración de 100 kW a 1 MW', corto: 'AGPE ≤ 1 MW',
     para: 'Empresas, industrias, centros comerciales y edificios con consumo alto de día.',
     limites: [
@@ -108,6 +110,7 @@ export const FIGURAS = {
     normas: ['c174', 'c087', 'u563'],
   },
   colectiva: {
+    tiempo: () => 'Registro más conexión',
     nombre: 'Autogeneración colectiva', corto: 'Comunidad energética',
     para: 'Un techo o una planta que reparte su energía entre varios usuarios: locales de un centro comercial, un conjunto, un parque empresarial.',
     limites: [
@@ -126,7 +129,7 @@ export const FIGURAS = {
     entidades: ['or', 'comercializador', 'minminas', 'upme', 'retie', 'quejas'],
     pasos: () => [
       ['Constituir la comunidad energética', 'Los miembros', 'Según el acuerdo', 'Contrato o acuerdo asociativo con representante, suplente y el PDE de cada usuario.'],
-      ['Inscribirla en el Registro de Comunidades Energéticas', 'Ministerio de Minas y Energía', 'Hasta 12 meses como comunidad inicial', 'Se puede inscribir como inicial y completar requisitos en ese plazo; si no, se entiende desistido.', true],
+      ['Inscribirla en el Registro de Comunidades Energéticas', 'Ministerio de Minas y Energía', 'Hasta 12 meses como comunidad inicial', 'Se puede inscribir como inicial y completar requisitos en ese plazo; si no, se entiende desistido.'],
       pasoDisponibilidad,
       ['Radicar la conexión', 'El representante, en el sistema del operador o la ventanilla única', 'Según el tamaño', 'Sigue la ruta del AGPE (hasta 1 MW) o la de un autogenerador de menos de 5 MW, con los documentos del artículo 14 de la CREG 174 más los de la comunidad.'],
       ['Medidores', 'Comercializador', '3 + 15 días hábiles', 'Confirma en 3 días hábiles si tiene los equipos y en 15 los suministra, calibra e instala (15 si los pone el usuario).'],
@@ -139,6 +142,7 @@ export const FIGURAS = {
     normas: ['c072', 'c087', 'u501', 'm40509', 'c174'],
   },
   remota: {
+    tiempo: () => 'Según el tamaño',
     nombre: 'Autogeneración remota', corto: 'Remota',
     para: 'Generar en un predio (una bodega, un lote) y consumir esa energía en otro.',
     limites: [
@@ -151,7 +155,7 @@ export const FIGURAS = {
     valor: [
       'Se registra ante el ASIC un contrato "pague lo contratado" entre el comercializador del consumo y el generador.',
       'El consumo paga todos los cargos tarifarios que le apliquen: en la práctica se ahorra la componente de generación.',
-      'El crédito de energía es del AGPE en su propio predio; la resolución no lo extiende a la remota (confírmalo con tu asesor).',
+      'El crédito de energía aplica al AGPE en su propio predio; la resolución no lo extiende a la remota.',
     ],
     entidades: ['or', 'comercializador', 'xm', 'upme', 'retie'],
     pasos: () => [
@@ -160,7 +164,7 @@ export const FIGURAS = {
       ['Nombrar un agente que lo represente ante el ASIC', 'Un generador o comercializador', '', ''],
       ['Registrar las fronteras de generación y de consumo', 'Los agentes, ante XM', 'Según CREG 157 de 2011', ''],
       ['Registrar el contrato', 'Comercializador del consumo', '', 'Contrato "pague lo contratado" entre la frontera de consumo y la de generación.'],
-      ['Contratar respaldo de red', 'Tú y el operador de red', '', 'Desde 100 kW conectados al SDL o al STR, según el análisis legal consultado.', true],
+      ['Contratar respaldo de red', 'Tú y el operador de red', '', 'Desde 100 kW conectados al SDL o al STR.'],
       pasoIncentivos,
     ],
     total: () => 'Depende de la conexión de la planta y del registro ante el ASIC.',
@@ -169,6 +173,7 @@ export const FIGURAS = {
     normas: ['c099', 'c174', 'c075'],
   },
   gd: {
+    tiempo: () => '40 días hábiles más el estudio',
     nombre: 'Generación distribuida', corto: 'GD < 1 MW',
     para: 'Una planta pequeña que no consume: vende toda su energía.',
     limites: [
@@ -190,6 +195,7 @@ export const FIGURAS = {
     normas: ['c174', 'c087'],
   },
   proyecto: {
+    tiempo: () => '3 a 5 meses al concepto',
     nombre: 'Proyecto de más de 1 MW', corto: 'Inversionista',
     para: 'Parques solares, autogeneradores grandes y plantas para vender energía.',
     limites: [
@@ -209,7 +215,7 @@ export const FIGURAS = {
       ['Concepto de conexión', 'UPME u operador de red', '10 días hábiles tras la evaluación', 'OCS: máximo 5 meses desde la radicación.'],
       ['Aceptar la capacidad', 'Tú', '2 meses', 'Garantía de reserva aprobada por el ASIC, curva S y, si depende de una obra requerida, compromiso de ejecutarla.'],
       ['Contrato de conexión', 'Tú y el transportador', '4 meses desde el concepto', ''],
-      ['Modelos y pruebas', 'Tú, ante el CND (XM)', 'Preliminares 6 meses antes de operar · detallados 30 días hábiles después', 'Modelos validados, sin encriptar y parametrizables en la herramienta que publica el CND, con pruebas al mínimo técnico, a un nivel intermedio y a 80 % o más de la potencia. Es lo que pedía el Acuerdo CNO 2031 para plantas de 5 MW o más en distribución; el Acuerdo 2184 de julio de 2026 lo reemplazó.', true],
+      ['Modelos y pruebas', 'Tú, ante el CND (XM)', 'Preliminares 6 meses antes de operar · detallados 30 días hábiles después', 'Modelos validados, sin encriptar y parametrizables en la herramienta que publica el CND, con pruebas al mínimo técnico, a un nivel intermedio y a 80 % o más de la potencia. Es lo que pedía el Acuerdo CNO 2031 para plantas de 5 MW o más en distribución; el Acuerdo 2184 de julio de 2026 lo reemplazó.'],
       ['Construir según la curva S y entrar en operación', 'Tú', 'Hasta la FPO', 'Informes cada hito y cada 6 meses. La FPO se puede mover hasta 24 meses aumentando la garantía; se ejecuta si incumples la curva S tres veces o conectas menos del 90 %.'],
     ],
     total: () => 'Con licencia en firme y la ventana abierta, unos 3 meses hasta el concepto (TAC) y hasta 5 meses (OCS). Sin obligaciones ni licencia, hoy no hay ventana: depende de que la CREG levante el régimen transitorio.',
@@ -245,6 +251,6 @@ export function figuraSugerida(kwAc) {
 // Quién puede ser dueño del sistema: modelos de negocio comunes
 export const MODELOS_NEGOCIO = [
   ['Compra directa', 'El cliente paga el sistema y es el autogenerador.'],
-  ['Arriendo o servicio (SPV)', 'Un tercero pone el sistema y cobra un canon o un fee; el cliente sigue siendo el autogenerador. La SPV no vende kWh, así que no necesita ser comercializador.', true],
-  ['PPA físico', 'Venta de energía por contrato: exige que quien vende sea una ESP o un generador y que el comprador pueda contratar (usuario no regulado).', true],
+  ['Arriendo o servicio (SPV)', 'Un tercero pone el sistema y cobra un canon o un fee; el cliente sigue siendo el autogenerador. La SPV no vende kWh, así que no necesita ser comercializador.'],
+  ['PPA físico', 'Venta de energía por contrato: exige que quien vende sea una ESP o un generador y que el comprador pueda contratar (usuario no regulado).'],
 ];
