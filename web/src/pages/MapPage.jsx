@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from '../maplibre.js';
 import { MapboxOverlay } from '@deck.gl/mapbox';
+import { TerrainLayer } from '@deck.gl/geo-layers';
+// El trabajador que arma la malla del terreno se sirve desde nuestro dominio (la política de seguridad no permite CDN)
+import terrainWorkerUrl from '@loaders.gl/terrain/terrain-worker.js?url';
+import { SimpleMeshLayer } from '@deck.gl/mesh-layers';
+import { _TerrainExtension as TerrainExtension } from '@deck.gl/extensions';
+import { MODELOS, TORRE_BRAZOS } from '../components/modelos3d.js';
 import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
@@ -19,7 +25,67 @@ function colorAt(t) {
   return RAMP[i].map((c, k) => Math.round(c + (RAMP[i + 1][k] - c) * f));
 }
 const kvOf = (s) => Math.max(0, ...(String(s || '').match(/\d+(\.\d+)?/g) || ['0']).map(Number));
-const KV_COLOR = (kv) => (kv >= 500 ? [226, 103, 91] : kv >= 220 ? [242, 195, 138] : [120, 190, 220]);
+// Líneas por nivel de tensión
+const KV_COLOR = (kv) => (kv >= 500 ? [255, 77, 109] : kv >= 220 ? [255, 159, 28] : kv >= 100 ? [255, 224, 102] : [94, 200, 242]);
+const KV_W = (kv) => (kv >= 500 ? 3.2 : kv >= 220 ? 2.4 : kv >= 100 ? 1.6 : 1.2);
+const KV_LEG = [[500, '500 kV'], [230, '220 y 230 kV'], [115, '110 y 115 kV'], [66, '66 kV o menos']];
+// Relieve: modelo de elevación abierto (Terrain Tiles en AWS, formato terrarium), exagerado para que la cordillera se lea
+const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const EXAG = 2;
+const DEM_DECODER = { rScaler: 256 * EXAG, gScaler: EXAG, bScaler: EXAG / 256, offset: -32768 * EXAG };
+// Textura del terreno en modo oscuro (Esri Dark Gray Canvas, sin nombres: los nombres los pone el mapa)
+const TEX_OSCURO = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+// Nombres de municipios según el zoom (por población) cuando el terreno tapa los nombres del mapa base
+const POB_MIN = (z) => (z < 6.5 ? 500000 : z < 7.5 ? 150000 : z < 8.5 ? 50000 : z < 9.5 ? 15000 : 0);
+const TERRAIN_EXT = new TerrainExtension();
+const ZOOM_MODELOS = 7.5, ZOOM_TORRES = 9.5;
+// Metros por píxel en la latitud de Colombia (teselas de 512 px de MapLibre)
+const mpp = (z) => (78271.517 * Math.cos((5 * Math.PI) / 180)) / 2 ** z;
+// Torres cada ~70 px de pantalla (o cada 400 m, lo que sea mayor) y cables con flecha entre ellas
+// Con relieve, las líneas se dibujan como trazos 3D pegados al suelo: se densifican para que sigan el terreno
+function densificar(c, paso = 0.015) {
+  const out = [];
+  for (let i = 1; i < c.length; i++) {
+    const [a, b] = [c[i - 1], c[i]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / paso));
+    for (let j = i === 1 ? 0 : 1; j <= n; j++) out.push([a[0] + ((b[0] - a[0]) * j) / n, a[1] + ((b[1] - a[1]) * j) / n, 60]);
+  }
+  return out;
+}
+// Capas de trazos que, con relieve, se elevan vértice a vértice en lugar de pintarse como textura (se ven nítidas)
+const TRAZOS_3D = new Set(['cables', 'lineas', 'contorno', 'borde-dpto', 'mt', 'draw-path', 'lim-muni', 'lim-dpto']);
+function torresYCables(lineas, bbox, zoom) {
+  const paso = Math.max(400, 70 * mpp(zoom)), esc = Math.max(1, (26 * mpp(zoom)) / 90);
+  const [w, s, e, n] = bbox, mx = (e - w) * 0.15, my = (n - s) * 0.15;
+  const dentro = (p) => p[0] > w - mx && p[0] < e + mx && p[1] > s - my && p[1] < n + my;
+  const torres = [], cables = [];
+  for (const l of lineas) {
+    if (!l.c?.some(dentro) && !(l.c?.length >= 2 && dentro([(l.c[0][0] + l.c[l.c.length - 1][0]) / 2, (l.c[0][1] + l.c[l.c.length - 1][1]) / 2]))) continue;
+    const kv = kvOf(l.kv), color = KV_COLOR(kv);
+    let prev = null;
+    for (let i = 1; i < l.c.length; i++) {
+      const [a, b] = [l.c[i - 1], l.c[i]], kx = 111320 * Math.cos((a[1] * Math.PI) / 180), ky = 110540;
+      const dx = (b[0] - a[0]) * kx, dy = (b[1] - a[1]) * ky, L = Math.hypot(dx, dy);
+      if (!L) continue;
+      const ang = Math.atan2(dy, dx), nSeg = Math.max(1, Math.round(L / paso));
+      for (let j = i === 1 ? 0 : 1; j <= nSeg; j++) {
+        const t = j / nSeg, pos = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const tw = { pos, yaw: (ang * 180) / Math.PI + 90, ang, l, kv };
+        if (dentro(pos)) torres.push(tw);
+        if (prev && (dentro(pos) || dentro(prev.pos))) {
+          // Brazo en coordenadas locales: x atraviesa la línea
+          for (const [bx, bz] of TORRE_BRAZOS) {
+            const pt = (T) => { const ox = -Math.sin(T.ang) * bx * esc, oy = Math.cos(T.ang) * bx * esc; return [T.pos[0] + ox / kx, T.pos[1] + oy / ky]; };
+            const p0 = pt(prev), p1 = pt(tw), z0 = bz * esc - 6 * esc, flecha = 0.16 * z0, path = [];
+            for (let k = 0; k <= 10; k++) { const u = k / 10; path.push([p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u, z0 - flecha * 4 * u * (1 - u)]); }
+            cables.push({ path, color: bx === 0 ? [200, 206, 214] : color, w: bx === 0 ? 0.8 : 1.3 });
+          }
+        }
+        prev = tw;
+      }
+    }
+  }
+  return { torres, cables, esc };
+}
 // Altura en metros de la columna (3D) según el valor normalizado t (0 a 1)
 const elevOf = (t) => 2500 + Math.pow(t, 1.4) * 70000;
 // Los íconos se dibujan siempre encima (sin recortarse contra el plano del mapa en 3D)
@@ -42,7 +108,7 @@ const LAYERS = {
   agpe: { label: 'Autogeneración en techos y empresas (por municipio)', swatch: '#FFB84D', paid: true },
   upme: { label: 'Proyectos de generación registrados', img: ICON_UPME, paid: true, group: 'Red, proyectos y demanda' },
   subs: { label: 'Subestaciones', img: ICON_SUB, paid: false },
-  lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#78BEDC,#F2C38A,#E2675B)', paid: false },
+  lineas: { label: 'Líneas de transmisión', swatch: 'linear-gradient(90deg,#5EC8F2,#FFE066,#FF9F1C,#FF4D6D)', paid: false },
   mt: { label: 'Red de media tensión estimada', swatch: '#4FB286', paid: true },
   zni: { label: 'Zonas no interconectadas', img: ICON_ZNI, paid: true },
   capacidad: { label: 'Capacidad de conexión por subestación (2026)', swatch: 'linear-gradient(90deg,#E2675B,#F2C38A,#4FB286)', paid: true },
@@ -102,13 +168,19 @@ const genIcon = (url) => ({ url, width: 128, height: 128, anchorY: 64, mask: fal
 const maskIcon = (url) => ({ url, width: 64, height: 64, anchorY: 32, mask: true });
 
 export default function MapPage({ focus }) {
-  const { paid, profile, prof, scoreParams, go } = useApp();
+  const { paid, profile, prof, scoreParams, go, cfg } = useApp();
   const el = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
+  const [mapaListo, setMapaListo] = useState(false);
   const [data, setData] = useState(null);
   const [show, setShow] = useState('score'); // 'nada' | 'score' | métrica
   const [is3d, setIs3d] = useState(true);
+  // Fondo del mapa: oscuro o satélite; relieve del terreno (en 3D, el país con montañas)
+  const [fondo, setFondo] = useState(() => { try { return localStorage.getItem('rs-fondo') || 'oscuro'; } catch { return 'oscuro'; } });
+  const [relieve, setRelieve] = useState(() => { const desk = window.innerWidth >= 860; try { const v = localStorage.getItem('rs-relieve'); return v == null ? desk : v === '1'; } catch { return desk; } });
+  useEffect(() => { try { localStorage.setItem('rs-fondo', fondo); localStorage.setItem('rs-relieve', relieve ? '1' : '0'); } catch { /* sin almacenamiento */ } }, [fondo, relieve]);
+  const terreno = is3d && relieve;
   const [menu, setMenu] = useState(null); // 'show' | 'layers' | null
   const [collapsed, setCollapsed] = useState(true);
   const [lockMsg, setLockMsg] = useState(null);
@@ -155,10 +227,17 @@ export default function MapPage({ focus }) {
   useEffect(() => {
     const map = new maplibregl.Map({
       container: el.current, style: STYLE, center: window.innerWidth < 860 ? [-74.2, 4.6] : [-73.9, 5.3], zoom: window.innerWidth < 860 ? 4.6 : 5.6,
-      pitch: 45, bearing: -10, maxPitch: 70, attributionControl: { compact: true }, maxBounds: [[-92, -14], [-52, 18]],
+      pitch: 45, bearing: -10, maxPitch: 70, attributionControl: { compact: true, customAttribution: 'Relieve: Terrain Tiles (AWS) · Base del relieve: Esri' }, maxBounds: [[-92, -14], [-52, 18]],
     });
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
     map.on('load', () => {
+      const capas = map.getStyle().layers, primerTexto = capas.find((l) => l.type === 'symbol')?.id;
+      map.__rellenos = capas.filter((l) => l.type === 'fill' || l.type === 'background').map((l) => l.id);
+      map.__primerTexto = primerTexto;
+      map.addSource('dem', { type: 'raster-dem', tiles: [DEM], tileSize: 256, maxzoom: 14, encoding: 'terrarium', attribution: 'Relieve: Terrain Tiles (AWS), SRTM y otras fuentes' });
+      map.addLayer({ id: 'sombras', type: 'hillshade', source: 'dem', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.55, 'hillshade-shadow-color': '#05040f', 'hillshade-highlight-color': '#8f9bd6', 'hillshade-accent-color': '#1a1840' } }, primerTexto);
+      try { map.setSky({ 'sky-color': '#0b0a26', 'horizon-color': '#2c2f78', 'fog-color': '#15134a', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.4 }); } catch { /* versión sin cielo */ }
+      setMapaListo(true);
       for (const l of map.getStyle().layers) {
         if (l.type === 'symbol' && map.getLayoutProperty(l.id, 'text-field')) {
           try { map.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', 'name:es'], ['get', 'name_es'], ['get', 'name']]); } catch { /* capa sin nombre */ }
@@ -196,6 +275,22 @@ export default function MapPage({ focus }) {
     api('/map' + qs(scoreParams)).then(setData).catch(() => setData({ items: [] }));
   }, [JSON.stringify(scoreParams)]);
 
+  // Fondo plano: satélite debajo de los nombres y sombras del relieve. En 3D con relieve, el terreno lo dibuja deck.gl.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapaListo) return;
+    const satOn = fondo === 'satelite' && !terreno && !!cfg?.sat?.tiles;
+    if (satOn && !map.getSource('sat')) {
+      map.addSource('sat', { type: 'raster', tiles: [cfg.sat.tiles], tileSize: 256, maxzoom: 19, attribution: cfg.sat.attribution });
+      map.addLayer({ id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.1, 'raster-brightness-max': 0.9 } }, map.__primerTexto);
+    }
+    if (map.getLayer('sat')) map.setLayoutProperty('sat', 'visibility', satOn ? 'visible' : 'none');
+    for (const id of map.__rellenos || []) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', satOn ? 'none' : 'visible');
+    if (map.getLayer('sombras')) map.setLayoutProperty('sombras', 'visibility', relieve && !terreno ? 'visible' : 'none');
+    if (map.getLayer('sombras')) map.setPaintProperty('sombras', 'hillshade-exaggeration', satOn ? 0.3 : 0.55);
+  }, [fondo, relieve, terreno, mapaListo, cfg?.sat?.tiles]);
+
+  const lineasDensas = useMemo(() => (red?.lineas || []).map((l) => ({ ...l, c3: densificar(l.c || []) })), [red]);
   const genN = useMemo(() => { const o = {}; for (const p of red?.plantas || []) if (p.estado !== 'Inactiva') o[p.tipo] = (o[p.tipo] || 0) + 1; return o; }, [red]);
   useEffect(() => { api('/red').then(setRed).catch(() => setRed({ lineas: [], subs: [], plantas: [], zni: [], upme: [] })); }, []);
   useEffect(() => { if (on.has('mt') && paid && !mt) api('/red/mt').then(setMt).catch(() => setMt([])); }, [on, paid, mt]);
@@ -414,17 +509,26 @@ export default function MapPage({ focus }) {
     const layers = [
       // Colombia resaltada: los países vecinos quedan oscurecidos
       new SolidPolygonLayer({ id: 'mask', data: [COLOMBIA_MASK], getPolygon: (d) => d.geometry.coordinates, getFillColor: [16, 14, 42, 150], pickable: false }),
-      new SolidPolygonLayer({ id: 'colombia', data: [{ p: COLOMBIA }], getPolygon: (d) => d.p, getFillColor: [52, 120, 246, 18], pickable: false }),
+      new SolidPolygonLayer({ id: 'colombia', data: [{ p: COLOMBIA }], getPolygon: (d) => d.p, getFillColor: terreno && fondo !== 'satelite' ? [44, 38, 128, 95] : [52, 120, 246, 18], updateTriggers: { getFillColor: [terreno, fondo] }, pickable: false }),
       new PathLayer({ id: 'contorno', data: [{ path: [...COLOMBIA, COLOMBIA[0]] }], getPath: (d) => d.path, getColor: [168, 197, 255, 200], widthUnits: 'pixels', getWidth: 1.6 }),
     ];
     if (on.has('mt') && mt?.length) {
       layers.push(new PathLayer({ id: 'mt', data: mt, getPath: (d) => d.c, getColor: (d) => (d.s === 'o' ? [79, 178, 134, 170] : [79, 178, 134, 90]), widthUnits: 'pixels', getWidth: 1 }));
     }
     if (on.has('lineas') && red?.lineas?.length) {
-      layers.push(new PathLayer({
-        id: 'lineas', data: red.lineas, getPath: (d) => d.c, getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 190],
-        widthUnits: 'pixels', getWidth: (d) => (kvOf(d.kv) >= 500 ? 2.4 : kvOf(d.kv) >= 220 ? 1.8 : 1.2), pickable: true,
-      }));
+      const conTorres = terreno && zoom >= ZOOM_TORRES && bounds;
+      if (!conTorres) {
+        layers.push(new PathLayer({
+          id: 'lineas', data: terreno ? lineasDensas : red.lineas, getPath: (d) => (terreno ? d.c3 : d.c), getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 220],
+          widthUnits: 'pixels', getWidth: (d) => KV_W(kvOf(d.kv)), pickable: true, capRounded: true, jointRounded: true,
+        }));
+      }
+      // De cerca y con relieve: torres en 3D y los cables colgando entre ellas
+      if (conTorres) {
+        const { torres, cables, esc } = torresYCables(red.lineas, bounds, zoom);
+        layers.push(new PathLayer({ id: 'cables', data: cables, getPath: (d) => d.path, getColor: (d) => [...d.color, 235], widthUnits: 'pixels', getWidth: (d) => d.w }));
+        layers.push(new SimpleMeshLayer({ id: 'torres', data: torres, mesh: MODELOS.torre.mesh, getPosition: (d) => d.pos, getOrientation: (d) => [0, d.yaw, 0], sizeScale: esc, getColor: [255, 255, 255], pickable: true }));
+      }
     }
     const onMuni = ({ object }) => { if (!object || st.current.tool) return; if (dpto) setLockMsg(object); else go('m', object.code); };
     // Municipios coloreados (mapa de calor por polígono) y límites
@@ -445,8 +549,10 @@ export default function MapPage({ focus }) {
       layers.push(new GeoJsonLayer({ id: 'lim-dpto', data: geoD, filled: false, stroked: true, getLineColor: [200, 215, 255, 200], lineWidthUnits: 'pixels', getLineWidth: 1.4 }));
     }
     // Con los transformadores a la vista, las columnas del municipio estorban
+    // Columnas por municipio solo en 3D y lejos; de cerca sobre el relieve estorban a los modelos
+    const colZ = is3d && !(terreno && zoom >= ZOOM_MODELOS);
     const sinMuni = relleno || (on.has('trafos') && paid && zoom >= ZOOM_TRAFOS);
-    if (sinMuni) { /* los municipios ya están coloreados o se ven los transformadores */ } else if (showKey === 'score' && is3d) {
+    if (sinMuni) { /* los municipios ya están coloreados o se ven los transformadores */ } else if (showKey === 'score' && colZ) {
       layers.push(new ColumnLayer({
         id: 'muni-3d', data: scaled, diskResolution: dpto ? 24 : 12, radius: dpto ? 14000 : 3500, extruded: true, pickable: true,
         elevationScale: dpto ? 700 : 220, getPosition: (d) => [d.lon, d.lat],
@@ -462,7 +568,7 @@ export default function MapPage({ focus }) {
       }));
     } else if (iconMode) {
       // 3D: columna delgada con la altura del valor y el ícono en la punta. Plano: solo el ícono.
-      if (is3d) {
+      if (colZ) {
         layers.push(new ColumnLayer({
           id: `muni-col-${showKey}`, data: scaled, diskResolution: 8, radius: 1600, extruded: true, pickable: true,
           getPosition: (d) => [d.lon, d.lat], getElevation: (d) => elevOf(d.t), elevationScale: 1,
@@ -471,13 +577,20 @@ export default function MapPage({ focus }) {
         }));
       }
       layers.push(new IconLayer({
-        id: `muni-ic-${showKey}-${is3d ? '3d' : '2d'}`, data: scaled, getPosition: (d) => [d.lon, d.lat, is3d ? elevOf(d.t) : 0],
-        getIcon: () => maskIcon(METRIC_ICON[showKey]), sizeUnits: 'pixels', getSize: (d) => (is3d ? 10 + d.t * 14 : 7 + d.t * 14),
+        id: `muni-ic-${showKey}-${colZ ? '3d' : '2d'}`, data: scaled, getPosition: (d) => [d.lon, d.lat, colZ ? elevOf(d.t) : 0],
+        getIcon: () => maskIcon(METRIC_ICON[showKey]), sizeUnits: 'pixels', getSize: (d) => (colZ ? 10 + d.t * 14 : 7 + d.t * 14),
         getColor: (d) => [...colorAt(d.t), 245], parameters: ON_TOP,
         pickable: true, updateTriggers: { getSize: trig, getColor: trig, getIcon: trig, getPosition: trig }, onClick: onMuni,
       }));
     }
-    if (on.has('subs') && red?.subs?.length) {
+    const modelos = terreno && zoom >= ZOOM_MODELOS;
+    if (on.has('subs') && red?.subs?.length && modelos) {
+      layers.push(new SimpleMeshLayer({
+        id: 'subs-3d', data: vis('subs', red.subs), mesh: MODELOS.subestacion.mesh, getPosition: (d) => [d.lon, d.lat], getOrientation: [0, 0, 0],
+        sizeScale: Math.max(1, (24 * mpp(zoom)) / MODELOS.subestacion.size), getScale: (d) => { const k = d.kvmax >= 500 ? 1.5 : d.kvmax >= 220 ? 1.25 : 1; return [k, k, k]; },
+        getColor: [255, 255, 255], pickable: true,
+      }));
+    } else if (on.has('subs') && red?.subs?.length) {
       layers.push(new IconLayer({ id: 'subs', data: vis('subs', red.subs), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('agpe') && red?.agpe?.length) {
@@ -494,6 +607,15 @@ export default function MapPage({ focus }) {
       for (const k of GEN_KEYS) {
         if (!on.has(k)) continue;
         const data = vis(k, red.plantas.filter((p) => p.tipo === k && inDpto(p.code))).sort((a, b) => b.mw - a.mw);
+        if (modelos) {
+          const M = MODELOS[k] || MODELOS.otra;
+          layers.push(new SimpleMeshLayer({
+            id: `${k}-3d`, data, mesh: M.mesh, getPosition: (d) => [d.lon, d.lat], getOrientation: (d) => [0, (d.n.length * 37) % 360, 0],
+            sizeScale: Math.max(1, (30 * mpp(zoom)) / M.size), getScale: (d) => { const f = 0.75 + Math.min(0.9, Math.sqrt(d.mw || 0.1) / 40); return [f, f, f]; },
+            getColor: (d) => [255, 255, 255, d.estado === 'Inactiva' ? 110 : 255], pickable: true,
+          }));
+          continue;
+        }
         layers.push(new IconLayer({
           id: k, data, getPosition: (d) => [d.lon, d.lat], sizeUnits: 'pixels', parameters: ON_TOP, pickable: true,
           getIcon: (d) => genIcon(d.estado === 'Pruebas' ? GEN_ICON_PRUEBAS[k] : GEN_ICON[k]),
@@ -580,14 +702,33 @@ export default function MapPage({ focus }) {
     ];
     if (labels.length) layers.push(new TextLayer({ id: 'draw-text', data: labels, getPosition: (d) => d.pos, getText: (d) => d.text, getSize: (d) => d.size, getPixelOffset: (d) => [0, d.dy || 0], ...TXT }));
 
+    if (terreno) {
+      layers.unshift(new TerrainLayer({
+        id: 'terreno', elevationData: DEM, elevationDecoder: DEM_DECODER, minZoom: 0, maxZoom: 14, meshMaxError: 4 * EXAG,
+        texture: fondo === 'satelite' && cfg?.sat?.tiles ? cfg.sat.tiles : TEX_OSCURO, extent: [-82.5, -5.5, -65.5, 14],
+        operation: 'terrain+draw', color: [255, 255, 255], loadOptions: { terrain: { workerUrl: terrainWorkerUrl } }, material: { ambient: 0.55, diffuse: 0.65, shininess: 4 },
+      }));
+    }
+    if (terreno && data?.items?.length) {
+      const pm = POB_MIN(zoom);
+      layers.push(new TextLayer({
+        id: 'nombres', data: data.items.filter((d) => d.lat != null && (d.pop || 0) >= pm && inDpto(d.code)), getPosition: (d) => [d.lon, d.lat], getText: (d) => d.name,
+        getSize: (d) => ((d.pop || 0) > 500000 ? 14 : 12), getPixelOffset: [0, -14], ...TXT, background: false, outlineWidth: 3, outlineColor: [10, 9, 30, 230], fontSettings: { sdf: true },
+        updateTriggers: { getText: [pm] },
+      }));
+    }
+    // Con relieve, todo lo demás se apoya sobre el terreno (los puntos se elevan, las áreas y rutas se pegan al suelo)
+    const conTerreno = terreno ? layers.map((l) => (l.id === 'terreno' ? l : l.clone({ extensions: [...(l.props.extensions || []), TERRAIN_EXT], ...(TRAZOS_3D.has(l.id) ? { terrainDrawMode: 'offset' } : {}) }))) : layers;
     overlayRef.current.setProps({
-      layers,
-      onClick: (info) => { if (st.current.tool === 'hide' && info.object && info.layer) toggleHidden(info.layer.id, info.object); },
-      getTooltip: ({ object: d, layer }) => {
+      layers: conTerreno,
+      onClick: (info) => { if (st.current.tool === 'hide' && info.object && info.layer) toggleHidden(info.layer.id.replace(/-3d$/, ''), info.object); },
+      getTooltip: ({ object: d, layer: lyr }) => {
         if (tool) return null;
-        if (!d || !layer) return null;
+        if (!d || !lyr) return null;
+        const layer = { id: lyr.id.replace(/-3d$/, '') };
         let html;
         if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
+        else if (layer.id === 'torres') html = `<b>Torre de la línea ${d.l.n}</b><br/>${d.l.kv}<br/><span style="color:#B3BCDA">${d.l.op || ''}<br/>Torres dibujadas a escala de lectura, no en su ubicación exacta.</span>`;
         else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.sistema ? ' · ' + (d.sistema === 'STN' ? 'transmisión nacional' : 'transmisión regional') : ''}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op || ''}</span>`;
         else if (GEN_NAME[layer.id]) html = `<b>${d.n}</b><br/>${GEN_NAME[d.tipo]}${combTxt(d)} · <b>${fmt(d.mw, d.mw < 10 ? 2 : 1)} MW</b><br/>${d.estado}${d.desde ? ' desde ' + d.desde.slice(0, 4) : ''}${d.kv ? ' · ' + d.kv + ' kV' : ''}${d.clas && d.clas !== 'NORMAL' ? ' · ' + cap(d.clas) : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${cap(d.mun || '')}, ${cap(d.dpto || '')}</span>`;
         else if (layer.id === 'agpe') html = `<b>${d.name}</b>, ${d.dpto}<br/>${d.n ? `${fmt(d.n)} sistemas de autogeneración${d.solar ? ` (${fmt(d.solar)} solares)` : ''}, ${fmt(d.kw)} kW (SUI)<br/>` : ''}${d.px ? `${fmt(d.px)} registrados con nombre en PARATEC, ${fmt(d.px_kw)} kW<br/>` : ''}<span style="color:#B3BCDA">Ubicación aproximada: centro del municipio.<br/>Incluye solo lo que reportan los operadores de red.</span>`;
@@ -605,7 +746,7 @@ export default function MapPage({ focus }) {
         return { html: `<div class="maptip">${html}</div>`, style: { background: 'none', padding: 0 } };
       },
     });
-  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool, salud, colegios, zoom, trafoRes, trafoRows, trafoMode, trafoW, limites, geoM, geoD, dptoFeat, hid]);
+  }, [scaled, data, showKey, is3d, go, on, red, mt, shapes, preview, draft, sel, pin, tool, salud, colegios, zoom, bounds, fondo, terreno, lineasDensas, cfg?.sat?.tiles, trafoRes, trafoRows, trafoMode, trafoW, limites, geoM, geoD, dptoFeat, hid]);
 
   const visibles = useMemo(() => {
     if (data?.mode !== 'municipio') return [];
@@ -730,6 +871,20 @@ export default function MapPage({ focus }) {
           <button className={!is3d ? 'on' : ''} onClick={() => set3d(false)}>Plano</button>
           <button className={is3d ? 'on' : ''} onClick={() => set3d(true)}>3D</button>
         </div>
+        <div className="dd">
+          <button className={`btn sm glass ${menu === 'fondo' ? 'on' : ''}`} onClick={() => setMenu(menu === 'fondo' ? null : 'fondo')} aria-expanded={menu === 'fondo'}>
+            <Icon name="map" size={16} />Fondo<span className="caret">▾</span>
+          </button>
+          {menu === 'fondo' && (
+            <div className="glass dd-menu layers" role="group" aria-label="Fondo del mapa">
+              <label><input type="radio" name="fondo" checked={fondo === 'oscuro'} onChange={() => setFondo('oscuro')} /><span>Mapa oscuro</span></label>
+              <label className={cfg?.sat?.tiles ? '' : 'dis'}><input type="radio" name="fondo" checked={fondo === 'satelite'} disabled={!cfg?.sat?.tiles} onChange={() => setFondo('satelite')} /><span>Satélite</span></label>
+              <label><input type="checkbox" checked={relieve} onChange={(e) => setRelieve(e.target.checked)} /><span>Relieve del terreno</span></label>
+              <span className="small muted">{is3d ? `En 3D el terreno se levanta con su altura real, exagerada ${EXAG} veces. Acércate para ver plantas y subestaciones como modelos; más cerca aún, las torres y los cables de las líneas.` : 'En plano, el relieve se ve como sombras. Pasa a 3D para levantar montañas y valles.'}</span>
+              {fondo === 'satelite' && cfg?.sat?.attribution && <span className="small muted">{cfg.sat.attribution}</span>}
+            </div>
+          )}
+        </div>
         <div className="glass" style={{ padding: 6 }}><WeightsControl compact /></div>
       </div>
 
@@ -787,8 +942,13 @@ export default function MapPage({ focus }) {
         </div>
       )}
 
-      {(showKey !== 'nada' || genOn.length > 0) && (
+      {(showKey !== 'nada' || genOn.length > 0 || on.has('lineas')) && (
         <div className="legend glass">
+          {on.has('lineas') && (
+            <ul className="gen-legend kv-legend" aria-label="Líneas de transmisión por tensión">
+              {KV_LEG.map(([kv, t]) => <li key={kv}><span className="kv-sw" style={{ background: `rgb(${KV_COLOR(kv).join(',')})`, height: KV_W(kv) + 1 }} />{t}</li>)}
+            </ul>
+          )}
           {genOn.length > 0 && (
             <ul className="gen-legend" aria-label="Plantas de generación en el mapa">
               {genOn.map((k) => <li key={k}><img src={GEN_ICON[k]} alt="" width="18" height="18" />{GEN_NAME[k]} <span className="muted">{fmt(genN[k] || 0)}</span></li>)}

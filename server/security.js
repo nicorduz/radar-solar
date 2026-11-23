@@ -8,9 +8,9 @@ const origin = (u) => { try { return new URL(u.replace(/\{[a-z]\}/g, '0')).origi
 export function securityHeaders(req, res, next) {
   // Detrás del proxy del hosting: redirige HTTP a HTTPS en producción
   if (config.forceHttps && req.headers['x-forwarded-proto'] === 'http') return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
-  // Orígenes externos que la app usa de verdad: mapa base (CARTO), imágenes satelitales (Esri u otro configurado)
+  // Orígenes externos que la app usa de verdad: mapa base (CARTO), imágenes satelitales (Esri u otro configurado), relieve (Terrain Tiles en S3)
   const sat = origin(config.satTiles);
-  const tiles = ['https://*.basemaps.cartocdn.com', 'https://basemaps.cartocdn.com', 'https://server.arcgisonline.com', 'https://services.arcgisonline.com', sat].filter(Boolean);
+  const tiles = ['https://*.basemaps.cartocdn.com', 'https://basemaps.cartocdn.com', 'https://server.arcgisonline.com', 'https://services.arcgisonline.com', 'https://s3.amazonaws.com', sat].filter(Boolean);
   const csp = [
     "default-src 'self'",
     "script-src 'self'",
