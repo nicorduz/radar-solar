@@ -14,7 +14,7 @@ import { privacyRoutes, deleteUser } from './privacy.js';
 import { startBackups, createBackup, listBackups } from './backup.js';
 import { store, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
-import { oportunidadColegio, oportunidadSalud, segmentos } from './oportunidad.js';
+import { oportunidadColegio, oportunidadSalud, segmentos, oportunidadHotel, segmentosHotel, zonaTurismo } from './oportunidad.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
 
@@ -248,10 +248,14 @@ app.get('/api/clientes', requireUser, (req, res) => {
   if (cat) rows = rows.filter((c) => c.cat === cat);
   if (minHab) rows = rows.filter((c) => c.hab >= +minHab);
   if (q) { const n = norm(q); rows = rows.filter((c) => norm(c.n).includes(n) || norm(c.sub).includes(n)); }
-  const view = (c) => { const m = store.byCode.get(c.code); return limpiarContacto({ ...c, mun: m?.name, dpto: m?.dpto, tarifa: m?.tarifa, ghi: m?.ghi }); };
+  // Oportunidad de cada alojamiento o atractivo, segmentos para abordarlos y cuándo se va la luz en la zona
+  rows = rows.map((c) => ({ ...c, op: oportunidadHotel(c) }));
+  if (req.query.orden === 'tam') rows.sort((a, b) => (b.hab || 0) - (a.hab || 0)); else rows.sort((a, b) => b.op.score - a.op.score);
+  const segs = segmentosHotel(rows), zona = zonaTurismo(rows);
+  const view = (c) => { const m = store.byCode.get(c.code); const { f, ...op } = c.op; return limpiarContacto({ ...c, op, mun: m?.name, dpto: m?.dpto, tarifa: m?.tarifa, ghi: m?.ghi, temp: m?.temp }); };
   const page = Math.max(0, +req.query.page || 0);
-  if (!isPaid(req)) return res.json({ total: rows.length, rows: rows.slice(0, 1).map((c) => ({ ...view(c), tel: null, mail: null, dir: null })), locked: true });
-  res.json({ total: rows.length, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
+  if (!isPaid(req)) return res.json({ total: rows.length, segmentos: segs.map((x) => ({ ...x, ejemplos: [] })), zona, rows: rows.slice(0, 1).map((c) => ({ ...view(c), tel: null, mail: null, dir: null })), locked: true });
+  res.json({ total: rows.length, segmentos: segs, zona, rows: rows.slice(page * 50, page * 50 + 50).map(view), locked: false });
 });
 
 // Colegios y sedes de salud como clientes institucionales

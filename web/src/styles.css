@@ -1149,3 +1149,16 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
 .rd-k-gap { background: #FF7A00; }
 @media (max-width: 760px) { .rd-lbl { display: none; } .rd-t { font-size: 28px; } .rd-leyenda { flex-direction: column; font-size: 13px; } }
 @media (min-width: 761px) { .rd-leyenda { display: none; } }
+
+/* Cuándo se va la luz (turismo) */
+.cs { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; align-items: center; padding: 22px 24px; }
+.cs h2 { margin: 0 0 8px; font-size: var(--t-lg); }
+.cs p { margin: 0 0 8px; line-height: 1.55; max-width: 64ch; }
+.cs-fig { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.cs-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 170px; align-items: end; }
+.cs-bar { display: grid; grid-template-rows: auto 1fr auto; height: 100%; text-align: center; gap: 4px; }
+.cs-b { align-self: end; width: 100%; min-height: 2px; border-radius: 5px 5px 0 0; background: var(--cool); }
+.cs-bar.fds .cs-b { background: var(--hot); }
+.cs-v { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.cs-d { font-size: 12px; font-weight: 600; }
+@media (max-width: 900px) { .cs { grid-template-columns: 1fr; } }

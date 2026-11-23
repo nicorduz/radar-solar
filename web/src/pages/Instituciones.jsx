@@ -3,26 +3,7 @@ import { api, qs, fmt, csvDownload } from '../api.js';
 import { useApp } from '../App.jsx';
 import { LockedRows, Spinner, Contact, PrivacyNote, Fuente, ProspectButton, ScoreBadge } from '../components/ui.jsx';
 
-const tier = (s) => (s >= 80 ? 'caliente' : s >= 65 ? 'tibio' : 'frio');
-const millones = (v) => (v == null ? null : `$${(v / 1e6).toLocaleString('es-CO', { maximumFractionDigits: v < 1e8 ? 1 : 0 })} M`);
-// Por qué y cómo entrar: debajo del nombre de cada institución
-function PorQue({ op, extra }) {
-  if (!op) return null;
-  return (
-    <div className="op-why">
-      <ul>{op.razones.map((r) => <li key={r}>{r}</li>)}</ul>
-      <p><b>Cómo entrar:</b> {op.via}</p>
-      {extra && <p className="muted">{extra}</p>}
-    </div>
-  );
-}
-
-const SALUD_TIPO = { hospital: 'Hospital o clínica', centro: 'Centro o puesto de salud', ips: 'IPS' };
-// El argumento de la ruta puede traer el tipo y el municipio: "salud-05001" o "colegios-05001"
-const parseArg = (arg) => {
-  const m = String(arg || '').match(/^(colegios|salud)(?:-(\d{5}))?$/);
-  return m ? { tipo: m[1], code: m[2] || '' } : { tipo: 'colegios', code: /^\d{5}$/.test(arg || '') ? arg : '' };
-};
+import { tier, PorQue, Segmentos, sistemaTxt } from '../components/Oportunidad.jsx';
 
 // Colegios y sedes de salud como clientes institucionales (techos grandes y consumo de día)
 export default function Instituciones({ arg }) {
@@ -69,21 +50,7 @@ export default function Instituciones({ arg }) {
           {data?.rows?.length > 0 && <button className="btn sm" onClick={csv}>Descargar CSV</button>}
         </div>
       )}
-      {data?.segmentos?.length > 0 && (
-        <section className="op-segs" aria-labelledby="op-segs-t">
-          <h2 id="op-segs-t">Cómo abordar {f.code ? 'este municipio' : f.dpto ? f.dpto : 'este listado'}</h2>
-          <ul>
-            {data.segmentos.map((g) => (
-              <li key={g.id}>
-                <b className="op-seg-n">{fmt(g.n)}</b>
-                <span className="op-seg-t">{g.titulo}</span>
-                <span className="small">{g.como}</span>
-                {g.ejemplos.length > 0 && <span className="small muted">Por ejemplo: {g.ejemplos.join(', ')}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <Segmentos segmentos={data?.segmentos} titulo={`Cómo abordar ${f.code ? 'este municipio' : f.dpto ? f.dpto : 'este listado'}`} />
       {!data ? <Spinner /> : (
         <>
           <div className="tbl-wrap">
@@ -104,7 +71,7 @@ export default function Instituciones({ arg }) {
                 <tbody>{data.rows.map((c) => (
                   <tr key={c.id}>
                     <td className="num"><ScoreBadge score={c.op?.score} tier={tier(c.op?.score)} /></td>
-                    <td className="name">{c.est}<br /><span className="small muted">Sede {c.n}{c.p ? ' (principal)' : ''}{c.dir ? ` · ${c.dir}` : ''}</span><PorQue op={c.op} extra={c.op ? `Sistema sugerido: unos ${fmt(c.op.kwp)} kWp${c.op.ahorro ? `, ahorro cercano a ${millones(c.op.ahorro)} al año` : ''}.` : null} /></td>
+                    <td className="name">{c.est}<br /><span className="small muted">Sede {c.n}{c.p ? ' (principal)' : ''}{c.dir ? ` · ${c.dir}` : ''}</span><PorQue op={c.op} extra={sistemaTxt(c.op)} /></td>
                     <td className="small"><a href={`#/m/${c.code}`}>{c.mun}</a><br /><span className="muted">{c.dpto}</span></td>
                     <td className="num">{fmt(c.mat)}</td>
                     <td className="small hs">{c.sec === 'O' ? 'Oficial' : 'Privado'} · {c.z === 'R' ? 'rural' : 'urbana'}</td>

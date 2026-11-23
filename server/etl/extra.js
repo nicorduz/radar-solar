@@ -117,12 +117,42 @@ export const SUBAREA_DPTOS = {
   'SUBAREA NORTE DE SANTANDER': ['54'], 'SUBAREA BOGOTA': ['11', '25'], 'SUBAREA ARAUCA': ['81'], 'SUBAREA PUTUMAYO': ['86'],
   'SUBAREA HUILA-TOLIMA': ['41', '73'], 'SUBAREA CAQUETA': ['18'],
 };
+// Festivos de Colombia (Ley 51 de 1983: los movibles pasan al lunes siguiente) y temporada alta de turismo
+function pascua(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(y, mes - 1, dia));
+}
+const isoD = (d) => d.toISOString().slice(0, 10);
+const masDias = (d, n) => new Date(d.getTime() + n * 864e5);
+const alLunes = (d) => { const w = d.getUTCDay(); return w === 1 ? d : masDias(d, (8 - w) % 7); };
+export function festivos(y) {
+  const P = pascua(y), F = (m, d) => new Date(Date.UTC(y, m - 1, d));
+  const fijos = [F(1, 1), F(5, 1), F(7, 20), F(8, 7), F(12, 8), F(12, 25), masDias(P, -3), masDias(P, -2)];
+  const lunes = [F(1, 6), F(3, 19), F(6, 29), F(8, 15), F(10, 12), F(11, 1), F(11, 11)].map(alLunes);
+  const pascuales = [masDias(P, 43), masDias(P, 64), masDias(P, 71)];
+  return new Set([...fijos, ...lunes, ...pascuales].map(isoD));
+}
+// Temporada alta: diciembre, enero, junio, julio y la Semana Santa
+function temporadaAlta(fecha) {
+  const m = +fecha.slice(5, 7);
+  if ([12, 1, 6, 7].includes(m)) return true;
+  const P = pascua(+fecha.slice(0, 4)), d = new Date(fecha + 'T00:00:00Z');
+  return d >= masDias(P, -7) && d <= P;
+}
+
 export function applyDna(munis, op, log) {
   if (!op?.DemaNoAtenNoProg) return null;
   const sub = {};
   const add = (r, k) => {
-    const s = (sub[r.subarea] ||= { prog: 0, noprog: 0, dias: new Set(), mes: {} });
+    const s = (sub[r.subarea] ||= { prog: 0, noprog: 0, dias: new Set(), mes: {}, fds: 0, alta: 0, sem: [0, 0, 0, 0, 0, 0, 0] });
     s[k] += r.kwh;
+    // Cuándo cae: sábados, domingos y festivos; temporada alta; día de la semana (0 = domingo)
+    const y = +r.fecha.slice(0, 4), w = new Date(r.fecha + 'T00:00:00Z').getUTCDay();
+    if (w === 0 || w === 6 || festivos(y).has(r.fecha)) s.fds += r.kwh;
+    if (temporadaAlta(r.fecha)) s.alta += r.kwh;
+    s.sem[w] += r.kwh;
     if (r.kwh > 0) s.dias.add(r.fecha);
     const mm = r.fecha.slice(0, 7); s.mes[mm] = (s.mes[mm] || 0) + r.kwh;
   };
@@ -134,10 +164,20 @@ export function applyDna(munis, op, log) {
   for (const m of munis.values()) { const s = dptoSub[m.dpto_code]; if (s) popSub[s] = (popSub[s] || 0) + (m.pop || 0); }
   const fechas = op.DemaNoAtenNoProg.map((r) => r.fecha).sort();
   const periodo = `${fechas[0]} a ${fechas[fechas.length - 1]}`;
+  // Qué parte del periodo son días de descanso y temporada alta, para comparar
+  let nDias = 0, nFds = 0, nAlta = 0;
+  for (let d = new Date(fechas[0] + 'T00:00:00Z'); isoD(d) <= fechas[fechas.length - 1]; d = masDias(d, 1)) {
+    const f = isoD(d), w = d.getUTCDay(); nDias++;
+    if (w === 0 || w === 6 || festivos(d.getUTCFullYear()).has(f)) nFds++;
+    if (temporadaAlta(f)) nAlta++;
+  }
+  const esperado = { fds: +(nFds / nDias).toFixed(3), alta: +(nAlta / nDias).toFixed(3) };
   const summary = {};
   for (const [s, v] of Object.entries(sub)) {
     const pop = popSub[s];
-    summary[s] = { kwh: Math.round(v.prog + v.noprog), noprog: Math.round(v.noprog), prog: Math.round(v.prog), dias: v.dias.size, kwh_1k: pop ? +((v.prog + v.noprog) / pop * 1000).toFixed(1) : null, mes: Object.entries(v.mes).sort().map(([p, k]) => ({ p, v: Math.round(k) })) };
+    const tot = v.prog + v.noprog;
+    summary[s] = { kwh: Math.round(tot), noprog: Math.round(v.noprog), prog: Math.round(v.prog), dias: v.dias.size,
+      fds: tot ? +(v.fds / tot).toFixed(3) : null, alta: tot ? +(v.alta / tot).toFixed(3) : null, sem: v.sem.map((x) => (tot ? +(x / tot).toFixed(3) : 0)), kwh_1k: pop ? +((v.prog + v.noprog) / pop * 1000).toFixed(1) : null, mes: Object.entries(v.mes).sort().map(([p, k]) => ({ p, v: Math.round(k) })) };
   }
   for (const m of munis.values()) {
     const s = dptoSub[m.dpto_code]; if (!s || !summary[s]) continue;
@@ -145,7 +185,7 @@ export function applyDna(munis, op, log) {
     m.dna_1k = summary[s].kwh_1k; m.dna_dias = summary[s].dias; m.dna_mwh = Math.round(summary[s].kwh / 1000);
   }
   log.push(`demanda no atendida XM: ${Object.keys(sub).length} subáreas, ${periodo}`);
-  return { periodo, subareas: summary };
+  return { periodo, esperado, subareas: summary };
 }
 
 // ---------------- Precio de bolsa (XM) ----------------
