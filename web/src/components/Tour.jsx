@@ -18,7 +18,7 @@ export default function Tour({ paid, go }) {
     ['factory', 'Clientes y competencia', 'Hoteles, empresas grandes e industrias, instaladores y licitaciones públicas, con contacto de empresa. Toca "+ Prospecto" para guardar los que te interesan.', paid ? 'industrias' : 'clientes'],
     ['star', 'Mis prospectos', 'Sigue tus zonas para ver las novedades (licitaciones, obras y proyectos) y lleva el estado de cada cliente potencial hasta cerrar la venta.', 'prospectos'],
     ['sun', 'Diseño solar', 'Busca la dirección de tu cliente, dibuja su techo sobre la imagen satelital y la app llena los paneles, calcula la generación, compara con y sin baterías y arma la propuesta en PDF.', 'diseno'],
-    ['calc', 'Calculadora y asistente', 'Calcula retorno, cuota del crédito y beneficios tributarios, y pregúntale al asistente con IA por cualquier zona.', 'calculadora'],
+    ['calc', 'Calculadora y Radar Solar IA', 'Calcula retorno, cuota del crédito y beneficios tributarios. El botón Radar Solar IA, abajo a la derecha, responde sobre lo que tengas en pantalla.', 'calculadora'],
   ];
   if (!open) return null;
   const close = () => { writeLocal(KEY, true); setOpen(false); };

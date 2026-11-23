@@ -1,6 +1,6 @@
 // Gestión de usuarios desde la terminal del servidor (requiere acceso al servidor, no a la web).
 // npm run admin -- crear <usuario> <contraseña> [trial|paid|admin] [perfil]
-// npm run admin -- perfil <usuario> <todos|instalador|proveedor|desarrollador|servicios|respaldo>
+// npm run admin -- perfil <usuario> <todos|instalador|proveedor|desarrollador|servicios|demanda>
 // npm run admin -- clave <usuario> <nueva_contraseña>
 // npm run admin -- rol <usuario> <trial|paid|admin>
 // npm run admin -- reiniciar-mfa <usuario>      (si un administrador perdió su teléfono y sus códigos de recuperación)
@@ -8,7 +8,7 @@
 import { db } from './db.js';
 import { hashPassword, passwordProblem, validateUsername } from './auth.js';
 const [cmd, a, b, c, d] = process.argv.slice(2);
-const PERFILES = ['todos', 'instalador', 'proveedor', 'desarrollador', 'servicios', 'respaldo'];
+const PERFILES = ['todos', 'instalador', 'proveedor', 'desarrollador', 'servicios', 'demanda'];
 const fail = (m) => { console.error(m); process.exit(1); };
 if (cmd === 'crear') {
   if (!validateUsername(a)) fail('Usuario inválido (3-60 caracteres: letras, números, . _ - @).');

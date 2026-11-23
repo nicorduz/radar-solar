@@ -7,7 +7,8 @@ import Ranking from './pages/Ranking.jsx';
 import Municipio from './pages/Municipio.jsx';
 import Licitaciones from './pages/Licitaciones.jsx';
 import Empresas from './pages/Empresas.jsx';
-import Asistente from './pages/Asistente.jsx';
+import AsistenteFlotante from './components/AsistenteFlotante.jsx';
+import Demanda from './pages/Demanda.jsx';
 import Admin from './pages/Admin.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Clientes from './pages/Clientes.jsx';
@@ -30,6 +31,17 @@ import Tour from './components/Tour.jsx';
 import { useLocal, FOLLOWS, SEEN, setLocalUser } from './local.js';
 
 export const Ctx = createContext(null);
+
+// Si una sección falla, se muestra un aviso en esa sección y el resto de la app sigue funcionando
+class Seccion extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err) { console.error(err); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return <div className="page"><div className="alert err" role="alert">Esta sección no se pudo mostrar. <button className="btn sm" onClick={() => this.setState({ err: null })}>Reintentar</button></div></div>;
+  }
+}
 // localStorage puede fallar (modo privado): se usa con try/catch
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -47,25 +59,36 @@ function parseHash() {
 const PAGES = {
   mapa: { label: 'Mapa', icon: 'map' },
   ranking: { label: 'Ranking', icon: 'list' },
-  clientes: { label: 'Hoteles y turismo', icon: 'hotel' },
-  industrias: { label: 'Empresas e industrias', icon: 'factory' },
-  instituciones: { label: 'Colegios y salud', icon: 'school' },
-  prospectos: { label: 'Mis prospectos', icon: 'star' },
-  diseno: { label: 'Diseño solar', icon: 'sun' },
-  calculadora: { label: 'Calculadora financiera', icon: 'calc' },
-  empresas: { label: 'Instaladores y empresas', icon: 'building' },
-  mercado: { label: 'Mercado y red', icon: 'chart' },
+  clientes: { label: 'Hoteles y turismo', short: 'Hoteles', icon: 'hotel' },
+  industrias: { label: 'Empresas e industrias', short: 'Empresas', icon: 'factory' },
+  instituciones: { label: 'Colegios y salud', short: 'Colegios', icon: 'school' },
+  prospectos: { label: 'Mis prospectos', short: 'Prospectos', icon: 'star' },
+  diseno: { label: 'Diseño solar', short: 'Diseño', icon: 'sun' },
+  calculadora: { label: 'Calculadora financiera', short: 'Finanzas', icon: 'calc' },
+  empresas: { label: 'Instaladores y empresas', short: 'Empresas', icon: 'building' },
+  mercado: { label: 'Mercado y red', short: 'Mercado', icon: 'chart' },
   licitaciones: { label: 'Licitaciones', icon: 'doc' },
-  asistente: { label: 'Asistente IA', icon: 'spark' },
+  demanda: { label: 'Respuesta a la demanda', short: 'Demanda', icon: 'bolt' },
+};
+// El inversionista ve las mismas secciones con nombres de su oficio
+const LABELS = {
+  desarrollador: {
+    ranking: { label: 'Dónde invertir', short: 'Invertir' },
+    diseno: { label: 'Prefactibilidad y conexión', short: 'Prefactib.' },
+    mercado: { label: 'Red, cola y proyectos', short: 'Red' },
+    calculadora: { label: 'Flujo de caja y TIR', short: 'TIR' },
+    industrias: { label: 'Compradores de energía (PPA)', short: 'PPA' },
+    empresas: { label: 'EPC e instaladores', short: 'EPC' },
+  },
 };
 const ORDER = {
-  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'instituciones', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'asistente'],
-  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'instituciones', 'diseno', 'calculadora', 'asistente'],
-  desarrollador: ['mapa', 'ranking', 'diseno', 'mercado', 'prospectos', 'industrias', 'licitaciones', 'calculadora', 'empresas', 'clientes', 'instituciones', 'asistente'],
-  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'instituciones', 'diseno', 'calculadora', 'asistente'],
-  respaldo: ['mapa', 'diseno', 'ranking', 'clientes', 'instituciones', 'prospectos', 'industrias', 'mercado', 'licitaciones', 'calculadora', 'empresas', 'asistente'],
+  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'instituciones', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'demanda'],
+  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'instituciones', 'diseno', 'calculadora'],
+  desarrollador: ['mapa', 'ranking', 'mercado', 'diseno', 'calculadora', 'industrias', 'prospectos', 'licitaciones', 'empresas', 'demanda'],
+  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'instituciones', 'diseno', 'calculadora', 'demanda'],
+  demanda: ['mapa', 'demanda', 'industrias', 'ranking', 'clientes', 'instituciones', 'prospectos', 'mercado', 'licitaciones', 'calculadora', 'empresas'],
 };
-const navFor = (profile) => (ORDER[profile] || ORDER.instalador).map((id) => ({ id, ...PAGES[id] }));
+const navFor = (profile) => (ORDER[profile] || ORDER.instalador).map((id) => ({ id, ...PAGES[id], ...(LABELS[profile]?.[id] || {}) }));
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -166,7 +189,7 @@ export default function App() {
   else if (view === 'empresas') page = <Empresas />;
   else if (view === 'clientes') page = <Clientes code={arg} />;
   else if (view === 'mercado') page = <Mercado />;
-  else if (view === 'asistente') page = <Asistente code={arg} />;
+  else if (view === 'demanda') page = <Demanda code={arg} />;
   else if (view === 'admin' && isAdmin) page = <Admin />;
   else if (view === 'cuenta') page = <Cuenta />;
   else if (view === 'terminos' || view === 'legal') page = <Legal doc={arg || 'terminos'} />;
@@ -180,6 +203,8 @@ export default function App() {
   else if (view === 'marca') page = <Marca />;
   else if (view === 'propuesta' && arg) page = <Propuesta key={arg} arg={arg} />;
   else page = <MapPage focus={view === 'mapa' ? arg : null} />;
+  // El asistente ya no es una sección: los enlaces viejos abren el chat flotante
+  const abrirChat = view === 'asistente';
 
   const active = view === 'm' || view === 'propuesta' ? 'ranking' : view;
   return (
@@ -203,12 +228,13 @@ export default function App() {
           <a href="#/cuenta" className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} aria-current={active === 'cuenta' ? 'page' : undefined}><Icon name="user" /><span className="trunc">{user.name || user.username}</span></a>
           <PoweredBy />
         </aside>
-        <main id="main" className="main" tabIndex={-1}>{page}<footer className="app-foot"><LegalLine titular={cfg.titular} /></footer></main>
+        <main id="main" className="main" tabIndex={-1}><Seccion key={view + '/' + (arg || '')}>{page}</Seccion><footer className="app-foot"><LegalLine titular={cfg.titular} /></footer></main>
         <Tour paid={paid} go={go} />
+        <AsistenteFlotante view={view} arg={arg} abrir={abrirChat} />
         <nav className="bottomnav" aria-label="Navegación principal">
-          {[...NAV.slice(0, 3), PAGES.asistente && { id: 'asistente', ...PAGES.asistente }, { id: 'cuenta', label: 'Más', icon: 'menu' }].map((n) => {
-            const on = active === n.id || (n.id === 'cuenta' && !['mapa', 'ranking', 'asistente', NAV[2].id].includes(active));
-            return <a key={n.id} href={`#/${n.id}`} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}><Icon name={n.icon} />{n.label}</a>;
+          {[...NAV.slice(0, 4), { id: 'cuenta', label: 'Más', icon: 'menu' }].map((n) => {
+            const on = active === n.id || (n.id === 'cuenta' && !NAV.slice(0, 4).some((x) => x.id === active));
+            return <a key={n.id} href={`#/${n.id}`} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}><Icon name={n.icon} />{n.short || n.label}</a>;
           })}
         </nav>
       </div>

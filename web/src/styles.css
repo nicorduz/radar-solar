@@ -1162,3 +1162,46 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
 .cs-v { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .cs-d { font-size: 12px; font-weight: 600; }
 @media (max-width: 900px) { .cs { grid-template-columns: 1fr; } }
+
+/* Respuesta a la demanda (dentro de la plataforma) */
+.dm-como h2, .dm-gana h2 { margin: 0 0 14px; font-size: var(--t-lg); }
+.dm-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.dm-fig { background: #fff; border-radius: var(--r-mat); padding: 14px 14px 8px; color: #15123A; }
+.dm-fig .rd-leyenda { color: #383C5C; }
+.dm-pasos { list-style: none; counter-reset: dm; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.dm-pasos li { counter-increment: dm; display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; row-gap: 2px; }
+.dm-pasos li::before { content: counter(dm); grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; background: var(--midnight); color: #fff; font: 700 13px var(--font); display: inline-flex; align-items: center; justify-content: center; }
+.dm-pasos span { color: var(--ink-2); line-height: 1.45; }
+.dm-gana ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.dm-gana li { display: flex; flex-direction: column; gap: 4px; }
+.dm-gana b { font-size: var(--t-xl); line-height: 1.1; color: var(--warn-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.dm-gana p { margin: 6px 0 0; line-height: 1.45; }
+@media (max-width: 900px) { .dm-grid, .dm-gana ul { grid-template-columns: 1fr; } }
+
+/* Radar Solar IA: botón fijo y panel de chat */
+.ai-fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px 0 14px; height: 48px; border: 0; border-radius: 999px; background: var(--midnight); color: #fff; font: 650 15px var(--font); box-shadow: var(--sh-3); cursor: pointer; transition: transform var(--d-fast) var(--spring), background var(--d-fast); }
+.ai-fab svg { color: var(--warm); }
+.ai-fab:hover { background: var(--night); transform: translateY(-1px); }
+.ai-fab:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.ai-panel { position: fixed; right: 20px; bottom: 20px; z-index: 61; width: min(420px, calc(100vw - 40px)); height: min(640px, calc(100vh - 40px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-dlg); box-shadow: var(--sh-3); overflow: hidden; animation: ai-in var(--d-slow) var(--ease-out); }
+@keyframes ai-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .ai-panel { animation: none; } .ai-fab { transition: none; } }
+.ai-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+.ai-head > svg { color: var(--hot); flex: none; }
+.ai-head h2 { margin: 0; font-size: var(--t-md); flex: 1; }
+.ai-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--sunk); }
+.ai-body .msg { max-width: 100%; font-size: 14.5px; padding: 10px 13px; }
+.ai-sugs { display: flex; flex-direction: column; gap: 8px; }
+.ai-sugs p { margin: 0 0 4px; }
+.ai-sug { text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.ai-sug:hover { border-color: var(--blue); }
+.ai-form { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ai-ver { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.ai-in { display: flex; gap: 8px; align-items: flex-end; }
+.ai-in textarea { resize: none; flex: 1; }
+.maplibregl-ctrl-bottom-right { margin-bottom: 64px; }
+@media (max-width: 860px) {
+  .ai-fab { right: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); height: 44px; padding: 0 14px 0 12px; font-size: 14px; }
+  .ai-panel { right: 0; left: 0; bottom: 0; width: auto; height: calc(100dvh - 40px); border-radius: var(--r-dlg) var(--r-dlg) 0 0; }
+  .maplibregl-ctrl-bottom-right { margin-bottom: 60px; }
+}

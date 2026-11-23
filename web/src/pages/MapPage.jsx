@@ -116,7 +116,7 @@ const LAYERS = {
   salud: { label: 'Hospitales y centros de salud (por municipio)', swatch: '#FF6B8A', paid: true },
   trafos: { label: 'Transformadores de distribución (demo)', swatch: 'linear-gradient(90deg,#4FB286,#F2C38A,#E2675B)', paid: true, demo: true },
 };
-const DEFAULT_LAYERS = { instalador: ['agpe'], proveedor: ['agpe', 'solar'], desarrollador: ['lineas', ...GEN_KEYS, 'upme', 'capacidad'], servicios: ['solar', 'agpe'], respaldo: ['zni'] };
+const DEFAULT_LAYERS = { instalador: ['agpe'], proveedor: ['agpe', 'solar'], desarrollador: ['lineas', ...GEN_KEYS, 'upme', 'capacidad'], servicios: ['solar', 'agpe'], demanda: ['subs', 'lineas'] };
 const ZOOM_COLEGIOS = 9;
 // Color de la capacidad de conexión: rojo = casi nada, ámbar = poca, verde = 10 MW o más
 const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);

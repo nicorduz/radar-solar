@@ -59,7 +59,7 @@ const C = {
     incl: ['Ranking de zonas para distribución de equipos', 'Dónde crece la autogeneración y quién la conecta, mes a mes', 'Empresas del sector: instaladores y mayoristas, con contacto empresarial', 'Importaciones de paneles y baterías: volumen, precio, origen y destino', 'Licitaciones públicas y quién las gana', 'Asistente con IA para argumentos de venta'],
   },
   desarrollador: {
-    nombre: 'Desarrollador o inversionista', corto: 'Desarrollador', quien: 'desarrolladores, inversionistas y vehículos de propósito especial (SPV)',
+    nombre: 'Desarrollador (inversionista)', corto: 'Desarrollador (inversionista)', quien: 'desarrolladores, inversionistas y vehículos de propósito especial (SPV)',
     h1: 'Encuentra dónde desarrollar proyectos solares en Colombia',
     lead: 'Granjas solares y autogeneración remota: radiación, cercanía y tensión de subestaciones, capacidad indicativa de conexión, tarifa comercial, contingencias de red y saturación de plantas, municipio por municipio.',
     hero: 'mapa-3d',

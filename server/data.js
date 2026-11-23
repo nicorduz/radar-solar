@@ -58,6 +58,12 @@ function enrichMunicipios() {
   const col = {}, sal = {};
   for (const c of store.colegios) { const a = (col[c.code] ||= { n: 0, ofi: 0, priv: 0, mat: 0, rur: 0 }); a.n++; a.mat += c.mat || 0; c.sec === 'O' ? a.ofi++ : a.priv++; if (c.z === 'R') a.rur++; }
   for (const s of store.salud) { const a = (sal[s.code] ||= { n: 0, pub: 0, hosp: 0 }); a.n++; if (s.nat === 'Pública') a.pub++; if (s.tipo === 'hospital') a.hosp++; }
+  // Empresas grandes por municipio (para respuesta a la demanda): consumo alto y su tamaño
+  const ciM = {};
+  for (const e of store.ci || []) { const a = (ciM[e.code] ||= { alta: 0, flex: 0, ing: 0 }); if (e.consumo === 'alta') a.alta++; if (e.consumo !== 'baja') { a.flex += flexSector(e.sector); a.ing += e.ing || 0; } }
+  for (const m of store.municipios) {
+    const e = ciM[m.code] || {}; m.ci_alta = e.alta || 0; m.ci_flex = +(e.flex || 0).toFixed(1); m.ci_ing = Math.round(e.ing || 0);
+  }
   for (const m of store.municipios) {
     const c = col[m.code] || {}, s = sal[m.code] || {};
     m.col_n = c.n || 0; m.col_ofi = c.ofi || 0; m.col_priv = c.priv || 0; m.col_mat = c.mat || 0; m.col_rur = c.rur || 0;
@@ -68,6 +74,15 @@ function enrichMunicipios() {
     m.cap_mw = cap.length ? Math.max(...cap.map((b) => b.p95_2026 ?? 0)) : null;
   }
 }
+
+// Qué tan flexible suele ser la carga de cada sector (0 a 1): frío, hornos, bombeo y aire se pueden mover unas horas
+export const FLEX_SECTOR = {
+  'Alimentos y bebidas': 1, 'Metalurgia y productos metálicos': 1, 'Minería': 0.9, 'Plásticos y caucho': 0.9, 'Comercio minorista y supermercados': 0.9,
+  'Refinación, químicos y farmacéuticos': 0.8, 'Textil y confección': 0.8, 'Bodegas y logística': 0.8, 'Otras manufacturas': 0.8, 'Hoteles y restaurantes': 0.7,
+  'Agro y pesca': 0.6, 'Comercio mayorista y vehículos': 0.5, 'Inmobiliario': 0.5, 'Comunicaciones y tecnología': 0.4, 'Servicios administrativos': 0.3,
+  'Transporte': 0.3, 'Servicios profesionales': 0.3, 'Financiero y seguros': 0.3, 'Energía y gas': 0.3, 'Construcción': 0.2,
+};
+export const flexSector = (s) => FLEX_SECTOR[s] ?? 0.4;
 
 // ---------------- Perfiles y factores del índice ----------------
 const L = (v) => (v == null ? null : Math.log1p(Math.max(0, v)));
@@ -109,18 +124,19 @@ export const PROFILES = {
     metrics: ['score', 'inst_n', 'agpe_est', 'viv12', 'tarifa'],
   },
   desarrollador: {
-    label: 'Desarrollador o inversionista', short: 'Desarrollo', segments: false, gate: null,
-    desc: 'Granjas y autogeneración remota: sol, cercanía a subestaciones, tarifa comercial, contingencias y saturación de plantas.',
+    label: 'Desarrollador (inversionista)', short: 'Inversionista', segments: false, gate: null,
+    desc: 'Dónde invertir en granjas solares o autogeneración remota: sol, capacidad de conexión, poca competencia por la red, tarifa comercial y cortes.',
     factors: {
       radiacion: { label: 'Radiación solar', get: (m) => m.ghi },
+      capacidad: { label: 'Capacidad de conexión a 30 km (UPME)', get: (m) => L(m.cap_mw) },
       red: { label: 'Cercanía a subestación', get: (m) => (m.sub_km == null ? null : -m.sub_km) },
       tension: { label: 'Tensión disponible a 30 km', get: (m) => m.kv30 },
-      tarifa_ci: { label: 'Tarifa comercial', get: (m) => m.tarifa_com ?? m.tarifa },
-      contingencias: { label: 'Contingencias de red', get: (m) => m.dna_1k },
-      saturacion: { label: 'Pocas plantas solares cerca', get: (m) => -(m.solar30_mw || 0) },
+      competencia: { label: 'Poca competencia por la red (proyectos y plantas cerca)', get: (m) => -((m.solar30_mw || 0) + (m.upme_mw || 0)) },
+      tarifa_ci: { label: 'Tarifa comercial (valor de la energía)', get: (m) => m.tarifa_com ?? m.tarifa },
+      contingencias: { label: 'Cortes de red', get: (m) => m.dna_1k },
     },
-    weights: { radiacion: 30, red: 20, tension: 10, tarifa_ci: 15, contingencias: 10, saturacion: 15 },
-    metrics: ['score', 'ghi', 'sub_km', 'cap_mw', 'solar30_mw', 'upme_mw', 'tarifa_com'],
+    weights: { radiacion: 25, capacidad: 20, red: 10, tension: 10, competencia: 15, tarifa_ci: 15, contingencias: 5 },
+    metrics: ['score', 'ghi', 'cap_mw', 'sub_km', 'upme_mw', 'solar30_mw', 'tarifa_com'],
   },
   servicios: {
     label: 'Mantenimiento y servicios (O&M)', short: 'O&M', segments: false, gate: (m) => (m.agpe_est || 0) + (m.solar30_mw || 0) * 5,
@@ -136,20 +152,19 @@ export const PROFILES = {
     weights: { sistemas: 30, plantas: 25, proyectos: 15, atencion: 10, contingencias: 10, calor: 10 },
     metrics: ['score', 'agpe_est', 'solar30_mw', 'upme_mw', 'inst_n'],
   },
-  respaldo: {
-    label: 'Baterías y respaldo', short: 'Baterías', segments: false, gate: (m) => (m.pop || 0) / 100 + (m.rnt_hab || 0) + (m.comer12_m2 || 0) / 50,
-    desc: 'Dónde se va más la luz y la energía es cara: hogares, hoteles y comercios que necesitan baterías o sistemas híbridos.',
+  demanda: {
+    label: 'Respuesta a la demanda', short: 'Demanda', segments: false, gate: (m) => (m.ci_flex || 0) * 10 + (m.nores12_m2 || 0) / 500 + (m.rnt_hab || 0) / 50,
+    desc: 'Dónde hay empresas grandes con cargas que se pueden mover unas horas (frío, hornos, bombeo, aire) y pueden ganar en el programa de respuesta a la demanda.',
     factors: {
-      contingencias: { label: 'Cortes de energía', get: (m) => m.dna_1k },
-      saidi: { label: 'Horas sin luz al año (operador)', get: (m) => m.saidi },
-      dias: { label: 'Días con cortes al año', get: (m) => m.dna_dias },
-      tarifa: { label: 'Tarifa de energía', get: (m) => m.tarifa },
-      turismo: { label: 'Hoteles y turismo', get: (m) => m.turismo_idx },
+      flexibles: { label: 'Empresas grandes con carga flexible', get: (m) => L(m.ci_flex) },
+      consumo: { label: 'Empresas de consumo alto', get: (m) => L(m.ci_alta) },
+      tamano: { label: 'Tamaño de esas empresas', get: (m) => L(m.ci_ing) },
       comercio: { label: 'Comercio y obra no residencial', get: (m) => L(m.nores12_m2) },
-      aislado: { label: 'Localidades sin red', get: (m) => m.zni_n || 0 },
+      calor: { label: 'Clima cálido (aire y frío)', get: (m) => m.temp },
+      hoteles: { label: 'Hoteles y turismo', get: (m) => m.turismo_idx },
     },
-    weights: { contingencias: 30, saidi: 15, dias: 10, tarifa: 15, turismo: 15, comercio: 10, aislado: 5 },
-    metrics: ['score', 'dna_1k', 'saidi', 'tarifa', 'turismo_idx', 'ghi'],
+    weights: { flexibles: 35, consumo: 15, tamano: 15, comercio: 15, calor: 10, hoteles: 10 },
+    metrics: ['score', 'ci_alta', 'nores12_m2', 'temp', 'tarifa_com'],
   },
 };
 export const PROFILE_KEYS = Object.keys(PROFILES);
@@ -229,7 +244,7 @@ export function rowView(m, r) {
     inst_n: m.inst_n || 0, inst_sol: m.inst_sol || 0, mayor_n: m.mayor_n || 0,
     sub_km: m.sub_km, sub_n: m.sub_n, sub_kv: m.sub_kv, solar30_mw: m.solar30_mw || 0, solar30: m.solar30 || 0, kwh_mes_alto: m.kwh_mes_alto,
     upme_n: m.upme_n || 0, upme_mw: Math.round(m.upme_mw || 0),
-    saidi: m.saidi, saifi: m.saifi, col_n: m.col_n || 0, ips_n: m.ips_n || 0, cap_mw: m.cap_mw,
+    saidi: m.saidi, saifi: m.saifi, col_n: m.col_n || 0, ips_n: m.ips_n || 0, cap_mw: m.cap_mw, ci_alta: m.ci_alta || 0, ci_flex: m.ci_flex || 0,
   };
 }
 

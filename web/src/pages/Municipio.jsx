@@ -13,7 +13,7 @@ const ORDEN = {
   proveedor: ['puntaje', 'instaladores', 'mercado', 'vivienda', 'ia', 'clientes', 'energia', 'red', 'proyectos', 'licitaciones'],
   desarrollador: ['puntaje', 'red', 'energia', 'retorno', 'ia', 'mercado', 'licitaciones', 'industrias', 'instaladores', 'vivienda', 'clientes', 'proyectos'],
   servicios: ['puntaje', 'mercado', 'red', 'instaladores', 'ia', 'energia', 'industrias', 'clientes', 'licitaciones', 'retorno', 'vivienda', 'proyectos'],
-  respaldo: ['puntaje', 'energia', 'clientes', 'industrias', 'retorno', 'ia', 'vivienda', 'instaladores', 'mercado', 'red', 'proyectos', 'licitaciones'],
+  demanda: ['puntaje', 'industrias', 'energia', 'clientes', 'mercado', 'ia', 'red', 'retorno', 'vivienda', 'instaladores', 'proyectos', 'licitaciones'],
 };
 ORDEN.instalador.splice(3, 0, 'industrias');
 ORDEN.proveedor.splice(5, 0, 'industrias');
@@ -75,7 +75,7 @@ export default function Municipio({ code }) {
     saidi: ['Horas sin luz al año', m.saidi != null ? `${fmt(m.saidi, 1)} h` : 's/d', `promedio de ${m.or_name} en 2024`],
     cap: ['Capacidad de conexión', m.cap_mw != null ? `${fmt(m.cap_mw, 1)} MW` : 's/d', 'mejor subestación a 30 km (2026)'],
   };
-  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'cap', 'tarifa_com'], servicios: ['agpe', 'solar30', 'upme', 'inst'], respaldo: ['dna', 'saidi', 'tarifa', 'turismo'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
+  const kpis = ({ instalador: ['tarifa', 'viv', 'dna', 'turismo'], proveedor: ['inst', 'agpe', 'viv', 'tarifa'], desarrollador: ['ghi', 'sub', 'cap', 'tarifa_com'], servicios: ['agpe', 'solar30', 'upme', 'inst'], demanda: ['tarifa_com', 'dna', 'turismo', 'viv'] }[profile] || ['tarifa', 'viv', 'ghi', 'dna']).map((k) => KPIS[k]);
 
   const getPitch = async () => {
     setPitchBusy(true);
@@ -104,7 +104,7 @@ export default function Municipio({ code }) {
     </>) },
 
     ia: { icon: 'spark', title: profile === 'proveedor' ? 'Estrategia comercial con IA' : profile === 'desarrollador' ? 'Resumen de inversión con IA' : 'Argumento de venta con IA', hint: profile === 'instalador' ? 'Diagnóstico, cliente ideal y mensaje de WhatsApp' : 'Diagnóstico y próximos pasos', body: (<>
-      <div className="row"><button className="btn sm primary" onClick={getPitch} disabled={pitchBusy || !paid}>{pitchBusy ? 'Generando…' : 'Generar'}</button><button className="btn sm" onClick={() => go('asistente', m.code)}>Preguntar al asistente</button></div>
+      <div className="row"><button className="btn sm primary" onClick={getPitch} disabled={pitchBusy || !paid}>{pitchBusy ? 'Generando…' : 'Generar'}</button><button className="btn sm" onClick={() => window.dispatchEvent(new CustomEvent('rs-chat'))}>Preguntar a Radar Solar IA</button></div>
       {pitch && <div className="msg assistant" style={{ maxWidth: 'none' }}><Markdown text={pitch} /></div>}
     </>) },
 

@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 // Migración v2: perfil del usuario (instalador, proveedor, desarrollador o todos)
 try { db.exec("ALTER TABLE users ADD COLUMN profile TEXT DEFAULT 'todos'"); } catch { /* ya existe */ }
+// El perfil de baterías se reemplazó por respuesta a la demanda
+db.exec("UPDATE users SET profile = 'demanda' WHERE profile = 'respaldo'");
 // Registro de aceptación de los términos de la licencia de uso (fecha y versión del último ingreso)
 try { db.exec('ALTER TABLE users ADD COLUMN terms_at TEXT'); } catch { /* ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN terms_version TEXT'); } catch { /* ya existe */ }
