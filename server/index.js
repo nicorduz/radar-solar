@@ -500,6 +500,89 @@ app.get('/api/solar/horario', requireUser, wrap(async (req, res) => {
 }));
 
 // Capas del mapa: red de transmisión y subestaciones (todos), plantas y ZNI (plan completo)
+// Guías públicas de conexión de autogeneradores publicadas por algunos operadores de red (verificadas el 23-11-2026)
+const GUIA_OR = {
+  'Celsia Valle': 'https://www.celsia.com/wp-content/uploads/2023/01/1-Guia-para-la-conexion-Autogeneracion-a-Pequena-Escala-VF.pdf',
+  'Celsia Tolima': 'https://www.celsia.com/wp-content/uploads/2023/01/1-Guia-para-la-conexion-Autogeneracion-a-Pequena-Escala-VF.pdf',
+  Electrohuila: 'https://www.electrohuila.com.co/wp-content/uploads/2025/06/Cartilla-para-el-procedimiento-de-conexion-resolucion-CREG-174-de-2021.pdf',
+  CHEC: 'https://www.chec.com.co/content/dam/chec/documentos/main/clientes-y-comunidad/clientes/clientes-hogares/sobre-el-servicio/usuarios-autogeneradores-y-generadores-distribuidos/cartilla-2022.pdf',
+  CENS: 'https://www.cens.com.co/Portals/cens/Autogeneradores/Cartilla-CENS-grupo-EPM.pdf',
+  ESSA: 'https://www.essa.com.co/site/Portals/clientes/Documentos/hogar/Autogeneracion/Instructivo-para-el-procedimiento-de-conexion-de-Autogeneradores-y-Generadores-distribuidos_v3.pdf?ver=2024-03-21-162802-580',
+};
+
+// Contexto de trámites para un punto: operador de red, subestaciones, capacidad para conectar generación y proyectos registrados cerca
+app.get('/api/tramite', requireUser, (req, res) => {
+  const lat = +req.query.lat, lon = +req.query.lon;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -5 || lat > 14 || lon < -82 || lon > -66) return res.status(400).json({ error: 'Coordenadas fuera de Colombia' });
+  const p = { lat, lon };
+  let m = null, bd = Infinity;
+  for (const x of store.municipios) { if (x.lat == null) continue; const d = kmBetween(p, x); if (d < bd) { bd = d; m = x; } }
+  const paid = isPaid(req), r = store.red || {};
+  const subs = (r.subs || []).map((s) => ({ n: s.n, kv: s.kv, kvmax: s.kvmax, op: s.op, sistema: s.sistema || null, km: Math.round(kmBetween(p, s) * 10) / 10 })).sort((a, b) => a.km - b.km).slice(0, paid ? 6 : 1);
+  const capacidad = (store.energia.capacidad?.barras || []).filter((b) => b.lat != null).map((b) => ({ n: b.n, sub: b.sub, kv: b.kv, op: b.op, p95_2026: b.p95_2026, p100_2026: b.p100_2026, p95_2027: b.p95_2027, km: Math.round(kmBetween(p, b) * 10) / 10 })).filter((b) => b.km <= 80).sort((a, b) => a.km - b.km).slice(0, paid ? 8 : 1);
+  const cola = (r.upme || []).filter((u) => u.lat != null).map((u) => ({ n: u.n, mw: u.mw, tipo: u.tipo, fase: u.fase, mun: u.mun, operacion: u.operacion, km: Math.round(kmBetween(p, u) * 10) / 10 })).filter((u) => u.km <= 50).sort((a, b) => a.km - b.km);
+  const agpeMun = (r.agpe_lista || []).filter((a) => a.code === m?.code);
+  res.json({
+    muni: m ? { code: m.code, name: m.name, dpto: m.dpto, or: m.or_name, zni: m.or_name === 'Zona no interconectada' || (m.zni_n || 0) > 0 && !m.or_name, subarea: m.subarea } : null,
+    guia_or: m && GUIA_OR[m.or_name] ? GUIA_OR[m.or_name] : null,
+    subs, capacidad, capacidad_fecha: store.energia.capacidad?.fecha || null,
+    cola: paid ? cola.slice(0, 12) : cola.slice(0, 1), cola_n: cola.length, cola_mw: Math.round(cola.reduce((s, u) => s + (u.mw || 0), 0)),
+    agpe_mun: { n: agpeMun.length, kw: Math.round(agpeMun.reduce((s, a) => s + (a.mw || 0), 0) * 1000) },
+    upme_corte: store.meta?.upme_corte || null, locked: !paid,
+  });
+});
+
+// Demanda de autogeneración por zona (PARATEC): altas por fecha de entrada en operación, últimos 12 meses contra los 12 anteriores
+let tendCache = null;
+function tendencias() {
+  const lista = (store.red?.agpe_lista || []).filter((a) => /^\d{4}-\d{2}/.test(a.desde || ''));
+  const key = `${lista.length}|${store.meta?.agpe_px_fecha}`;
+  if (tendCache?.key === key) return tendCache.v;
+  // Ventana: 12 meses completos que terminan el mes anterior al corte; los últimos meses pueden tener rezago de registro
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const corte = String(store.meta?.agpe_px_fecha || '').toLowerCase().match(/(\d{1,2}) de ([a-z]+) de (\d{4})/);
+  const mi = corte ? MESES.indexOf(corte[2]) : -1;
+  const fin = mi >= 0 ? new Date(Date.UTC(+corte[3], mi, 1)) : new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+  const mes = (d, k) => { const x = new Date(d); x.setUTCMonth(x.getUTCMonth() + k); return x.toISOString().slice(0, 7); };
+  const a1 = mes(fin, -12), a0 = mes(fin, -24), hasta = mes(fin, -1), finStr = mes(fin, 0);
+  const meses = Array.from({ length: 24 }, (_, i) => mes(fin, i - 24));
+  const nuevo = () => ({ n: 0, kw: 0, n0: 0, kw0: 0, rep: {}, tam: { p: 0, m: 0, g: 0 }, serie: Object.fromEntries(meses.map((x) => [x, 0])) });
+  const dpto = {}, muni = {}, pais = nuevo(), reps = {};
+  const dptoName = {};
+  for (const m of store.municipios) dptoName[m.code.slice(0, 2)] = m.dpto;
+  for (const a of lista) {
+    const ym = a.desde.slice(0, 7);
+    if (ym < a0 || ym >= finStr) continue;
+    const kw = (a.mw || 0) * 1000, reciente = ym >= a1;
+    const dk = a.code ? a.code.slice(0, 2) : null;
+    for (const g of [pais, dk && (dpto[dk] ||= nuevo()), a.code && (muni[a.code] ||= nuevo())]) {
+      if (!g) continue;
+      if (g.serie[ym] != null) g.serie[ym]++;
+      if (reciente) { g.n++; g.kw += kw; g.rep[a.op] = (g.rep[a.op] || 0) + 1; g.tam[kw < 100 ? 'p' : kw < 1000 ? 'm' : 'g']++; } else { g.n0++; g.kw0 += kw; }
+    }
+    if (reciente && a.op) { const r = (reps[a.op] ||= { op: a.op, n: 0, kw: 0, n0: 0, dptos: {} }); r.n++; r.kw += kw; if (dk) r.dptos[dk] = (r.dptos[dk] || 0) + 1; } else if (a.op) { (reps[a.op] ||= { op: a.op, n: 0, kw: 0, n0: 0, dptos: {} }).n0++; }
+  }
+  const fila = (g, extra) => ({
+    ...extra, n: g.n, n0: g.n0, kw: Math.round(g.kw), kw0: Math.round(g.kw0), cambio: g.n0 ? Math.round(((g.n - g.n0) / g.n0) * 100) : null,
+    tam: g.tam, serie: meses.map((x) => g.serie[x]), reps: Object.entries(g.rep).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([op, n]) => ({ op, n })),
+  });
+  const munName = new Map(store.municipios.map((m) => [m.code, m]));
+  const v = {
+    corte: store.meta?.agpe_px_fecha || null, desde: a1, hasta, meses,
+    pais: fila(pais, {}),
+    dptos: Object.entries(dpto).map(([k, g]) => fila(g, { code: k, name: dptoName[k] || k })).sort((x, y) => y.n - x.n),
+    munis: Object.entries(muni).map(([k, g]) => fila(g, { code: k, name: munName.get(k)?.name || k, dpto: munName.get(k)?.dpto || '' })).filter((x) => x.n + x.n0 >= 3).sort((x, y) => (y.n - y.n0) - (x.n - x.n0)),
+    reps: Object.values(reps).map((r) => ({ op: r.op, n: r.n, n0: r.n0, kw: Math.round(r.kw), dptos: Object.entries(r.dptos).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([k, n]) => ({ name: dptoName[k] || k, n })) })).sort((x, y) => y.n - x.n),
+  };
+  tendCache = { key, v };
+  return v;
+}
+app.get('/api/tendencias', requireUser, (req, res) => {
+  const v = tendencias();
+  if (isPaid(req)) return res.json({ ...v, locked: false });
+  res.json({ ...v, dptos: v.dptos.slice(0, 2), munis: v.munis.slice(0, 2), reps: v.reps.slice(0, 1), locked: true });
+});
+
 app.get('/api/red', requireUser, (req, res) => {
   const r = store.red;
   // Autogeneración (AGPE): los operadores reportan cada sistema por municipio, sin coordenadas; se agrupa en el centro del municipio

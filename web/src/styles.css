@@ -611,7 +611,7 @@ html:has(.shared), body:has(.shared), #root:has(.shared) { height: auto; min-hei
 .chart-dark { color: var(--ink-2); }
 .chart-leg { display: flex; gap: 14px; font-size: 12px; flex-wrap: wrap; }
 .chart-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-.dz-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sunk); }
+.dz-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sunk); }
 .dz-tabs button { border: 0; background: none; color: var(--ink-2); padding: 8px 4px; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; }
 .dz-tabs button.on { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1), 0 0 0 1px var(--line); }
 .dz-g3 { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
@@ -1038,3 +1038,58 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
 @media (max-width: 760px) { .gen-legend { grid-template-columns: repeat(2, auto); gap: 2px 10px; } }
 .kv-legend .kv-sw { display: inline-block; width: 22px; border-radius: 2px; }
 .kv-legend + .gen-legend, .kv-legend + .row { margin-top: 4px; }
+
+/* Trámites y reglas por figura (Diseño solar) */
+.rr-figs { display: flex; flex-direction: column; gap: 6px; }
+.rr-figs button { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel); color: var(--ink); cursor: pointer; font: inherit; }
+.rr-figs button:hover { border-color: var(--blue); }
+.rr-figs button.on { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); background: var(--sunk); }
+.rr-sug { align-self: flex-start; margin-top: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--blue-ink); background: color-mix(in oklab, var(--blue) 14%, transparent); padding: 2px 8px; border-radius: 99px; }
+.rr { display: flex; flex-direction: column; gap: 22px; margin-top: 16px; }
+.rr-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.rr-head h2 { margin: 0 0 4px; }
+.rr-head p { margin: 0; }
+.rr-rev { max-width: 42ch; }
+.rr h3 { font-size: var(--t-md); margin: 0 0 8px; }
+.rr h4 { font-size: var(--t-sm); margin: 0 0 8px; color: var(--ink-2); }
+.rr-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; }
+.rr-col { display: flex; flex-direction: column; gap: 6px; }
+.rr-col h3:not(:first-child) { margin-top: 14px; }
+.rr-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; max-width: 68ch; }
+.rr-ent { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.rr-ent dt { font-weight: 600; }
+.rr-ent dd { margin: 2px 0 0; color: var(--ink-2); line-height: 1.45; }
+.rr-steps { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rr-steps li { counter-increment: paso; position: relative; padding: 0 0 14px 40px; }
+.rr-steps li::before { content: counter(paso); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--midnight); color: #fff; }
+.rr-steps li:not(:last-child)::after { content: ''; position: absolute; left: 12.5px; top: 28px; bottom: 2px; width: 1px; background: var(--line-2); }
+.rr-steps p { margin: 4px 0 0; line-height: 1.45; max-width: 64ch; }
+.rr-step-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; justify-content: space-between; }
+.rr-plazo { font-size: var(--t-xs); font-weight: 600; color: var(--ink); background: var(--sunk); border: 1px solid var(--line-2); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.rr-total { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--sunk); font-weight: 600; line-height: 1.45; }
+.rr-total svg { flex: none; margin-top: 2px; }
+.rr-verif { display: inline-block; font-size: 11px; font-weight: 600; color: var(--warn-ink); border: 1px solid currentColor; border-radius: 99px; padding: 0 6px; margin-left: 4px; vertical-align: 1px; }
+.rr-red { border-top: 1px solid var(--line); padding-top: 18px; }
+.rr-red-g { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; }
+.rr-red-g > div:last-child { grid-column: 1 / -1; }
+.rr-cola { margin: 0 0 8px; }
+.rr-docs { border-top: 1px solid var(--line); padding-top: 18px; }
+.rr-docs-h { display: flex; justify-content: space-between; align-items: baseline; }
+.rr-docs ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; }
+.rr-docs label { display: flex; gap: 10px; align-items: flex-start; min-height: 32px; cursor: pointer; line-height: 1.4; }
+.rr-docs input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+.rr-modelos { border-top: 1px solid var(--line); padding-top: 18px; }
+.rr-normas { display: flex; flex-wrap: wrap; gap: 6px 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 1100px) { .rr-red-g { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .rr-grid, .rr-docs ul { grid-template-columns: 1fr; } }
+
+/* Tendencias de demanda (Mercado) */
+.td-cambio { font-weight: 600; white-space: nowrap; font-size: var(--t-sm); }
+.td-cambio.up { color: var(--ok); }
+.td-cambio.down { color: var(--bad); }
+.td-kpis { margin: 4px 0; }
+.td-g { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.td-g h3 { margin: 0 0 8px; font-size: var(--t-md); }
+.td-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.td-list li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+@media (max-width: 760px) { .td-g { grid-template-columns: 1fr; } }

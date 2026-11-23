@@ -15,9 +15,66 @@ function HBars({ rows, value, label, unit, max }) {
   );
 }
 
+const MESC = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const ym = (p) => (p ? `${MESC[+p.slice(5, 7) - 1]} ${p.slice(0, 4)}` : '');
+// Cambio contra los 12 meses anteriores, en texto (no solo color)
+function Cambio({ n, n0 }) {
+  if (!n0) return <span className="small muted">{n ? 'nuevo' : ''}</span>;
+  // Con menos de 5 sistemas el porcentaje engaña: se muestra la diferencia
+  if (n0 < 5) return <span className={`td-cambio ${n > n0 ? 'up' : n < n0 ? 'down' : ''}`}>{n > n0 ? '▲ +' : n < n0 ? '▼ ' : '= '}{n - n0 || ''} {Math.abs(n - n0) === 1 ? 'sistema' : n === n0 ? '' : 'sistemas'}</span>;
+  const c = Math.round(((n - n0) / n0) * 100);
+  return <span className={`td-cambio ${c > 0 ? 'up' : c < 0 ? 'down' : ''}`}>{c > 0 ? '▲' : c < 0 ? '▼' : '='} {c > 0 ? '+' : ''}{c} %</span>;
+}
+
+// Demanda de autogeneración por zona: altas registradas en PARATEC en los últimos 12 meses contra los 12 anteriores
+function Tendencias({ open }) {
+  const [t, setT] = useState(null);
+  const [orden, setOrden] = useState('n');
+  useEffect(() => { api('/tendencias').then(setT).catch(() => setT(null)); }, []);
+  if (!t) return null;
+  const P = t.pais;
+  const sube = t.munis.filter((m) => m.n > m.n0).slice(0, 8);
+  const baja = [...t.munis].filter((m) => m.n < m.n0).sort((a, b) => (a.n - a.n0) - (b.n - b.n0)).slice(0, 6);
+  const dptos = [...t.dptos].sort((a, b) => (orden === 'cambio' ? (b.n - b.n0) - (a.n - a.n0) : b.n - a.n));
+  const crece = t.dptos.filter((x) => x.n0 >= 5).sort((a, b) => (b.cambio ?? 0) - (a.cambio ?? 0))[0];
+  return (
+    <Section icon={<Icon name="chart" />} title="Dónde crece la autogeneración" hint={`${fmt(P.n)} sistemas nuevos en 12 meses (${P.cambio > 0 ? '+' : ''}${P.cambio ?? 0} %)${crece ? ` · más crecimiento: ${crece.name}` : ''}`} open={open}>
+      <p className="small" style={{ margin: 0, maxWidth: '72ch' }}>Autogeneradores que entraron en operación entre {ym(t.desde)} y {ym(t.hasta)}, comparados con los 12 meses anteriores. Sirve para ver en qué zonas se está vendiendo más, de qué tamaño y quién lo está haciendo.</p>
+      <div className="kpis td-kpis">
+        <div className="card"><Stat label="Sistemas nuevos en 12 meses" value={fmt(P.n)} sub={<Cambio n={P.n} n0={P.n0} />} /></div>
+        <div className="card"><Stat label="Potencia nueva" value={`${fmt(P.kw / 1000, 1)} MW`} sub={`antes ${fmt(P.kw0 / 1000, 1)} MW`} /></div>
+        <div className="card"><Stat label="Menos de 100 kW" value={fmt(P.tam.p)} sub="hogares y comercios" /></div>
+        <div className="card"><Stat label="De 100 kW a 1 MW" value={fmt(P.tam.m)} sub="empresas e industria" /></div>
+      </div>
+      <Spark data={P.serie.map((v, i) => ({ v, p: t.meses[i] }))} unit=" sistemas" title="Sistemas nuevos por mes, últimos 24 meses" />
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <h3 style={{ margin: 0, fontSize: 'var(--t-md)' }}>Por departamento</h3>
+        <label className="small row" style={{ gap: 6 }}>Ordenar por<select className="select" value={orden} onChange={(e) => setOrden(e.target.value)} style={{ minHeight: 32 }}><option value="n">Sistemas nuevos</option><option value="cambio">Cuánto cambió</option></select></label>
+      </div>
+      <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Departamento</th><th className="num">Nuevos</th><th className="num">Año anterior</th><th>Cambio</th><th className="num">kW nuevos</th><th>Quién los representa</th></tr></thead><tbody>
+        {dptos.map((x) => <tr key={x.code}><td className="name">{x.name}</td><td className="num"><b>{fmt(x.n)}</b></td><td className="num">{fmt(x.n0)}</td><td><Cambio n={x.n} n0={x.n0} /></td><td className="num">{fmt(x.kw)}</td><td className="small">{x.reps.map((r) => `${corto(r.op)} (${r.n})`).join(', ')}</td></tr>)}
+      </tbody></table></div>
+      {t.locked && <LockedRows cols={5} n={6} text="Todos los departamentos, municipios y empresas con el plan completo." />}
+      {!t.locked && <div className="td-g">
+        <div><h3>Municipios que más suben</h3><ul className="td-list">{sube.map((m) => <li key={m.code}><span>{m.name}<span className="small muted">, {m.dpto}</span></span><span className="mono small">{fmt(m.n0)} → <b>{fmt(m.n)}</b></span></li>)}</ul></div>
+        <div><h3>Municipios que más bajan</h3><ul className="td-list">{baja.map((m) => <li key={m.code}><span>{m.name}<span className="small muted">, {m.dpto}</span></span><span className="mono small">{fmt(m.n0)} → <b>{fmt(m.n)}</b></span></li>)}</ul></div>
+      </div>}
+      {!t.locked && <>
+        <h3 style={{ margin: 0, fontSize: 'var(--t-md)' }}>Quién está conectando sistemas</h3>
+        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Empresa</th><th className="num">Nuevos</th><th className="num">Año anterior</th><th>Cambio</th><th className="num">kW nuevos</th><th>Dónde</th></tr></thead><tbody>
+          {t.reps.slice(0, 15).map((r) => <tr key={r.op}><td className="name">{r.op}</td><td className="num"><b>{fmt(r.n)}</b></td><td className="num">{fmt(r.n0)}</td><td><Cambio n={r.n} n0={r.n0} /></td><td className="num">{fmt(r.kw)}</td><td className="small">{r.dptos.map((x) => `${x.name} (${x.n})`).join(', ')}</td></tr>)}
+        </tbody></table></div>
+      </>}
+      <p className="small muted" style={{ margin: 0, maxWidth: '80ch' }}>Incluye los autogeneradores registrados con nombre en PARATEC (corte {t.corte}), que son los que tienen representante en el mercado; no todos los sistemas pequeños aparecen ahí. La empresa es la que los representa ante el mercado, que suele ser quien los desarrolló o les vende la energía. Los últimos dos meses pueden subir cuando se registren los sistemas pendientes.</p>
+      <Fuente>XM, PARATEC: detalle de autogeneradores a pequeña escala (fecha de puesta en operación).</Fuente>
+    </Section>
+  );
+}
+const corto = (s) => String(s || '').replace(/\s+(S\.?\s?A\.?\s?S?\.?|E\.?\s?S\.?\s?P\.?)(?=\s|,|$)/gi, '').replace(/\s+(S\.?\s?A\.?\s?S?\.?|E\.?\s?S\.?\s?P\.?)(?=\s|,|$)/gi, '').replace(/[\s,]+$/, '').trim();
+
 // Mercado eléctrico y solar: autogeneradores por mercado, precio de bolsa, cortes por subárea y plantas solares
 export default function Mercado() {
-  const { paid, meta } = useApp();
+  const { paid, meta, profile } = useApp();
   const [d, setD] = useState(null);
   const [q, setQ] = useState('');
   const [qc, setQc] = useState('');
@@ -48,6 +105,7 @@ export default function Mercado() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Tendencias open={profile === 'proveedor' || profile === 'todos'} />
         <Section icon={<Icon name="sun" />} title="Autogeneradores por mercado" hint={`${d.agpe_zonas[0]?.zona || ''} lidera con ${fmt(d.agpe_zonas[0]?.n)} sistemas`} open>
           <HBars rows={d.agpe_zonas} value={(z) => z.n} label={(z) => z.zona} unit="" />
           {d.locked && <LockedRows cols={3} n={5} text="Detalle de todos los mercados con número de sistemas y capacidad instalada." />}
