@@ -7,6 +7,7 @@ import { Stat } from '../components/ui.jsx';
 import { satStyle } from '../components/MapSnapshot.jsx';
 import { PANELES, BATERIAS, MARCAS_PANEL, MARCAS_BATERIA, POTENCIAS_PANEL, medidaTipica, CAPACIDADES_BAT } from '../components/equipos.js';
 import ReporteSolar from '../components/ReporteSolar.jsx';
+import RutaRegulatoria, { FiguraPicker } from '../components/RutaRegulatoria.jsx';
 import { useBranding } from '../branding.js';
 import { acomodar, aspectAlineado, polyArea, centro, simular, facturar, capex, finanzas, PERFILES_SEMANA, PERFILES_HORA, COSTOS_BASE } from '../components/solarDesign.js';
 import { parseCoords, geocode } from '../components/mapTools.js';
@@ -56,6 +57,7 @@ export default function Diseno() {
   const [nuevaBat, setNuevaBat] = useState(null);
   const [reporte, setReporte] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [centroMapa, setCentroMapa] = useState(null);
   const el = useRef(null), mapRef = useRef(null), st = useRef({});
   st.current = { modo, borrador };
 
@@ -76,6 +78,7 @@ export default function Diseno() {
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+    map.on('moveend', () => { const c = map.getCenter(); setCentroMapa([c.lng, c.lat]); });
     map.on('load', () => {
       for (const s of ['techos', 'obst', 'paneles', 'borrador']) map.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'techos-3d', type: 'fill-extrusion', source: 'techos', paint: { 'fill-extrusion-color': ['case', ['get', 'on'], '#E4E8F2', '#B9C0D3'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.35 } });
@@ -246,9 +249,10 @@ export default function Diseno() {
 
           <div className="dz-side">
             <div className="dz-tabs" role="tablist">
-              {[['edificio', 'Edificio'], ['paneles', 'Paneles'], ['consumo', 'Consumo'], ['bateria', 'Batería'], ['costos', 'Costos'], ['finanzas', 'Finanzas']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
+              {[['edificio', 'Edificio'], ['paneles', 'Paneles'], ['consumo', 'Consumo'], ['bateria', 'Batería'], ['costos', 'Costos'], ['finanzas', 'Finanzas'], ['tramites', 'Trámites']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
             </div>
 
+            {tab === 'tramites' && <FiguraPicker d={d} set={set} kwAc={kwAc} />}
             {tab === 'edificio' && (
               <div className="card dz-sec">
                 <div className="grid dz-g">
@@ -413,7 +417,8 @@ export default function Diseno() {
         </div>
       )}
 
-      {!reporte && <Resultados {...{ listo, techos, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, batKwh, respaldoH, d, sitio, cargando: techos.length && !listasHoras }} onProspecto={() => { const e = conBat && conBat.fin.neto > sinBat.fin.neto ? conBat : sinBat; addProspect({ tipo: 'otro', ref: 'dis-' + (d.id || Date.now()), nombre: d.cliente || 'Cliente de diseño', mun: sitio?.muni?.name, valor: Math.round(e.cap.total), detalle: `Diseño ${fmt(kwp, 1)} kWp${conBat ? ` + ${fmt(batKwh, 1)} kWh` : ''}` }); setMsg('Agregado a Mis prospectos.'); }} />}
+      {!reporte && tab === 'tramites' && <RutaRegulatoria d={d} set={set} kwAc={kwAc} punto={c0 || centroMapa} paid={paid} />}
+      {!reporte && tab !== 'tramites' && <Resultados {...{ listo, techos, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, batKwh, respaldoH, d, sitio, cargando: techos.length && !listasHoras }} onProspecto={() => { const e = conBat && conBat.fin.neto > sinBat.fin.neto ? conBat : sinBat; addProspect({ tipo: 'otro', ref: 'dis-' + (d.id || Date.now()), nombre: d.cliente || 'Cliente de diseño', mun: sitio?.muni?.name, valor: Math.round(e.cap.total), detalle: `Diseño ${fmt(kwp, 1)} kWp${conBat ? ` + ${fmt(batKwh, 1)} kWh` : ''}` }); setMsg('Agregado a Mis prospectos.'); }} />}
 
       {reporte && listo && (
         <>
