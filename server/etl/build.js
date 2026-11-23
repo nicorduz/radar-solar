@@ -387,7 +387,7 @@ export async function build(rawDir, outDir) {
     secop_n: secop.length, empresas_n: empresas.length, agpe_n: agpe.length, proyectos_n: proyectos.length,
     tarifas, log, segundos: Math.round((Date.now() - t0) / 1000),
     sui_periodo: suiPeriodo, agpe_zonas: agpeZonas, agpe_xm_fecha: readJSON(rawDir, 'xm_agpe.json')?.fecha || null,
-    dna_periodo: dna?.periodo || null, dna_subareas: dna?.subareas || null, bolsa,
+    dna_periodo: dna?.periodo || null, dna_subareas: dna?.subareas || null, dna_esperado: dna?.esperado || null, bolsa,
     red_n: { lineas: red.lineas.length, subs: red.subs.length, plantas: red.plantas.length }, plantas_tipo: red.porTipo, red_upme_fecha: readJSON(rawDir, 'upme_plantas.json')?.consulta || null,
     agpe_px_fecha: agpePx?.fecha || null, agpe_px_n: agpeLista.length, zni_n: zni.length, clientes_n: clientes.length, upme_corte: upmeCorte, upme_n: upme.length,
   };
