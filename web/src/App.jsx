@@ -9,6 +9,7 @@ import Licitaciones from './pages/Licitaciones.jsx';
 import Empresas from './pages/Empresas.jsx';
 import AsistenteFlotante from './components/AsistenteFlotante.jsx';
 import Demanda from './pages/Demanda.jsx';
+import Talera from './pages/Talera.jsx';
 import Admin from './pages/Admin.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Clientes from './pages/Clientes.jsx';
@@ -190,6 +191,7 @@ export default function App() {
   else if (view === 'clientes') page = <Clientes code={arg} />;
   else if (view === 'mercado') page = <Mercado />;
   else if (view === 'demanda') page = <Demanda code={arg} />;
+  else if (view === 'talera') page = <Talera />;
   else if (view === 'admin' && isAdmin) page = <Admin />;
   else if (view === 'cuenta') page = <Cuenta />;
   else if (view === 'terminos' || view === 'legal') page = <Legal doc={arg || 'terminos'} />;
@@ -223,6 +225,7 @@ export default function App() {
             ))}
           </nav>
           <div className="spacer" />
+          <a href="#/talera" className={`side-talera ${active === 'talera' ? 'on' : ''}`} aria-current={active === 'talera' ? 'page' : undefined}><img src="/equipo/nicolas-orduz.webp" alt="" /><img src="/equipo/ana-sofia-romero.webp" alt="" /><img src="/equipo/daniel-villate.webp" alt="" /><span>Consultar a Talera</span></a>
           <a href="#/marca" className={`navbtn ${active === 'marca' ? 'on' : ''}`} aria-current={active === 'marca' ? 'page' : undefined}><Icon name="palette" />Mi marca</a>
           {!paid && <a href="#/plan" className="btn primary sm side-cta">Plan completo</a>}
           <a href="#/cuenta" className={`navbtn ${active === 'cuenta' ? 'on' : ''}`} aria-current={active === 'cuenta' ? 'page' : undefined}><Icon name="user" /><span className="trunc">{user.name || user.username}</span></a>

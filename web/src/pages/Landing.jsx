@@ -1,3 +1,4 @@
+import { LEMA, Equipo, Cifras, Servicios } from '../components/Talera.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { LegalLine } from './Legal.jsx';
@@ -165,6 +166,7 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
           </> : <>
             <a href="#perfiles" onClick={scrollTo('perfiles')}>Perfiles</a>
             <a href="#plan" onClick={scrollTo('plan')}>Plan</a>
+            {raiz && <a href="#nosotros" onClick={scrollTo('nosotros')}>Quiénes somos</a>}
           </>}
           <a href="#preguntas" onClick={scrollTo('preguntas')}>Preguntas</a>
         </nav>
@@ -298,6 +300,25 @@ export default function Landing({ cfg, perfil: perfilRuta }) {
             </dl>
           </div>
         </section>
+
+        {raiz && (
+          <section id="nosotros" className="lp-sec tl-sec" aria-labelledby="nosotros-t">
+            <div className="lp-wrap">
+              <p className="tl-lema">Talera · {LEMA}</p>
+              <h2 id="nosotros-t">Quiénes somos</h2>
+              <p className="lp-sub">Radar Solar es la herramienta que usamos y compartimos. Lo que hacemos en Talera es estructurar proyectos de energía: due diligence, finanzas, capital, respuesta a la demanda y análisis de mercado, para desarrolladores, inversionistas y empresas en Estados Unidos y Colombia.</p>
+              <Equipo />
+              <Cifras />
+              <p className="tl-nota">Cifras de proyectos en los que ha trabajado el equipo de Talera. Los clientes son confidenciales.</p>
+              <h3 className="tl-h3">Lo que hacemos</h3>
+              <Servicios titulo="h4" />
+              <div className="lp-actions">
+                <a className="btn primary lg" href={contacto('Hola, quiero consultar a Talera sobre un proyecto de energía.', 'Consulta a Talera')} target="_blank" rel="noreferrer">Consultar a Talera</a>
+                <a className="btn lg" href="https://www.talera.co/" target="_blank" rel="noreferrer">Conocer Talera</a>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section id="plan" className="lp-sec lp-plan" aria-labelledby="plan-t">
           <div className="lp-wrap lp-plan-grid">

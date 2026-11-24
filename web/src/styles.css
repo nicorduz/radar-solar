@@ -1205,3 +1205,50 @@ input[type=color] { width: 44px; height: 38px; padding: 0; border: 1px solid var
   .ai-panel { right: 0; left: 0; bottom: 0; width: auto; height: calc(100dvh - 40px); border-radius: var(--r-dlg) var(--r-dlg) 0 0; }
   .maplibregl-ctrl-bottom-right { margin-bottom: 60px; }
 }
+
+/* Talera: quiénes somos y consulta */
+.tl-lema { margin: 0 0 10px; font-weight: 650; font-size: 14.5px; color: var(--warn-ink); }
+.tl-sec h2 { max-width: none; }
+.tl-equipo { list-style: none; margin: 44px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.tl-equipo > li { display: flex; flex-direction: column; gap: 16px; }
+.tl-equipo img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-mat); background: var(--panel-2); }
+.tl-p { display: flex; flex-direction: column; gap: 6px; }
+.tl-p h3, .tl-p h4 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.tl-rol { margin: 0; font-size: 14px; font-weight: 600; color: var(--blue-ink); }
+.tl-bio { margin: 6px 0 0; color: var(--ink-2); line-height: 1.55; font-size: 15px; }
+.tl-temas { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-temas li { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-2); }
+.tl-in { font-size: 14px; font-weight: 600; margin-top: 4px; align-self: flex-start; }
+.tl-cifras { margin: 48px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--midnight); }
+.tl-cifras > div { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px 0 0; }
+.tl-cifras dd { order: -1; }
+.tl-cifras dd { margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 700; font-stretch: 86%; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tl-cifras dt { color: var(--ink-2); font-size: 14.5px; line-height: 1.4; max-width: 24ch; }
+.tl-nota { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.tl-h3 { margin: 64px 0 0; font-size: 24px; }
+.tl-serv { list-style: none; margin: 20px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.tl-serv li { padding: 20px 24px 20px 0; border-bottom: 1px solid var(--line); }
+.tl-serv h3, .tl-serv h4 { margin: 0 0 6px; font-size: 17px; }
+.tl-serv p { margin: 0; color: var(--ink-2); line-height: 1.5; font-size: 14.5px; max-width: 38ch; }
+.tl-page .tl-equipo { margin-top: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tl-page .tl-equipo img { max-width: 220px; }
+.tl-page .tl-cifras { margin-top: 4px; }
+.tl-page .tl-serv { margin-top: 0; }
+.tl-h2 { margin: 0; font-size: var(--t-lg); }
+.tl-form h2 { margin: 0 0 12px; font-size: var(--t-lg); }
+.tl-form { display: flex; flex-direction: column; gap: 14px; }
+.tl-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.tl-opt { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line-2); cursor: pointer; font-size: 14px; }
+.tl-opt.on { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, transparent); color: var(--blue-ink); font-weight: 600; }
+.tl-opt input { margin: 0; }
+.side-talera { display: flex; align-items: center; margin: 0 4px 8px; padding: 10px 12px; border-radius: var(--radius); background: rgba(255, 178, 102, 0.12); border: 1px solid rgba(255, 178, 102, 0.35); color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; }
+.side-talera img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid var(--night); margin-left: -8px; }
+.side-talera img:first-child { margin-left: 0; }
+.side-talera span { margin-left: 10px; }
+.side-talera:hover, .side-talera.on { background: rgba(255, 178, 102, 0.22); }
+@media (max-width: 900px) {
+  .tl-equipo, .tl-page .tl-equipo, .tl-serv { grid-template-columns: 1fr; }
+  .tl-cifras { grid-template-columns: 1fr 1fr; row-gap: 18px; }
+  .tl-equipo > li { flex-direction: row; align-items: flex-start; }
+  .tl-equipo img, .tl-page .tl-equipo img { width: 96px; flex: none; }
+}
