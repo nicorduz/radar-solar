@@ -29,6 +29,7 @@ export default function Cuenta() {
       {user.plan?.activado && <dl className="kv card"><dt>Plan activado</dt><dd>{user.plan.activado}</dd>{user.plan.factura && <><dt>Factura</dt><dd className="mono">{user.plan.factura}</dd></>}<dt>Retracto y reversión</dt><dd><a href="#/legal/cancelaciones">Condiciones</a></dd></dl>}
       {Object.keys(meta.profiles).length > 1 && <div className="card mobile-only"><h2 className="h3">Ver la app como</h2><ProfileSwitch /></div>}
       <nav className="quick" aria-label="Accesos rápidos">
+        <button className="btn" onClick={() => go('talera')}><Icon name="users" size={16} />Consultar a Talera</button>
         {!paid && <button className="btn primary" onClick={() => go('plan')}><Icon name="spark" size={16} />Plan completo</button>}
         <button className="btn" onClick={() => go('marca')}><Icon name="palette" size={16} />Mi marca</button>
         <button className="btn" onClick={() => go('prospectos')}><Icon name="star" size={16} />Mis prospectos</button>
