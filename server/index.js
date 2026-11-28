@@ -12,8 +12,9 @@ import {
 import { securityHeaders, csrfGuard, limiter, audit, errorHandler, purgeOld, contacto as limpiarContacto, ipOf, hit } from './security.js';
 import { privacyRoutes, deleteUser } from './privacy.js';
 import { startBackups, createBackup, listBackups } from './backup.js';
-import { store, flexSector, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
+import { store, flexSector, loadData, scored, parseQuery, rowView, payback, dptoScores, projectsFor, SEGMENTS, PROFILES, PROFILE_KEYS, defaultWeights, allowedProfiles, catalogo, tier, calidadOR, capacidadCerca, OR_CREG, trafos, trafosBbox, trafosMuni, trafoCalc, builtDir } from './data.js';
 import { complete, aiInfo, parseJSONLoose } from './ai.js';
+import { variables as intelVars, analizar, descubrir, dispersion } from './intel.js';
 import { op as oportunidad, precalentar, segmentos, segmentosHotel, zonaTurismo } from './oportunidad.js';
 import { UPLOADS, fileToText, tableFromFile, saveDocText, searchChunks } from './docs.js';
 import { RAW, ensureRaw, refreshSources, startJob, rebuild, SOURCES, EXTRA_SOURCES, isRunning } from './refresh.js';
@@ -131,7 +132,7 @@ app.get('/api/meta', requireUser, (req, res) => {
   res.json({
     role: req.role, paid: isPaid(req), admin: isAdmin(req), ci_anio: store.ciAnio,
     segments: Object.fromEntries(Object.entries(SEGMENTS).map(([k, v]) => [k, v.label])),
-    profiles: Object.fromEntries(allowedProfiles(req.user).map((k) => { const P = PROFILES[k]; return [k, { label: P.label, short: P.short, desc: P.desc, segments: P.segments, metrics: P.metrics, weights: defaultWeights(k), factors: Object.fromEntries(Object.entries(P.factors).map(([f, v]) => [f, v.label])) }]; })),
+    profiles: Object.fromEntries(allowedProfiles(req.user).map((k) => { const P = PROFILES[k]; return [k, { label: P.label, short: P.short, desc: P.desc, segments: P.segments, metrics: P.metrics, weights: defaultWeights(k), factors: Object.fromEntries(Object.entries(P.factors).map(([f, v]) => [f, v.label])), catalogo: Object.fromEntries(Object.entries(catalogo(k)).map(([f, v]) => [f, { label: v.label, grupo: v.grupo, propio: v.propio }])) }]; })),
     cortes: { upme: m.upme_corte, generado: m.generado, elic: m.elic_corte, snr: m.snr_corte, sui: m.sui_periodo, agpe_xm: m.agpe_xm_fecha, dna: m.dna_periodo, colegios: store.colegiosAnio, salud: store.saludCorte, capacidad: store.energia.capacidad?.fecha, importaciones: store.energia.importaciones?.hasta, calidad: store.energia.calidad?.anio },
     totals: { municipios: store.municipios.length, secop: m.secop_n, empresas: store.empresas.length, agpe: m.agpe_zonas ? Object.values(m.agpe_zonas).reduce((a, z) => a + z.n, 0) : m.agpe_n, clientes: store.clientes.length, ci: store.ci.length, plantas: m.red_n?.plantas, subs: m.red_n?.subs, colegios: store.colegios.length, salud: store.salud.length },
     tarifas: m.tarifas, capex_kwp: getSetting('capex_kwp', config.capexKwp),
@@ -629,11 +630,67 @@ app.get('/api/tendencias', requireUser, (req, res) => {
   res.json({ ...v, dptos: v.dptos.slice(0, 2), munis: v.munis.slice(0, 2), reps: v.reps.slice(0, 1), locked: true });
 });
 
+// Inteligencia profunda: interdependencias entre variables (en prueba: municipios, hasta 3 entradas y 1 salida)
+app.get('/api/intel/vars', requireUser, (req, res) => res.json({ ...intelVars(), locked: !isPaid(req) }));
+const intelLimite = (req, b) => {
+  const paid = isPaid(req);
+  const nivel = paid ? String(b.nivel || 'muni') : 'muni';
+  return { nivel, pc: !!b.pc, paid };
+};
+app.post('/api/intel/analizar', requireUser, (req, res) => {
+  const b = req.body || {}, { nivel, pc, paid } = intelLimite(req, b);
+  const entradas = (Array.isArray(b.entradas) ? b.entradas : []).map(String).slice(0, paid ? 12 : 3);
+  const salidas = (Array.isArray(b.salidas) ? b.salidas : []).map(String).slice(0, paid ? 4 : 1);
+  res.json({ ...analizar({ nivel, pc, entradas, salidas }), locked: !paid });
+});
+app.post('/api/intel/descubrir', requireUser, (req, res) => {
+  const b = req.body || {}, { nivel, pc, paid } = intelLimite(req, b);
+  const r = descubrir({ nivel, pc, salida: String(b.salida || ''), excluir: (Array.isArray(b.excluir) ? b.excluir : []).map(String).slice(0, 40) });
+  res.json({ ...r, top: paid ? r.top : r.top.slice(0, 2), locked: !paid });
+});
+app.get('/api/intel/dispersion', requireUser, (req, res) => {
+  const { nivel, pc } = intelLimite(req, req.query);
+  res.json(dispersion({ nivel, pc: req.query.pc === '1', x: String(req.query.x || ''), y: String(req.query.y || ''), lag: req.query.lag }));
+});
+
+// Capacidad disponible por subestación y congestión estimada de cada línea, a partir de la capacidad indicativa
+// de la UPME en cada barra (2026, 95 % de los escenarios). No es la cargabilidad medida de las líneas.
+let redCapCache = null;
+function redConCapacidad() {
+  const r = store.red, barras = (store.energia.capacidad?.barras || []).filter((b) => b.lat != null);
+  const key = `${r?.subs?.length}|${barras.length}|${store.meta.generado}`;
+  if (redCapCache?.key === key) return redCapCache;
+  const nn = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\(.*?\)/g, '').replace(/[^A-Z0-9]/g, '');
+  const porNombre = new Map();
+  for (const b of barras) { const k = nn(b.sub); (porNombre.get(k) || porNombre.set(k, []).get(k)).push(b); }
+  const subs = (r.subs || []).map((sb) => {
+    let bs = porNombre.get(nn(sb.n)) || [];
+    if (!bs.length) bs = barras.filter((b) => kmBetween(sb, b) <= 3);
+    bs = bs.filter((b) => b.p95_2026 != null);
+    const cap = bs.length ? Math.round(Math.max(...bs.map((b) => b.p95_2026)) * 10) / 10 : null;
+    return { ...sb, cap };
+  });
+  // Extremo de una línea → subestación más cercana (a menos de 4 km) con dato de capacidad
+  const conCap = subs.filter((x) => x.cap != null && x.lat != null);
+  const extremo = ([lon, lat]) => { let best = null, bd = 4; for (const x of conCap) { const d = kmBetween({ lat, lon }, x); if (d < bd) { bd = d; best = x; } } return best; };
+  const lineas = (r.lineas || []).map((l) => {
+    const c = typeof l.c === 'string' ? JSON.parse(l.c) : l.c;
+    if (!c?.length) return l;
+    const a = extremo(c[0]), b = extremo(c[c.length - 1]);
+    const caps = [a?.cap, b?.cap].filter((x) => x != null);
+    if (!caps.length) return { ...l, cong: null };
+    const prom = caps.reduce((x, y) => x + y, 0) / caps.length;
+    // Promedio de los dos extremos: 0 MW libres → 1 (muy congestionada); 60 MW o más → 0
+    return { ...l, cap: Math.round(prom * 10) / 10, cong: Math.round(Math.max(0, 1 - Math.log1p(prom) / Math.log1p(60)) * 100) / 100 };
+  });
+  return (redCapCache = { key, subs, lineas });
+}
+
 app.get('/api/red', requireUser, (req, res) => {
-  const r = store.red;
+  const r = store.red, rc = redConCapacidad();
   // Autogeneración (AGPE): los operadores reportan cada sistema por municipio, sin coordenadas; se agrupa en el centro del municipio
   const agpe = isPaid(req) ? store.municipios.filter((m) => (m.agpe_n > 0 || m.agpe_px_n > 0) && m.lat != null).map((m) => ({ code: m.code, name: m.name, dpto: m.dpto, lat: m.lat, lon: m.lon, n: m.agpe_n || 0, solar: m.agpe_solar || 0, kw: Math.round(m.agpe_kw || 0), px: m.agpe_px_n || 0, px_kw: Math.round((m.agpe_px_mw || 0) * 1000) })) : [];
-  res.json({ lineas: r.lineas, subs: r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], agpe, capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
+  res.json({ lineas: isPaid(req) ? rc.lineas : r.lineas, subs: isPaid(req) ? rc.subs : r.subs, plantas: isPaid(req) ? r.plantas : [], zni: isPaid(req) ? r.zni : [], upme: isPaid(req) ? (r.upme || []).filter((p) => p.lat) : [], agpe, capacidad: isPaid(req) ? (store.energia.capacidad?.barras || []).filter((b) => b.lat != null) : [], locked: !isPaid(req) });
 });
 app.get('/api/red/mt', requireUser, (req, res) => {
   if (!isPaid(req)) return res.status(402).json({ locked: true });

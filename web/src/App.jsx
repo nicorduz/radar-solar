@@ -10,6 +10,7 @@ import Empresas from './pages/Empresas.jsx';
 import AsistenteFlotante from './components/AsistenteFlotante.jsx';
 import Demanda from './pages/Demanda.jsx';
 import Talera from './pages/Talera.jsx';
+import Inteligencia from './pages/Inteligencia.jsx';
 import Admin from './pages/Admin.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Clientes from './pages/Clientes.jsx';
@@ -70,6 +71,7 @@ const PAGES = {
   mercado: { label: 'Mercado y red', short: 'Mercado', icon: 'chart' },
   licitaciones: { label: 'Licitaciones', icon: 'doc' },
   demanda: { label: 'Respuesta a la demanda', short: 'Demanda', icon: 'bolt' },
+  inteligencia: { label: 'Inteligencia profunda', short: 'Inteligencia', icon: 'target' },
 };
 // El inversionista ve las mismas secciones con nombres de su oficio
 const LABELS = {
@@ -83,11 +85,11 @@ const LABELS = {
   },
 };
 const ORDER = {
-  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'instituciones', 'licitaciones', 'calculadora', 'mercado', 'empresas', 'demanda'],
-  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'licitaciones', 'industrias', 'clientes', 'instituciones', 'diseno', 'calculadora'],
-  desarrollador: ['mapa', 'ranking', 'mercado', 'diseno', 'calculadora', 'industrias', 'prospectos', 'licitaciones', 'empresas', 'demanda'],
-  servicios: ['mapa', 'ranking', 'mercado', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'instituciones', 'diseno', 'calculadora', 'demanda'],
-  demanda: ['mapa', 'demanda', 'industrias', 'ranking', 'clientes', 'instituciones', 'prospectos', 'mercado', 'licitaciones', 'calculadora', 'empresas'],
+  instalador: ['mapa', 'diseno', 'ranking', 'clientes', 'prospectos', 'industrias', 'instituciones', 'licitaciones', 'calculadora', 'mercado', 'inteligencia', 'empresas', 'demanda'],
+  proveedor: ['mapa', 'ranking', 'empresas', 'prospectos', 'mercado', 'inteligencia', 'licitaciones', 'industrias', 'clientes', 'instituciones', 'diseno', 'calculadora'],
+  desarrollador: ['mapa', 'ranking', 'mercado', 'inteligencia', 'diseno', 'calculadora', 'industrias', 'prospectos', 'licitaciones', 'empresas', 'demanda'],
+  servicios: ['mapa', 'ranking', 'mercado', 'inteligencia', 'prospectos', 'industrias', 'empresas', 'licitaciones', 'clientes', 'instituciones', 'diseno', 'calculadora', 'demanda'],
+  demanda: ['mapa', 'demanda', 'industrias', 'ranking', 'clientes', 'instituciones', 'prospectos', 'mercado', 'inteligencia', 'licitaciones', 'calculadora', 'empresas'],
 };
 const navFor = (profile) => (ORDER[profile] || ORDER.instalador).map((id) => ({ id, ...PAGES[id], ...(LABELS[profile]?.[id] || {}) }));
 
@@ -192,6 +194,7 @@ export default function App() {
   else if (view === 'mercado') page = <Mercado />;
   else if (view === 'demanda') page = <Demanda code={arg} />;
   else if (view === 'talera') page = <Talera />;
+  else if (view === 'inteligencia') page = <Inteligencia />;
   else if (view === 'admin' && isAdmin) page = <Admin />;
   else if (view === 'cuenta') page = <Cuenta />;
   else if (view === 'terminos' || view === 'legal') page = <Legal doc={arg || 'terminos'} />;

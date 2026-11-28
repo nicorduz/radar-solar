@@ -8,6 +8,8 @@ import { readLocal, writeLocal } from '../local.js';
 import { model } from './Calculadora.jsx';
 import MapSnapshot from '../components/MapSnapshot.jsx';
 import { useBranding, inkOn, readableOnWhite, SELLO } from '../branding.js';
+import { RutaPasos } from '../components/RutaPDF.jsx';
+import { FIGURAS, figuraSugerida } from '../components/tramites.js';
 
 const TIPOS = {
   comercial: ['Propuesta comercial para un cliente', 'Propuesta de energía solar'],
@@ -28,6 +30,7 @@ export default function Propuesta({ arg }) {
     para: '', cliente: 'hogar', kwp: 6, intro: '', notas: '',
   });
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const [zRuta, setZRuta] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiErr, setAiErr] = useState(null);
   const z = zona ? readLocal('rs_zona_informe', null) : null;
@@ -38,6 +41,12 @@ export default function Propuesta({ arg }) {
     api(`/municipio/${code}` + qs(scoreParams)).then(setM).catch(setErr);
   }, [code]);
 
+  // Red y operador del sitio para la ruta de conexión
+  useEffect(() => {
+    const p = zona ? (z?.punto || z?.centro) : m ? [m.lon, m.lat] : null;
+    if (!p || p[1] == null) return;
+    api(`/tramite?lat=${(+p[1]).toFixed(5)}&lon=${(+p[0]).toFixed(5)}`).then(setZRuta).catch(() => setZRuta(null));
+  }, [m?.code, zona]);
   const fin = useMemo(() => {
     if (!m) return null;
     const empresa = f.cliente === 'empresa';
@@ -55,6 +64,8 @@ export default function Propuesta({ arg }) {
     try { const r = await api(`/ai/propuesta/${m.code}`, { method: 'POST', body: { tipo: f.tipo, cliente: f.para, kwp: f.kwp, profile } }); set('intro', r.answer); }
     catch (e) { setAiErr(e.message); } finally { setBusy(false); }
   };
+  const figSug = f.tipo === 'comercial' && !zona ? figuraSugerida(Math.max(1, (+f.kwp || 1) / 1.15)) : profile === 'desarrollador' ? 'proyecto' : 'agpe_peq';
+  const fig = f.figura === 'ninguna' ? null : FIGURAS[f.figura] ? f.figura : figSug;
   const titulo = TIPOS[f.tipo][1];
   const hoy = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
   const hogares = m.pop ? Math.round(m.pop / HOGAR_PERSONAS) : null;
@@ -82,6 +93,12 @@ export default function Propuesta({ arg }) {
         </label>
         <div className="row"><button className="btn sm" onClick={genIntro} disabled={busy}><Icon name="spark" size={14} />{busy ? 'Escribiendo…' : 'Escribir con IA'}</button><span className="small muted">Para guardarlo como PDF elige "Guardar como PDF" en la ventana de impresión.</span></div>
         {aiErr && <div className="alert err small">{aiErr}</div>}
+        <label className="f">Ruta de conexión que se incluye
+          <select className="select" value={fig || 'ninguna'} onChange={(e) => set('figura', e.target.value)}>
+            {Object.entries(FIGURAS).map(([k, F]) => <option key={k} value={k}>{F.nombre}{k === figSug ? ' (sugerida)' : ''}</option>)}
+            <option value="ninguna">No incluir</option>
+          </select>
+        </label>
         <label className="f">Notas o condiciones (opcional)<textarea className="input" rows={2} value={f.notas} onChange={(e) => set('notas', e.target.value)} placeholder="Garantías, tiempos de instalación, forma de pago…" /></label>
       </div>
 
@@ -187,6 +204,13 @@ export default function Propuesta({ arg }) {
           <section className="doc-sec"><h2>Red eléctrica cercana al centro de la zona</h2><ul>{z.subsCerca.map((x) => <li key={x.n}>Subestación {x.n} ({x.kv}) a {fmt(x.km, 1)} km</li>)}{z.linea && <li>Línea de transmisión más cercana: {z.linea.kv} a {fmt(z.linea.km, 1)} km</li>}<li>{fmt(z.solar10)} plantas solares a menos de 10 km</li><li>Radiación de referencia ({z.ref.name}): {fmt(z.ref.ghi, 2)} kWh/m²/día · tarifa comercial {fmt(z.ref.tarifa_com ?? z.ref.tarifa)} $/kWh</li></ul><p className="doc-note">No incluye pendiente del terreno, uso del suelo, áreas protegidas ni capacidad disponible del transformador: se deben verificar con estudios y con el operador de red.</p></section>
         </>)}
 
+        {fig && (
+          <section className="doc-sec doc-ruta">
+            <h2>Cómo se conecta a la red</h2>
+            <RutaPasos fig={fig} exc z={zRuta} compacto />
+            {zRuta?.capacidad?.length > 0 && ['proyecto', 'remota', 'gd', 'agpe_med'].includes(fig) && <p className="doc-note">Barra con capacidad más cercana: {zRuta.capacidad[0].n}, a {fmt(zRuta.capacidad[0].km, 1)} km, con {fmt(zRuta.capacidad[0].p95_2026, 1)} MW libres en 2026 (indicativo UPME). {fmt(zRuta.cola_n)} proyectos registrados a menos de 50 km.</p>}
+          </section>
+        )}
         {(f.notas || marca.condiciones) && <section className="doc-sec"><h2>Condiciones</h2><p style={{ whiteSpace: 'pre-wrap' }}>{[f.notas, marca.condiciones].filter(Boolean).join('\n')}</p></section>}
         {(marca.empresa || marca.asesor) && <section className="doc-sec doc-contact"><h2>Contacto</h2><p><b>{marca.asesor || marca.empresa}</b>{marca.cargo ? `, ${marca.cargo}` : ''}{marca.asesor && marca.empresa ? ` · ${marca.empresa}` : ''}<br />{[marca.telefono, marca.whatsapp && `WhatsApp ${marca.whatsapp}`, marca.correo, marca.web].filter(Boolean).join(' · ')}{marca.nit ? <><br />NIT {marca.nit}</> : null}</p></section>}
         <footer className="doc-foot">
