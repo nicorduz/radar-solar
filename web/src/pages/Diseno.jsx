@@ -8,6 +8,7 @@ import { satStyle } from '../components/MapSnapshot.jsx';
 import { PANELES, BATERIAS, MARCAS_PANEL, MARCAS_BATERIA, POTENCIAS_PANEL, medidaTipica, CAPACIDADES_BAT } from '../components/equipos.js';
 import ReporteSolar from '../components/ReporteSolar.jsx';
 import RutaRegulatoria from '../components/RutaRegulatoria.jsx';
+import { figuraDe } from '../components/tramites.js';
 import { useBranding } from '../branding.js';
 import { acomodar, aspectAlineado, polyArea, centro, simular, facturar, capex, finanzas, PERFILES_SEMANA, PERFILES_HORA, COSTOS_BASE } from '../components/solarDesign.js';
 import { parseCoords, geocode } from '../components/mapTools.js';
@@ -56,6 +57,7 @@ export default function Diseno() {
   const [nuevoPanel, setNuevoPanel] = useState(null);
   const [nuevaBat, setNuevaBat] = useState(null);
   const [reporte, setReporte] = useState(false);
+  const [zonaRuta, setZonaRuta] = useState(null);
   const [msg, setMsg] = useState(null);
   const [centroMapa, setCentroMapa] = useState(null);
   const el = useRef(null), mapRef = useRef(null), st = useRef({});
@@ -210,6 +212,14 @@ export default function Diseno() {
     setMsg('Diseño guardado en este navegador.');
   };
   const nuevo = () => { const x = NUEVO(); setD({ ...x, activo: x.techos[0].id }); setSitio(null); setReporte(false); };
+  // Red y operador del punto, para la ruta de conexión del reporte
+  const puntoRuta = c0 || centroMapa;
+  useEffect(() => {
+    if (!reporte || !puntoRuta) return;
+    api(`/tramite?lat=${puntoRuta[1].toFixed(5)}&lon=${puntoRuta[0].toFixed(5)}`).then(setZonaRuta).catch(() => setZonaRuta(null));
+  }, [reporte, puntoRuta?.[0]?.toFixed(3), puntoRuta?.[1]?.toFixed(3)]);
+  const figRuta = figuraDe(d, kwAc, profile === 'desarrollador');
+  const rutaReporte = { fig: figRuta, exc: d.excedentes !== false, check: d.check?.[figRuta] || {}, z: zonaRuta };
   const fcReporte = { type: 'FeatureCollection', features: [...techos.map((t) => ({ type: 'Feature', properties: { k: 'zona' }, geometry: { type: 'Polygon', coordinates: [[...t.pts, t.pts[0]]] } })), ...caras.flatMap((c, i) => c.paneles.slice(0, seleccion[i]).map((r) => ({ type: 'Feature', properties: { k: 'panel' }, geometry: { type: 'Polygon', coordinates: [r] } })))] };
   const N = (obj, setter, k, label, props = {}) => <label className="f">{label}<input className="input mono" type="number" value={obj[k]} onChange={(e) => setter(k, e.target.value === '' ? '' : +e.target.value)} {...props} /></label>;
   const resumenCaras = caras.map((c, i) => ({ nombre: c.techo.nombre, tipo: c.techo.tipo, info: c.info, usados: seleccion[i], yield: horas[claves[i]]?.anual }));
@@ -429,7 +439,7 @@ export default function Diseno() {
             </div>
             <span className="small muted">En la ventana de impresión elige "Guardar como PDF" y activa "Gráficos de fondo".</span>
           </div>
-          <ReporteSolar {...{ d, marca, paid, cfg, fc: fcReporte, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, bat, batKwh, respaldoH, sitio, tarifa, caras: resumenCaras }} />
+          <ReporteSolar {...{ d, marca, paid, cfg, fc: fcReporte, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, bat, batKwh, respaldoH, sitio, tarifa, caras: resumenCaras, ruta: rutaReporte }} />
         </>
       )}
     </div>

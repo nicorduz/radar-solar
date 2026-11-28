@@ -11,6 +11,7 @@ import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, PolygonLayer, Scatterp
 import { api, qs, fmt, METRICS } from '../api.js';
 import { useApp } from '../App.jsx';
 import { WeightsControl, ScoreBadge, ContactCTA, Modal } from '../components/ui.jsx';
+import PesosRed from '../components/PesosRed.jsx';
 import { writeLocal, readLocal, useLocal } from '../local.js';
 import { Icon } from '../components/Icon.jsx';
 import { ringOf, measureOf, circleRing, rectRing, distance, pathLength, fmtDist, centroid, inside, parseCoords, normTxt, geocode } from '../components/mapTools.js';
@@ -122,6 +123,10 @@ const ZOOM_COLEGIOS = 9;
 const CAP_COLOR = (mw) => (mw == null || mw < 1 ? [226, 103, 91] : mw < 10 ? [242, 195, 138] : [79, 178, 134]);
 // Transformadores (demo): semáforo de uso del límite del 50 % de la capacidad nominal (CREG 174)
 const ZOOM_TRAFOS = 12;
+// Tamaño por capacidad libre (MW) y mezcla aditiva para que las líneas congestionadas "brillen"
+const CAP_R = (mw) => Math.min(26, 3 + Math.sqrt(Math.max(0, mw || 0)) * 2);
+const BRILLO = { depthCompare: 'always', depthWriteEnabled: false, blend: true, blendColorOperation: 'add', blendColorSrcFactor: 'src-alpha', blendColorDstFactor: 'one', blendAlphaOperation: 'add', blendAlphaSrcFactor: 'one', blendAlphaDstFactor: 'one-minus-src-alpha' };
+const REDUCIR = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const SEM_COLOR = { verde: [79, 178, 134], amarillo: [242, 195, 138], naranja: [255, 140, 60], rojo: [226, 103, 91], sd: [120, 170, 255] };
 const SEM_TXT = { verde: 'Con espacio (usa menos de la mitad del límite)', amarillo: 'Espacio medio (50-80 % del límite)', naranja: 'Casi lleno (80-100 %)', rojo: 'Sin espacio', sd: 'El operador no publica la generación conectada' };
 const TRAFO_W0 = { espacio: 45, tam: 25, sat: 20, us: 10 };
@@ -183,6 +188,9 @@ export default function MapPage({ focus }) {
   const terreno = is3d && relieve;
   const [menu, setMenu] = useState(null); // 'show' | 'layers' | null
   const [collapsed, setCollapsed] = useState(true);
+  const [pesos, setPesos] = useState(false);
+  // Latido lento de las líneas más congestionadas (se apaga con movimiento reducido)
+  const [latido, setLatido] = useState(0);
   const [lockMsg, setLockMsg] = useState(null);
   const [red, setRed] = useState(null);
   const [mt, setMt] = useState(null);
@@ -504,6 +512,13 @@ export default function MapPage({ focus }) {
   }, [data, showKey, dptoSel, hid]);
 
   useEffect(() => {
+    if (REDUCIR || !on.has('lineas') || !red?.lineas?.some((d) => d.cong >= 0.85)) return undefined;
+    const t0 = performance.now();
+    const id = setInterval(() => setLatido((1 + Math.sin((performance.now() - t0) / 700)) / 2), 140);
+    return () => clearInterval(id);
+  }, [on, red]);
+
+  useEffect(() => {
     if (!overlayRef.current || !data) return;
     const trig = [showKey, JSON.stringify(scoreParams)];
     const layers = [
@@ -517,6 +532,21 @@ export default function MapPage({ focus }) {
     }
     if (on.has('lineas') && red?.lineas?.length) {
       const conTorres = terreno && zoom >= ZOOM_TORRES && bounds;
+      // Brillo según congestión estimada: entre menos capacidad libre en sus extremos, más brilla la línea (mismo color de tensión)
+      const conCong = (terreno ? lineasDensas : red.lineas).filter((d) => d.cong > 0.05);
+      if (conCong.length) {
+        layers.push(new PathLayer({
+          id: 'lineas-brillo', data: conCong, getPath: (d) => (terreno ? d.c3 : d.c), getColor: (d) => [...KV_COLOR(kvOf(d.kv)), Math.round(22 + d.cong * 105)],
+          widthUnits: 'pixels', getWidth: (d) => KV_W(kvOf(d.kv)) * (2.5 + d.cong * 5), capRounded: true, jointRounded: true, parameters: BRILLO,
+        }));
+        const pulso = conCong.filter((d) => d.cong >= 0.85);
+        if (pulso.length && !REDUCIR) {
+          layers.push(new PathLayer({
+            id: 'lineas-pulso', data: pulso, getPath: (d) => (terreno ? d.c3 : d.c), getColor: (d) => [...KV_COLOR(kvOf(d.kv)), Math.round(20 + 60 * latido)],
+            widthUnits: 'pixels', getWidth: (d) => KV_W(kvOf(d.kv)) * (4 + 6 * latido), capRounded: true, jointRounded: true, parameters: BRILLO, updateTriggers: { getColor: latido, getWidth: latido },
+          }));
+        }
+      }
       if (!conTorres) {
         layers.push(new PathLayer({
           id: 'lineas', data: terreno ? lineasDensas : red.lineas, getPath: (d) => (terreno ? d.c3 : d.c), getColor: (d) => [...KV_COLOR(kvOf(d.kv)), 220],
@@ -587,11 +617,13 @@ export default function MapPage({ focus }) {
     if (on.has('subs') && red?.subs?.length && modelos) {
       layers.push(new SimpleMeshLayer({
         id: 'subs-3d', data: vis('subs', red.subs), mesh: MODELOS.subestacion.mesh, getPosition: (d) => [d.lon, d.lat], getOrientation: [0, 0, 0],
-        sizeScale: Math.max(1, (24 * mpp(zoom)) / MODELOS.subestacion.size), getScale: (d) => { const k = d.kvmax >= 500 ? 1.5 : d.kvmax >= 220 ? 1.25 : 1; return [k, k, k]; },
+        sizeScale: Math.max(1, (24 * mpp(zoom)) / MODELOS.subestacion.size), getScale: (d) => { const k = d.cap != null ? 0.8 + Math.min(1.6, Math.sqrt(d.cap) / 6) : d.kvmax >= 500 ? 1.5 : d.kvmax >= 220 ? 1.25 : 1; return [k, k, k]; },
         getColor: [255, 255, 255], pickable: true,
       }));
     } else if (on.has('subs') && red?.subs?.length) {
-      layers.push(new IconLayer({ id: 'subs', data: vis('subs', red.subs), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.kvmax >= 220 ? 20 : 14), parameters: ON_TOP, pickable: true }));
+      // Halo verde con el tamaño de la capacidad libre para conectar generación; el ícono también crece
+      layers.push(new ScatterplotLayer({ id: 'subs-cap', data: vis('subs', red.subs).filter((d) => d.cap > 0.5), getPosition: (d) => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: (d) => (CAP_R(d.cap) + 6) * (zoom < 6 ? 0.5 : zoom < 8 ? 0.75 : 1), updateTriggers: { getRadius: zoom < 6 ? 0 : zoom < 8 ? 1 : 2 }, getFillColor: [79, 178, 134, 55], stroked: true, getLineColor: [79, 178, 134, 200], lineWidthUnits: 'pixels', getLineWidth: 1.2, parameters: ON_TOP }));
+      layers.push(new IconLayer({ id: 'subs', data: vis('subs', red.subs), getPosition: (d) => [d.lon, d.lat], getIcon: () => icon(ICON_SUB), sizeUnits: 'pixels', getSize: (d) => (d.cap != null ? 12 + CAP_R(d.cap) * 0.9 : d.kvmax >= 220 ? 16 : 12), parameters: ON_TOP, pickable: true }));
     }
     if (on.has('agpe') && red?.agpe?.length) {
       layers.push(new ScatterplotLayer({
@@ -727,9 +759,9 @@ export default function MapPage({ focus }) {
         if (!d || !lyr) return null;
         const layer = { id: lyr.id.replace(/-3d$/, '') };
         let html;
-        if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}<br/><span style="color:#B3BCDA">${d.op}</span>`;
+        if (layer.id === 'lineas') html = `<b>${d.n}</b><br/>${d.kv}${d.cap != null ? `<br/>Capacidad libre en sus extremos: <b>${fmt(d.cap, 1)} MW</b>${d.cong >= 0.85 ? ' · muy congestionada' : d.cong >= 0.5 ? ' · congestionada' : ''}` : ''}<br/><span style="color:#B3BCDA">${d.op}</span>`;
         else if (layer.id === 'torres') html = `<b>Torre de la línea ${d.l.n}</b><br/>${d.l.kv}<br/><span style="color:#B3BCDA">${d.l.op || ''}<br/>Torres dibujadas a escala de lectura, no en su ubicación exacta.</span>`;
-        else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.sistema ? ' · ' + (d.sistema === 'STN' ? 'transmisión nacional' : 'transmisión regional') : ''}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op || ''}</span>`;
+        else if (layer.id === 'subs') html = `<b>Subestación ${d.n}</b><br/>${d.kv}${d.cap != null ? `<br/>Para conectar generación (2026): <b>${fmt(d.cap, 1)} MW</b>` : ''}${d.sistema ? ' · ' + (d.sistema === 'STN' ? 'transmisión nacional' : 'transmisión regional') : ''}${d.desde ? ' · desde ' + d.desde : ''}<br/><span style="color:#B3BCDA">${d.op || ''}</span>`;
         else if (GEN_NAME[layer.id]) html = `<b>${d.n}</b><br/>${GEN_NAME[d.tipo]}${combTxt(d)} · <b>${fmt(d.mw, d.mw < 10 ? 2 : 1)} MW</b><br/>${d.estado}${d.desde ? ' desde ' + d.desde.slice(0, 4) : ''}${d.kv ? ' · ' + d.kv + ' kV' : ''}${d.clas && d.clas !== 'NORMAL' ? ' · ' + cap(d.clas) : ''}<br/><span style="color:#B3BCDA">${d.op || ''}<br/>${cap(d.mun || '')}, ${cap(d.dpto || '')}</span>`;
         else if (layer.id === 'agpe') html = `<b>${d.name}</b>, ${d.dpto}<br/>${d.n ? `${fmt(d.n)} sistemas de autogeneración${d.solar ? ` (${fmt(d.solar)} solares)` : ''}, ${fmt(d.kw)} kW (SUI)<br/>` : ''}${d.px ? `${fmt(d.px)} registrados con nombre en PARATEC, ${fmt(d.px_kw)} kW<br/>` : ''}<span style="color:#B3BCDA">Ubicación aproximada: centro del municipio.<br/>Incluye solo lo que reportan los operadores de red.</span>`;
         else if (layer.id === 'upme') html = `<b>${d.n}</b><br/>${fmt(d.mw, 1)} MW · ${d.tipo} · ${d.fase}<br/>${d.mun}, ${d.dpto}<br/><span style="color:#B3BCDA">Operación prevista ${d.operacion?.slice(0, 7) || 's/d'}</span>`;
@@ -942,13 +974,15 @@ export default function MapPage({ focus }) {
         </div>
       )}
 
-      {(showKey !== 'nada' || genOn.length > 0 || on.has('lineas')) && (
+      {(showKey !== 'nada' || genOn.length > 0 || on.has('lineas') || (on.has('subs') && paid)) && (
         <div className="legend glass">
           {on.has('lineas') && (
             <ul className="gen-legend kv-legend" aria-label="Líneas de transmisión por tensión">
               {KV_LEG.map(([kv, t]) => <li key={kv}><span className="kv-sw" style={{ background: `rgb(${KV_COLOR(kv).join(',')})`, height: KV_W(kv) + 1 }} />{t}</li>)}
+              {paid && <li className="brillo-leg"><span className="kv-sw glow" aria-hidden="true" />Más brillo = menos capacidad libre (estimado UPME)</li>}
             </ul>
           )}
+          {on.has('subs') && paid && <span className="row small" style={{ gap: 6 }}><span className="cap-ring" aria-hidden="true" />Tamaño de la subestación = MW libres para conectar</span>}
           {genOn.length > 0 && (
             <ul className="gen-legend" aria-label="Plantas de generación en el mapa">
               {genOn.map((k) => <li key={k}><img src={GEN_ICON[k]} alt="" width="18" height="18" />{GEN_NAME[k]} <span className="muted">{fmt(genN[k] || 0)}</span></li>)}
@@ -1003,6 +1037,10 @@ export default function MapPage({ focus }) {
           )}
         </div>
       </div>
+
+      {pesos
+        ? <PesosRed onClose={() => setPesos(false)} top={(data?.mode === 'municipio' ? [...(data.items || [])].sort((x, y) => y.score - x.score) : []).slice(0, 5)} />
+        : <button className="pesos-fab glass" onClick={() => setPesos(true)} aria-haspopup="dialog"><Icon name="sliders" size={17} /><span>Cómo se arma el puntaje</span></button>}
 
       {on.has('trafos') && paid && (
         <div className="trafo-panel glass">

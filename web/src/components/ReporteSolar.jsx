@@ -2,6 +2,7 @@ import React from 'react';
 import { fmt, money } from '../api.js';
 import MapSnapshot from './MapSnapshot.jsx';
 import { inkOn, readableOnWhite, SELLO } from '../branding.js';
+import { RutaPasos, RutaDetalle, rutaDatos } from './RutaPDF.jsx';
 import { SemanaChart, DiaChart as DiaHoras, CostTable, saldo } from '../pages/Diseno.jsx';
 
 // Reporte PDF del diseño solar con la marca de la empresa del usuario.
@@ -29,7 +30,7 @@ function diaTipico({ consumoDia, genDia, tipo, batUtil }) {
   return { load, gen, auto, bat };
 }
 
-export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, bat, batKwh, respaldoH, sitio, tarifa, caras }) {
+export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, kwAc, genAnual, consumoAnual, sinBat, conBat, bat, batKwh, respaldoH, sitio, tarifa, caras, ruta }) {
   const c1 = marca.color1 || '#231D5D', c2 = marca.color2 || '#FF7A00';
   const t1 = readableOnWhite(c1), t2 = readableOnWhite(c2);
   const conviene = conBat && conBat.fin.neto >= sinBat.fin.neto * 0.9; // la batería se recomienda si su valor neto es parecido o mayor
@@ -46,7 +47,8 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, k
   const codigo = `RS-${hoy.toISOString().slice(2, 10).replace(/-/g, '')}-${String(Math.round(kwp * 100)).padStart(4, '0')}`;
   const co2 = r.serie.reduce((a, s, i) => a + genAnual * Math.pow(0.995, i), 0) / 1000 * FE_RED;
   const sumF = (e, k) => e.fact.reduce((a, m) => a + m[k], 0);
-  const paginas = ['portada', 'resumen', 'techo', 'energia', 'inversion', ...(conBat ? ['respaldo'] : []), 'cierre'];
+  const paginas = ['portada', 'resumen', 'techo', 'energia', 'inversion', ...(conBat ? ['respaldo'] : []), ...(ruta ? ['tramites', 'tramites2', 'tramites3'] : []), 'cierre'];
+  const R = ruta ? rutaDatos(ruta) : null;
   const num = (k) => paginas.indexOf(k) + 1;
   const style = { '--c1': c1, '--c2': c2, '--t1': t1, '--t2': t2, '--k1': inkOn(c1) };
   const Logo = ({ claro }) => (marca.logo ? <img className="r2-logo" src={marca.logo} alt={marca.empresa || 'Logo'} /> : <b className="r2-logo-txt" style={{ color: claro ? inkOn(c1) : t1 }}>{marca.empresa || 'Su instalador solar'}</b>);
@@ -206,6 +208,30 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, k
         </section>
       )}
 
+      {/* Trámites de conexión según la figura elegida */}
+      {ruta && (
+        <section className="r2-page">
+          <Head k="tramites" titulo="Cómo se conecta a la red" />
+          <h2 className="r2-h">{R.F.nombre}: <em>{R.pasos.length} pasos</em> de la solicitud al encendido</h2>
+          <RutaPasos {...ruta} />
+          <Foot k="tramites" />
+        </section>
+      )}
+      {ruta && (
+        <section className="r2-page">
+          <Head k="tramites2" titulo="Documentos y con quién se tramita" />
+          <RutaDetalle {...ruta} parte={1} />
+          <Foot k="tramites2" />
+        </section>
+      )}
+      {ruta && (
+        <section className="r2-page">
+          <Head k="tramites3" titulo="Reglas y cómo se paga la energía" />
+          <RutaDetalle {...ruta} parte={2} />
+          <Foot k="tramites3" />
+        </section>
+      )}
+
       {/* Cierre: equipos, pasos y contacto */}
       <section className="r2-page">
         <Head k="cierre" titulo="Equipos, inversión y próximos pasos" />
@@ -219,7 +245,7 @@ export default function ReporteSolar({ d, marca, paid, cfg, fc, n, panel, kwp, k
         </div>
         <h3 className="r2-h3">Próximos pasos</h3>
         <ol className="r2-steps">
-          {[['Visita técnica', 'Revisamos el techo, la estructura y el tablero eléctrico.'], ['Propuesta final', 'Ajustamos el diseño y confirmamos precio y tiempos.'], ['Trámites', 'Solicitamos la conexión como autogenerador ante el operador de red.'], ['Instalación', `Montamos paneles, inversor${bat ? ', batería' : ''} y protecciones.`], ['Encendido', 'Medidor bidireccional y monitoreo de su producción.']].map(([t, x], i) => (
+          {[['Visita técnica', 'Revisamos el techo, la estructura y el tablero eléctrico.'], ['Propuesta final', 'Ajustamos el diseño y confirmamos precio y tiempos.'], ['Trámites', ruta ? `Radicamos la conexión como ${R.F.corto} (página ${num('tramites')}).` : 'Solicitamos la conexión como autogenerador ante el operador de red.'], ['Instalación', `Montamos paneles, inversor${bat ? ', batería' : ''} y protecciones.`], ['Encendido', 'Medidor bidireccional y monitoreo de su producción.']].map(([t, x], i) => (
             <li key={t}><i>{i + 1}</i><b>{t}</b><span>{x}</span></li>
           ))}
         </ol>

@@ -118,7 +118,7 @@ export const PROFILES = {
       contratos: { label: 'Contratistas con contratos solares', get: (m) => m.inst_sol },
       obra: { label: 'Obra nueva', get: (m) => L(m.viv12) },
       tarifa: { label: 'Tarifa de energía', get: (m) => m.tarifa },
-      competencia: { label: 'Pocos mayoristas por instalador', get: (m) => (m.inst_n ? -(m.mayor_n || 0) / m.inst_n : null) },
+      competencia: { label: 'Pocos mayoristas por instalador', grupo: 'Mercado solar', get: (m) => (m.inst_n ? -(m.mayor_n || 0) / m.inst_n : null) },
     },
     weights: { instaladores: 30, mercado: 25, contratos: 10, obra: 15, tarifa: 10, competencia: 10 },
     metrics: ['score', 'inst_n', 'agpe_est', 'viv12', 'tarifa'],
@@ -168,6 +168,45 @@ export const PROFILES = {
   },
 };
 export const PROFILE_KEYS = Object.keys(PROFILES);
+
+// ---------------- Catálogo de factores para armar el puntaje a la medida ----------------
+// Cada perfil trae sus factores; el usuario puede conectar además los de otros perfiles y algunos extra.
+const EXTRA_FACTORES = {
+  poblacion: { label: 'Población', get: (m) => L(m.pop) },
+  colegios: { label: 'Colegios', get: (m) => L(m.col_n) },
+  salud: { label: 'Sedes de salud', get: (m) => L(m.ips_n) },
+  horas_sin_luz: { label: 'Horas sin luz al año (operador)', get: (m) => m.saidi },
+  tarifa_com_x: { label: 'Tarifa comercial', get: (m) => m.tarifa_com ?? m.tarifa },
+  plantas_gen: { label: 'Generación instalada cerca (MW)', get: (m) => L(m.gen30_mw) },
+  crec_vivienda: { label: 'Crecimiento de la obra nueva', get: (m) => m.viv_crec },
+  contratos_pub: { label: 'Contratos públicos solares', get: (m) => L(m.secop_n) },
+};
+const GRUPO = {
+  tarifa: 'Energía', tarifa_ci: 'Energía', tarifa_com_x: 'Energía', consumo: 'Energía', contingencias: 'Energía', horas_sin_luz: 'Energía',
+  radiacion: 'Clima', calor: 'Clima',
+  capacidad: 'Red', red: 'Red', tension: 'Red', competencia: 'Red', plantas: 'Red', proyectos: 'Red', plantas_gen: 'Red',
+  vivienda: 'Construcción', obra: 'Construcción', comercio: 'Construcción', crec_vivienda: 'Construcción',
+  turismo: 'Turismo', hoteles: 'Turismo',
+  instaladores: 'Mercado solar', mercado: 'Mercado solar', contratos: 'Mercado solar', penetracion: 'Mercado solar', sistemas: 'Mercado solar', atencion: 'Mercado solar', contratos_pub: 'Mercado solar',
+  flexibles: 'Empresas', tamano: 'Empresas', poblacion: 'Población', colegios: 'Instituciones', salud: 'Instituciones',
+};
+const catCache = {};
+export function catalogo(profile) {
+  if (catCache[profile]) return catCache[profile];
+  const P = PROFILES[profile], out = {};
+  const mismo = (a, b) => a.get.toString() === b.get.toString();
+  for (const [k, f] of Object.entries(P.factors)) out[k] = { ...f, propio: true };
+  const add = (k, f, origen) => {
+    const igual = Object.values(out).some((g) => mismo(g, f));
+    if (igual) return;
+    const id = out[k] ? `${k}_${origen}` : k;
+    out[id] = { ...f, propio: false };
+  };
+  for (const [q, Q] of Object.entries(PROFILES)) if (q !== profile) for (const [k, f] of Object.entries(Q.factors)) add(k, f, q);
+  for (const [k, f] of Object.entries(EXTRA_FACTORES)) add(k, f, 'x');
+  for (const [k, f] of Object.entries(out)) f.grupo = f.grupo || GRUPO[k] || GRUPO[k.split('_')[0]] || 'Otros';
+  return (catCache[profile] = out);
+}
 export const defaultWeights = (p) => ({ ...PROFILES[p].weights, ...(getSetting(`weights_${p}`, null) || {}) });
 
 function pctRank(values) {
@@ -191,9 +230,11 @@ export function scored(profile = 'instalador', weights, segment = 'campestre') {
   const key = JSON.stringify([profile, w, segment, store.meta.generado]);
   if (cache.has(key)) return cache.get(key);
   const ms = store.municipios.filter((m) => m.tarifa != null); // zonas no interconectadas quedan fuera del ranking
-  const fk = Object.keys(P.factors);
+  // Factores del perfil más los que el usuario conectó desde el catálogo
+  const cat = catalogo(profile);
+  const fk = [...new Set([...Object.keys(P.factors), ...Object.keys(w).filter((k) => cat[k] && +w[k] > 0)])];
   const parts = {};
-  for (const f of fk) parts[f] = pctRank(ms.map((m) => P.factors[f].get(m, segment) ?? null));
+  for (const f of fk) parts[f] = pctRank(ms.map((m) => cat[f].get(m, segment) ?? null));
   const wsum = fk.reduce((a, f) => a + (+w[f] || 0), 0) || 1;
   // Factor de mercado (0,5 a 1): sin volumen de mercado no se puede quedar arriba
   const vol = P.gate ? ms.map((m) => P.gate(m, segment)) : null;
@@ -226,7 +267,7 @@ export function parseQuery(q, user, paid) {
   const allowed = allowedProfiles(user);
   const profile = allowed.includes(q.profile) ? q.profile : allowed[0];
   const w = defaultWeights(profile);
-  if (paid) for (const k of Object.keys(w)) if (q[`w_${k}`] != null) w[k] = Math.max(0, Math.min(100, +q[`w_${k}`] || 0));
+  if (paid) for (const k of Object.keys(catalogo(profile))) if (q[`w_${k}`] != null) w[k] = Math.max(0, Math.min(100, +q[`w_${k}`] || 0));
   const segment = PROFILES[profile].segments && SEGMENTS[q.segment] ? q.segment : 'campestre';
   return { profile, weights: w, segment };
 }

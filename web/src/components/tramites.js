@@ -254,3 +254,10 @@ export const MODELOS_NEGOCIO = [
   ['Arriendo o servicio (SPV)', 'Un tercero pone el sistema y cobra un canon o un fee; el cliente sigue siendo el autogenerador. La SPV no vende kWh, así que no necesita ser comercializador.'],
   ['PPA físico', 'Venta de energía por contrato: exige que quien vende sea una ESP o un generador y que el comprador pueda contratar (usuario no regulado).'],
 ];
+
+// Figura que aplica a un diseño: la elegida o la sugerida por tamaño (el inversionista piensa en proyectos)
+export function figuraDe(d, kwAc, inversionista) {
+  if (d?.figura && FIGURAS[d.figura]) return d.figura;
+  return inversionista && !(kwAc > 0 && kwAc <= 1000) ? 'proyecto' : figuraSugerida(kwAc);
+}
+export const CON_RED = new Set(['proyecto', 'remota', 'gd', 'agpe_med']);
